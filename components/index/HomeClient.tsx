@@ -40,6 +40,8 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
   const [friendListOpen, setFriendListOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const alerted = useRef(false);
 
@@ -73,6 +75,18 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
     };
   }, [loggedIn, userNickname]);
 
+  // 미니홈피 팝업이 로그아웃할 때 window.opener.reloadParentWindow() 를 부른다.
+  // 예전에는 인라인 <script> 로 심었는데, 하이드레이션에 끼어들 여지가 있어 effect 로 옮겼다.
+  useEffect(() => {
+    const w = window as unknown as Record<string, () => void>;
+    w.reloadParentWindow = () => {
+      window.location.href = '/index/member/logout';
+    };
+    return () => {
+      delete w.reloadParentWindow;
+    };
+  }, []);
+
   // 자동 슬라이드 (5초)
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -85,6 +99,8 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
     setSlideIndex((i) => (i + delta + SLIDES.length) % SLIDES.length);
 
   const login = useCallback(async (email: string, password: string) => {
+    setLoginError('');
+    setLoggingIn(true);
     try {
       const res = await fetch('/index/member/login', {
         method: 'POST',
@@ -95,11 +111,22 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
 
       if (json.resultCode === '1') {
         window.location.href = '/';
-      } else {
-        void showAlert('아이디와 비밀번호를 다시 확인해 주세요.');
+        return;
       }
+
+      // resultCode '-1' 은 서버에서 예외가 난 경우 (예: SESSION_SECRET 미설정)
+      const message =
+        json.resultCode === '-1'
+          ? '로그인 처리 중 오류가 발생했습니다. 서버 설정을 확인해주세요.'
+          : '아이디와 비밀번호를 다시 확인해 주세요.';
+      setLoginError(message);
+      void showAlert(message);
     } catch {
-      void showAlert('잠시 후 다시 시도해주세요.');
+      const message = '서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.';
+      setLoginError(message);
+      void showAlert(message);
+    } finally {
+      setLoggingIn(false);
     }
   }, []);
 
@@ -196,8 +223,16 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                 />
-                <input type="submit" id="btnLogin" value="로그인" />
+                <input
+                  type="submit"
+                  id="btnLogin"
+                  value={loggingIn ? '로그인 중…' : '로그인'}
+                  disabled={loggingIn}
+                />
               </form>
+
+              {/* 모달이 뜨지 않는 환경에서도 실패 사유가 보이도록 카드 안에도 표시한다 */}
+              {loginError && <div className="login-error">{loginError}</div>}
 
               <div>
                 <a className="signUpATag idx-su" href="/index/member/signUp">
@@ -215,8 +250,12 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
               <div className="demo-hint">
                 가입 없이 둘러보고 싶다면
                 <br />
-                <button type="button" onClick={() => void login(DEMO.email, DEMO.password)}>
-                  체험 계정으로 로그인
+                <button
+                  type="button"
+                  disabled={loggingIn}
+                  onClick={() => void login(DEMO.email, DEMO.password)}
+                >
+                  {loggingIn ? '로그인 중…' : '체험 계정으로 로그인'}
                 </button>
               </div>
             </div>
@@ -355,12 +394,6 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
       <div className="bottom-fix" />
       <Footer />
 
-      {/* 미니홈피 창에서 window.opener.reloadParentWindow() 를 호출한다 */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.reloadParentWindow = function () { location.href = '/index/member/logout'; };`,
-        }}
-      />
       <span hidden data-user-email={userEmail} />
     </>
   );

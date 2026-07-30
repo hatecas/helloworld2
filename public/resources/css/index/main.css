@@ -771,3 +771,22 @@ a {
 		flex-wrap: wrap;
 	}
 }
+
+/* 로그인 실패 사유 — 모달이 안 뜨는 환경에서도 보이도록 카드 안에 표시 */
+.login-error {
+	margin-top: -6px;
+	padding: 10px 12px;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #b42318;
+	background: #fef3f2;
+	border: 1px solid #fbc8c3;
+	border-radius: var(--hw-radius-sm);
+	text-align: left;
+}
+
+#btnLogin:disabled,
+.demo-hint button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}

@@ -20,15 +20,18 @@ export const viewport: Viewport = {
  * 구 프로젝트는 JSP 마다 <head> 를 직접 들고 있었다.
  * 여기서는 루트 레이아웃이 문서 뼈대만 잡고, 페이지별 CSS 는 각 페이지가
  * <Stylesheets> 로 선언한다 (React 19 가 <head> 로 끌어올려 준다).
+ *
+ * <head> 태그를 직접 쓰면 Next.js 가 넣는 메타데이터와 부딪힐 수 있어서,
+ * 전역 스타일도 precedence 를 준 <link> 로만 선언한다.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
-      <head>
+      <body>
         {/* 알림/확인 모달은 어느 화면에서나 뜰 수 있어 전역으로 둔다 */}
-        <link rel="stylesheet" href="/resources/css/ui.css" />
-      </head>
-      <body>{children}</body>
+        <link rel="stylesheet" href="/resources/css/ui.css" precedence="default" />
+        {children}
+      </body>
     </html>
   );
 }
