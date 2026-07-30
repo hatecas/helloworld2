@@ -3,27 +3,121 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 /**
- * 구 project.properties 의 file.upload.path 를 대체한다.
- * 업로드된 이미지는 예전과 똑같이 resources/images/download 아래에 쌓이고,
- * 화면에서도 같은 경로(/resources/images/download/{파일명})로 참조된다.
+ * 업로드된 이미지 저장.
+ *
+ * 구 project.properties 의 file.upload.path 를 대체한다. DB 에는 예전과 똑같이
+ * "파일명"만 저장하고, 화면도 /resources/images/download/{파일명} 으로 참조한다.
+ * 저장 위치만 환경에 따라 달라진다.
+ *
+ *  - Supabase 설정됨  → Supabase Storage 의 uploads 버킷
+ *  - 설정 안 됨(로컬) → public/resources/images/download 폴더
+ *
+ * Vercel 같은 서버리스는 파일시스템이 읽기 전용이고 인스턴스마다 분리돼 있어서
+ * 로컬 저장 방식으로는 업로드가 동작하지 않는다.
  */
+
 export const UPLOAD_DIR = path.join(process.cwd(), 'public', 'resources', 'images', 'download');
+
+/** Storage 버킷 이름. 공개 버킷이라 URL 로 바로 접근된다. */
+export const UPLOAD_BUCKET = 'uploads';
+/** 버킷 안에서의 경로 — 구 폴더 구조를 그대로 따른다 */
+const UPLOAD_PREFIX = 'download';
 
 const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']);
 
-export function isAllowedImage(filename: string): boolean {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  return ALLOWED_EXT.has(ext);
+const MIME: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  webp: 'image/webp',
+};
+
+function extensionOf(filename: string): string {
+  return filename.split('.').pop()?.toLowerCase() ?? '';
 }
 
-/** 저장 후 파일명(경로 아님)을 돌려준다. 구 AlbumServiceImpl 과 같은 UUID-원본명 형식. */
+export function isAllowedImage(filename: string): boolean {
+  return ALLOWED_EXT.has(extensionOf(filename));
+}
+
+function supabaseConfig(): { url?: string; key?: string } {
+  return {
+    url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+}
+
+export function isUsingStorage(): boolean {
+  const { url, key } = supabaseConfig();
+  return Boolean(url && key);
+}
+
+async function storageClient() {
+  const { url, key } = supabaseConfig();
+  if (!url || !key) return null;
+  const { createClient } = await import('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** 버킷이 없으면 만든다. 한 번 확인하면 프로세스가 살아있는 동안 다시 확인하지 않는다. */
+let bucketReady: Promise<void> | null = null;
+
+async function ensureBucket(
+  client: NonNullable<Awaited<ReturnType<typeof storageClient>>>,
+): Promise<void> {
+  bucketReady ??= (async () => {
+    const { data } = await client.storage.getBucket(UPLOAD_BUCKET);
+    if (data) return;
+
+    const { error } = await client.storage.createBucket(UPLOAD_BUCKET, {
+      public: true,
+      fileSizeLimit: '10MB',
+      allowedMimeTypes: [...new Set(Object.values(MIME))],
+    });
+    // 동시에 여러 요청이 만들려다 부딪히는 건 무시한다
+    if (error && !/already exists/i.test(error.message)) {
+      bucketReady = null;
+      throw new Error(`[storage] 버킷 생성 실패: ${error.message}`);
+    }
+  })();
+
+  return bucketReady;
+}
+
+/**
+ * 저장 후 파일명(경로 아님)을 돌려준다.
+ * 구 AlbumServiceImpl 과 같은 "UUID-원본명" 형식을 유지한다.
+ */
 export async function saveUploadedFile(file: File): Promise<string> {
   const original = path.basename(file.name).replace(/[\\/]/g, '');
   const filename = `${randomUUID()}-${original}`;
-
-  await mkdir(UPLOAD_DIR, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(UPLOAD_DIR, filename), buffer);
 
+  const client = await storageClient();
+
+  if (client) {
+    await ensureBucket(client);
+    const { error } = await client.storage
+      .from(UPLOAD_BUCKET)
+      .upload(`${UPLOAD_PREFIX}/${filename}`, buffer, {
+        contentType: MIME[extensionOf(filename)] ?? file.type ?? 'application/octet-stream',
+        upsert: false,
+      });
+    if (error) throw new Error(`[storage] 업로드 실패: ${error.message}`);
+    return filename;
+  }
+
+  // Supabase 미설정(로컬 개발) — 예전처럼 public 폴더에 쓴다
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  await writeFile(path.join(UPLOAD_DIR, filename), buffer);
   return filename;
+}
+
+/** Storage 에 올라간 파일의 공개 URL */
+export function storagePublicUrl(filename: string): string | null {
+  const { url } = supabaseConfig();
+  if (!url) return null;
+  return `${url.replace(/\/$/, '')}/storage/v1/object/public/${UPLOAD_BUCKET}/${UPLOAD_PREFIX}/${encodeURIComponent(filename)}`;
 }

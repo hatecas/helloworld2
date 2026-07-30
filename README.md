@@ -141,8 +141,9 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 - **BGM**: 미니홈피 탭을 옮겨도 음악이 끊기지 않습니다. 예전에 ajaxTab.js 가 `.bookcover` 안쪽만
   갈아끼우던 것을, 지금은 `app/mnHome/(frame)/layout.tsx` 가 바깥 프레임을 유지하는 방식으로 재현했습니다.
   다만 브라우저 자동재생 정책 때문에 **첫 재생은 ▶ 버튼을 한 번 눌러야** 시작될 수 있습니다.
-- **업로드**: 사진첩·프로필 이미지는 예전과 같은 `public/resources/images/download/` 에 쌓입니다.
-  Vercel 처럼 파일시스템이 읽기 전용인 곳에 올릴 거라면 Supabase Storage 등으로 바꿔야 합니다.
+- **업로드**: 화면과 DB 는 예전 그대로 파일명만 다루고(`/resources/images/download/{파일명}`),
+  실제 저장 위치만 환경에 따라 달라집니다. Supabase 가 설정돼 있으면 Storage 의 `uploads` 버킷,
+  아니면 예전처럼 `public/resources/images/download/` 폴더입니다. 자세한 건 아래 배포 항목 참고.
 - **SmartEditor2 사진첨부**: `/smarteditorMultiImageUpload` 엔드포인트는 구 컨트롤러 그대로 살려 뒀지만,
   같이 들어있는 SE2 샘플 업로더가 PHP 파일을 가리키고 있어 예전에도 연결돼 있지 않았습니다.
   이미지 첨부는 사진첩 쪽을 쓰세요.
@@ -230,6 +231,49 @@ Provider 없이 아무 클라이언트 컴포넌트에서나 `showAlert()` / `sh
 
 미니홈피 탭을 옮길 때마다 로딩 이미지가 깜빡여서 오히려 느려 보였습니다.
 `loading.tsx` 를 없애고, 탭에 마우스를 올리면 미리 받아 두도록(`router.prefetch`) 바꿨습니다.
+
+---
+
+## Vercel 배포
+
+**Root Directory** 는 비워 두면 됩니다(`./`). `package.json` · `app/` · `next.config.mjs` 가
+저장소 최상위에 있어 Next.js 로 자동 인식됩니다.
+
+### 환경변수
+
+| 이름 | 필수 | 설명 |
+| --- | --- | --- |
+| `SESSION_SECRET` | 필수 | 로그인 쿠키 서명 키. **없으면 프로덕션에서 로그인이 되지 않습니다** |
+| `SUPABASE_URL` | 필수 | `https://xxxx.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | 필수 | service_role 키 (`anon` 아님) |
+| `NEXT_PUBLIC_KAKAO_MAP_KEY` | 선택 | 비우면 코드의 기본 키를 씁니다 |
+
+Supabase 두 값도 사실상 필수입니다. 없으면 인메모리 시드로 도는데, 서버리스는 요청마다
+인스턴스가 달라서 방금 쓴 글이 다음 요청에 사라집니다.
+
+`NEXT_PUBLIC_SUPABASE_URL` 도 폴백으로 받지만, 이름 때문에 브라우저로 새어나갈 여지가 있으니
+**`SUPABASE_URL`** 을 쓰세요. service_role 키에는 절대 `NEXT_PUBLIC_` 을 붙이면 안 됩니다.
+
+### 이미지 업로드
+
+Vercel 은 파일시스템이 읽기 전용이라 예전 방식(`public/` 폴더에 쓰기)으로는 업로드가 동작하지 않습니다.
+그래서 Supabase 가 설정돼 있으면 **Storage 의 `uploads` 버킷**에 저장합니다.
+버킷은 첫 업로드 때 공개 버킷으로 자동 생성되므로 따로 만들 필요가 없습니다.
+
+읽는 쪽은 화면 코드를 하나도 바꾸지 않았습니다.
+
+- 저장소에 함께 들어있는 옛날 사진 → `public/` 정적 파일로 그대로 응답
+- 새로 올린 사진 → 정적 파일에 없으니 `app/resources/images/download/[filename]/route.ts` 로 내려와
+  Storage 공개 URL 로 넘겨줍니다
+
+적용 대상은 사진첩 · 프로필 사진 · SmartEditor 이미지 첨부 세 곳입니다.
+
+### 그 외
+
+- `public/` 이 139MB(BGM mp3 61MB)라 배포가 다소 느립니다. 용량이 문제가 되면 mp3 를
+  Storage 로 옮기고 `bgm.contentPath` 를 그 URL 로 바꾸면 됩니다.
+- BGM 자동재생은 브라우저 정책상 첫 재생만 사용자가 ▶ 를 눌러야 합니다.
+- 미니홈피는 `window.open` 으로 열리므로 팝업 차단에 걸릴 수 있습니다. (구 동작 그대로)
 
 ---
 
