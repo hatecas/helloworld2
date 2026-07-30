@@ -1,0 +1,104 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { showAlert, showConfirm } from '@/lib/ui/dialog';
+
+/** views/miniHome/albumDetail.jsp + resources/js/album.js 의 deleteAlbum */
+export default function AlbumDetailClient({
+  userNickname,
+  isOwner,
+  seq,
+  title,
+  content,
+  writer,
+  createDate,
+  images,
+}: {
+  userNickname: string;
+  isOwner: boolean;
+  seq: number;
+  title: string;
+  content: string;
+  writer: string;
+  createDate: string;
+  images: string[];
+}) {
+  const router = useRouter();
+
+  const deleteAlbum = async () => {
+    if (!await showConfirm('정말 삭제하시겠습니까?', { danger: true })) return;
+    try {
+      await fetch('/mnHome/albumDelete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seq }),
+      });
+      await showAlert('삭제했습니다.');
+      router.push(`/mnHome/albumView/${userNickname}`);
+      router.refresh();
+    } catch {
+      void showAlert('잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  return (
+    <>
+      {isOwner && (
+        <div className=" album-submit">
+          <input
+            type="button"
+            className="btnAlbumWrite"
+            id="btnUpload"
+            value="사진올리기"
+            onClick={() => router.push(`/mnHome/albumWriteView/${userNickname}`)}
+          />
+        </div>
+      )}
+      <div className="album-overflow">
+        <div className="album-container3">
+          <div className="album-container2">
+            <div className="album-container1">
+              <div className="album-title">{title}</div>
+              <div className="album-wd">
+                <span className="album-writer">{writer}</span>
+                <span className="album-date">{createDate}</span>
+              </div>
+              {images.map((image) => (
+                <div className="album-images" key={image}>
+                  <img
+                    src={`/resources/images/download/${image}`}
+                    alt="이미지 설명"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `/resources/images/album/${image}`;
+                    }}
+                  />
+                </div>
+              ))}
+              <div className="album-content">{content}</div>
+            </div>
+            <div className="album-public">
+              <div className="album-dropDown" />
+            </div>
+          </div>
+          <div className="album-container-under">
+            <div className="album-under">
+              <a
+                className="album-under-left"
+                id="albumView"
+                onClick={() => router.push(`/mnHome/albumView/${userNickname}`)}
+              >
+                목록
+              </a>
+              {isOwner && (
+                <a className="album-under-right" onClick={() => void deleteAlbum()}>
+                  삭제
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

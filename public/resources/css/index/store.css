@@ -1,0 +1,125 @@
+@charset "UTF-8";
+
+/* 도토리 상점 / BGM 상점 / 공지 화면이 함께 쓰는 스타일 */
+
+.products {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
+	text-align: left;
+	margin-top: 8px;
+}
+
+.products h3 {
+	margin: 28px 0 20px;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.3px;
+	color: var(--hw-text);
+	text-align: left;
+	padding-bottom: 14px;
+	border-bottom: 2px solid var(--hw-text);
+}
+
+/* ------------------------------------------------------- 도토리 상품 */
+
+.product_list,
+.productList {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 16px;
+	width: 100%;
+	margin: 0;
+}
+
+.product,
+a.product {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	float: none;
+	width: auto;
+	margin: 0;
+	padding: 22px 14px 18px;
+	color: var(--hw-text);
+	text-align: center;
+	text-decoration: none;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.product:hover,
+a.product:hover {
+	border-color: #ffd6b8;
+	box-shadow: var(--hw-shadow);
+	transform: translateY(-2px);
+}
+
+.product img {
+	margin: 0 0 6px;
+	max-width: 110px;
+	height: auto;
+}
+
+.product-name {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--hw-text);
+}
+
+.product-radio {
+	display: none;
+}
+
+.divProduct {
+	width: 100%;
+	height: 64px;
+	border: 1px solid rgba(16, 24, 40, 0.12);
+	border-radius: var(--hw-radius-sm);
+}
+
+.storeAtag {
+	text-decoration: none;
+}
+
+.mainBtn {
+	width: auto;
+	height: auto;
+	margin: 0;
+}
+
+.store-minimi-img {
+	max-width: 56px;
+	max-height: 56px;
+	width: auto;
+	height: auto;
+	padding: 0;
+	border: 0;
+}
+
+/* ------------------------------------------------------------- 버튼 */
+
+#btnOrder {
+	align-self: center;
+	margin: 28px 0 8px;
+	padding: 13px 34px;
+	font-size: 15px;
+	font-weight: 700;
+	color: #ffffff;
+	background-color: var(--hw-accent);
+	border: none;
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+#btnOrder:hover {
+	background-color: var(--hw-accent-strong);
+}

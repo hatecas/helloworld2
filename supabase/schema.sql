@@ -1,0 +1,345 @@
+-- =====================================================================
+-- HelloWorld 미니홈피 — Supabase(Postgres) 스키마
+--
+-- 구 MySQL 스키마(src/main/resources/Table_Script)는 매퍼보다 오래된
+-- 버전이라 friends / friendCMT / bgm / userBgm / miniroom* / miniHomeTitle
+-- 등이 빠져 있었다. 여기서는 MyBatis 매퍼 XML 의 실제 쿼리를 기준으로
+-- 재구성했다.
+--
+-- 컬럼명은 구 코드/JSP 와 1:1 로 맞추기 위해 camelCase 를 큰따옴표로
+-- 감싸 그대로 유지한다. PostgREST(supabase-js) 는 그대로 조회 가능하다.
+--
+-- 적용:  Supabase 대시보드 > SQL Editor 에 붙여넣고 실행
+-- =====================================================================
+
+begin;
+
+drop table if exists "loginLog"            cascade;
+drop table if exists "loginStatus"         cascade;
+drop table if exists "friendCMT"           cascade;
+drop table if exists "friends"             cascade;
+drop table if exists "visitCnt"            cascade;
+drop table if exists "visit"               cascade;
+drop table if exists "album"               cascade;
+drop table if exists "diaryCMT"            cascade;
+drop table if exists "diary"               cascade;
+drop table if exists "boardCMT"            cascade;
+drop table if exists "board"               cascade;
+drop table if exists "notice"              cascade;
+drop table if exists "miniroomMinimi"      cascade;
+drop table if exists "miniroomBackground"  cascade;
+drop table if exists "miniHomeTitle"       cascade;
+drop table if exists "profile"             cascade;
+drop table if exists "userBgm"             cascade;
+drop table if exists "bgm"                 cascade;
+drop table if exists "store"               cascade;
+drop table if exists "userStorage"         cascade;
+drop table if exists "dotoriU"             cascade;
+drop table if exists "dotoriC"             cascade;
+drop table if exists "dotori"              cascade;
+drop table if exists "user"                cascade;
+
+-- ---------------------------------------------------------------- 회원
+create table "user" (
+  "userEmail"     varchar(100) primary key,
+  "userPassword"  varchar(100) not null,          -- SHA-256 hex (구 SHA256.java 와 동일)
+  "userName"      varchar(50)  not null,
+  "userNickname"  varchar(50)  not null unique,
+  "userGender"    varchar(10)  not null,
+  "userBirth"     date         not null,
+  "userPhone"     varchar(20)  not null unique,
+  "createDate"    timestamptz  not null default now(),
+  "userAvailable" varchar(1)   not null default 'N'
+);
+
+create table "dotori" (
+  "userNickname"  varchar(50) primary key
+                  references "user"("userNickname") on update cascade on delete cascade,
+  "currentDotori" integer not null default 0
+);
+
+create table "dotoriC" (
+  "seq"                serial primary key,
+  "userNickname"       varchar(50) not null
+                       references "user"("userNickname") on update cascade on delete cascade,
+  "dotoriCharge"       integer     not null default 0,
+  "dotoriChargeDate"   timestamptz not null default now(),
+  "dotoriChargeMethod" varchar(100),
+  "dotoriPrice"        varchar(20)
+);
+
+create table "dotoriU" (
+  "seq"           serial primary key,
+  "userNickname"  varchar(50) not null
+                  references "user"("userNickname") on update cascade on delete cascade,
+  "dotoriUse"     integer     not null default 0,
+  "dotoriUseFor"  varchar(200),
+  "dotoriUseDate" timestamptz not null default now()
+);
+
+-- ------------------------------------------------------- 아이템 / 상점
+create table "store" (
+  "seq"          serial primary key,
+  "category"     varchar(50)  not null,           -- minimi | skin | menu
+  "productName"  varchar(100) not null,
+  "contentPath"  varchar(200) not null,           -- 이미지 경로 또는 색상값
+  "productPrice" varchar(20)  not null default '0'
+);
+
+create table "userStorage" (
+  "seq"         serial primary key,
+  "userNickname" varchar(50) not null
+                references "user"("userNickname") on update cascade on delete cascade,
+  "category"    varchar(50)  not null,
+  "productName" varchar(100) not null,
+  "contentPath" varchar(200) not null,
+  "buy_date"    timestamptz  not null default now(),
+  "allocation"  smallint     not null default 0    -- 1 = 현재 적용중
+);
+create index on "userStorage" ("userNickname", "category");
+
+create table "bgm" (
+  "seq"         serial primary key,
+  "title"       varchar(100) not null,
+  "artist"      varchar(100) not null,
+  "runningTime" varchar(20)  not null,
+  "bgmPrice"    varchar(20)  not null default '0',
+  "contentPath" varchar(200) not null
+);
+
+create table "userBgm" (
+  "seq"         serial primary key,
+  "userNickname" varchar(50) not null
+                references "user"("userNickname") on update cascade on delete cascade,
+  "title"       varchar(100) not null,
+  "artist"      varchar(100) not null,
+  "runningTime" varchar(20)  not null,
+  "contentPath" varchar(200) not null,
+  "allocation"  smallint     not null default 0    -- 1 = 플레이리스트에 등록
+);
+create index on "userBgm" ("userNickname");
+
+-- -------------------------------------------------------- 프로필 / 홈피
+create table "profile" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "image"        varchar(500),                     -- 파일명 또는 'noneFile'
+  "msg"          varchar(500),
+  "create_date"  timestamptz not null default now(),
+  "update_date"  timestamptz not null default now()
+);
+create index on "profile" ("userNickname", "create_date" desc);
+
+create table "miniHomeTitle" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null unique
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "title"        varchar(200) not null,
+  "update_date"  timestamptz  not null default now()
+);
+
+create table "miniroomBackground" (
+  "userNickname"   varchar(50) primary key
+                   references "user"("userNickname") on update cascade on delete cascade,
+  "backgroundName" varchar(100) not null,
+  "backgroundPath" varchar(200) not null
+);
+
+create table "miniroomMinimi" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "minimiName"   varchar(100) not null,
+  "minimiPath"   varchar(200) not null,
+  "minimiLeft"   varchar(20)  not null,            -- "390px"
+  "minimiTop"    varchar(20)  not null             -- "163px"
+);
+create index on "miniroomMinimi" ("userNickname");
+
+-- ------------------------------------------------------------- 컨텐츠
+create table "notice" (
+  "seq"         serial primary key,
+  "writer"      varchar(50)   not null,
+  "title"       varchar(200)  not null,
+  "content"     text          not null,
+  "create_date" timestamptz   not null default now(),
+  "update_date" timestamptz   not null default now(),
+  "del_yn"      varchar(1)    not null default 'N'
+);
+
+create table "board" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "title"        varchar(200) not null,
+  "content"      text         not null,
+  "imagePath"    text         not null default '',
+  "hits"         integer      not null default 0,
+  "create_date"  timestamptz  not null default now(),
+  "update_date"  timestamptz  not null default now(),
+  "del_yn"       varchar(1)   not null default 'N',
+  "openScope"    smallint     not null default 1
+);
+create index on "board" ("userNickname", "seq" desc);
+
+create table "boardCMT" (
+  "seq"          serial primary key,
+  "boardSeq"     integer not null references "board"("seq") on delete cascade,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "content"      text        not null,
+  "create_date"  timestamptz not null default now(),
+  "update_date"  timestamptz not null default now(),
+  "openScope"    smallint    not null default 1
+);
+create index on "boardCMT" ("boardSeq");
+
+create table "diary" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "title"        varchar(200) not null,
+  "content"      text         not null,
+  "hits"         integer      not null default 0,
+  "create_date"  timestamptz  not null default now(),
+  "update_date"  timestamptz  not null default now(),
+  "diary_date"   date         not null,
+  "del_yn"       varchar(1)   not null default 'n',
+  "openScope"    smallint     not null default 1,
+  unique ("userNickname", "diary_date")
+);
+
+create table "diaryCMT" (
+  "seq"          serial primary key,
+  "diarySeq"     integer not null references "diary"("seq") on delete cascade,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "content"      text        not null,
+  "create_date"  timestamptz not null default now(),
+  "openScope"    smallint    not null default 1
+);
+create index on "diaryCMT" ("diarySeq");
+
+create table "album" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "title"        varchar(200) not null,
+  "content"      text         not null default '',
+  "imagePath"    text         not null default '',  -- 콤마로 구분된 파일명 목록
+  "create_date"  timestamptz  not null default now(),
+  "update_date"  timestamptz  not null default now(),
+  "del_yn"       varchar(1)   not null default 'N',
+  "openScope"    smallint     not null default 1
+);
+create index on "album" ("userNickname", "seq" desc);
+
+-- ------------------------------------------------------------- 방명록
+create table "visit" (
+  "seq"             serial primary key,
+  "userNickname"    varchar(50) not null
+                    references "user"("userNickname") on update cascade on delete cascade,
+  "targetNickname"  varchar(50) not null
+                    references "user"("userNickname") on update cascade on delete cascade,
+  "content"         text        not null,
+  "create_date"     timestamptz not null default now(),
+  "update_date"     timestamptz not null default now()
+);
+create index on "visit" ("targetNickname", "update_date" desc);
+
+create table "visitCnt" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null unique
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "todayCnt"     integer not null default 0,
+  "totalCnt"     integer not null default 0
+);
+
+-- --------------------------------------------------------------- 일촌
+create table "friends" (
+  "seq"            serial primary key,
+  "userNickname"   varchar(50) not null            -- 신청한 쪽
+                   references "user"("userNickname") on update cascade on delete cascade,
+  "friendNickname" varchar(50) not null            -- 신청받은 쪽
+                   references "user"("userNickname") on update cascade on delete cascade,
+  "fStatus"        smallint    not null default 0, -- 0 대기 / 1 승인 / -1 거절
+  "del_yn"         varchar(1)  not null default 'N',
+  "createDate"     timestamptz not null default now()
+);
+create index on "friends" ("userNickname");
+create index on "friends" ("friendNickname");
+
+create table "friendCMT" (
+  "seq"            serial primary key,
+  "userNickname"   varchar(50) not null            -- 작성자
+                   references "user"("userNickname") on update cascade on delete cascade,
+  "friendNickname" varchar(50) not null            -- 일촌평이 달린 홈피 주인
+                   references "user"("userNickname") on update cascade on delete cascade,
+  "content"        text        not null,
+  "createDate"     timestamptz not null default now(),
+  "del_yn"         varchar(1)  not null default 'n'
+);
+create index on "friendCMT" ("friendNickname", "createDate" desc);
+
+-- --------------------------------------------------------- 접속 상태
+create table "loginStatus" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null unique
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "status"       varchar(1) not null default '0'   -- '1' = 접속중
+);
+
+create table "loginLog" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "logDate"      timestamptz not null default now()
+);
+
+-- ------------------------------------------------------------------ RLS
+-- 정책을 하나도 만들지 않으므로 service_role 을 제외한 모든 접근이 막힌다.
+-- 이 앱은 서버에서 service_role 키로만 붙으므로 그대로 동작한다.
+--
+-- 테이블 이름을 반드시 큰따옴표로 감싼다. user 는 Postgres 예약어라
+-- 따옴표 없이 쓰면 syntax error 가 난다.
+alter table "user"               enable row level security;
+alter table "dotori"             enable row level security;
+alter table "dotoriC"            enable row level security;
+alter table "dotoriU"            enable row level security;
+alter table "store"              enable row level security;
+alter table "userStorage"        enable row level security;
+alter table "bgm"                enable row level security;
+alter table "userBgm"            enable row level security;
+alter table "profile"            enable row level security;
+alter table "miniHomeTitle"      enable row level security;
+alter table "miniroomBackground" enable row level security;
+alter table "miniroomMinimi"     enable row level security;
+alter table "notice"             enable row level security;
+alter table "board"              enable row level security;
+alter table "boardCMT"           enable row level security;
+alter table "diary"              enable row level security;
+alter table "diaryCMT"           enable row level security;
+alter table "album"              enable row level security;
+alter table "visit"              enable row level security;
+alter table "visitCnt"           enable row level security;
+alter table "friends"            enable row level security;
+alter table "friendCMT"          enable row level security;
+alter table "loginStatus"        enable row level security;
+alter table "loginLog"           enable row level security;
+
+commit;
+
+-- ---------------------------------------------------------------------
+-- RLS 는 위 트랜잭션 안에서 이미 켰다.
+--
+-- Supabase SQL Editor 가 "Run without RLS / Run and enable RLS" 를 물어보면
+-- >>> "Run without RLS" <<< 를 고를 것.
+-- 이 스크립트가 알아서 켜기 때문이고, 에디터가 자동으로 붙이는 문장은
+-- 테이블 이름에 따옴표를 안 붙여서 예약어인 user 에서 에러가 난다.
+--
+-- 나중에 브라우저에서 anon 키로 직접 호출할 일이 생기면 그때 테이블별
+-- policy 를 설계할 것.
+--
+--   create policy ... on "user" for select using (...);
+-- ---------------------------------------------------------------------

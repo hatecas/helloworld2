@@ -1,0 +1,773 @@
+@charset "UTF-8";
+
+/* ==================================================================
+   포털(로그인 / 상점 / 공지 / 지도 / 가입) 공통 스타일
+
+   미니홈피 안쪽은 예전 감성을 그대로 두고, 바깥 껍데기만 정리했다.
+   ================================================================== */
+
+:root {
+	--hw-bg: #f6f7f9;
+	--hw-surface: #ffffff;
+	--hw-line: #e6e8ec;
+	--hw-text: #1f2328;
+	--hw-muted: #6b7280;
+	--hw-accent: #ff8a3d;
+	--hw-accent-strong: #ef7420;
+	--hw-accent-soft: #fff3e9;
+	--hw-navy: #003366;
+	--hw-radius: 14px;
+	--hw-radius-sm: 9px;
+	--hw-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(16, 24, 40, 0.07);
+	--hw-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	background: var(--hw-bg);
+	color: var(--hw-text);
+	font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic',
+		'Apple SD Gothic Neo', system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	text-decoration: none;
+	color: inherit;
+}
+
+/* ------------------------------------------------------------ 레이아웃 */
+
+.index-frame {
+	width: 100%;
+	max-width: 1120px;
+	margin: 0 auto;
+	padding: 0 24px;
+	flex: 1;
+}
+
+.bottom-fix {
+	width: 100%;
+	height: 40px;
+}
+
+/* -------------------------------------------------------------- 헤더 */
+
+.index-header,
+.divIndexMenu {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 18px 0;
+	border-bottom: 1px solid var(--hw-line);
+}
+
+.index-header-left {
+	flex: 0 0 auto;
+}
+
+.index-header-logo {
+	display: block;
+	width: auto;
+	max-width: 172px;
+	height: auto;
+}
+
+.otherPage-logo {
+	display: block;
+	max-width: 200px;
+	margin: 0 auto 8px;
+}
+
+.index-header-right {
+	flex: 1 1 auto;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 4px;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.index-header-right a {
+	padding: 9px 14px;
+	border-radius: 999px;
+	color: var(--hw-muted);
+	white-space: nowrap;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.index-header-right a:hover {
+	cursor: pointer;
+	background-color: var(--hw-accent-soft);
+	color: var(--hw-accent-strong);
+}
+
+.index-a-store,
+.index-a-notice,
+.index-a-map,
+.index-a-logout {
+	cursor: pointer;
+}
+
+.press-btn {
+	color: var(--hw-accent-strong) !important;
+	background-color: var(--hw-accent-soft);
+}
+
+.present {
+	color: #ffffff;
+}
+
+/* 보유 도토리 */
+#userDotori {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 8px 0 0;
+	padding: 7px 13px;
+	flex-shrink: 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--hw-accent-strong);
+	background: var(--hw-accent-soft);
+	border-radius: 999px;
+}
+
+#indexDotoriImg {
+	width: 15px;
+	height: 15px;
+	margin: 0;
+}
+
+.right {
+	margin-left: auto;
+	cursor: default;
+}
+
+/* ------------------------------------------------- 인사말 / 하위 탭 바 */
+
+#divHiUser {
+	min-height: 56px;
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	gap: 6px;
+	margin: 20px 0 0;
+	word-break: keep-all;
+	font-weight: 600;
+}
+
+.hello-message {
+	margin: 0;
+	padding: 0;
+	flex: 1;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.3px;
+	color: var(--hw-text);
+}
+
+/* 상점 하위 탭 */
+#divHiUser a {
+	padding: 9px 18px;
+	border-radius: 999px;
+	font-size: 15px;
+	color: var(--hw-muted);
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	transition: all 0.15s ease;
+}
+
+#divHiUser a:hover {
+	background-color: var(--hw-accent-soft);
+	border-color: #ffd6b8;
+	color: var(--hw-accent-strong);
+	border-radius: 999px;
+}
+
+#divHiUser a.present {
+	background: var(--hw-accent);
+	border-color: var(--hw-accent);
+	color: #ffffff;
+}
+
+/* ------------------------------------------------------------ 메인 영역 */
+
+.divIndexMain {
+	display: grid;
+	grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+	gap: 28px;
+	/* stretch 로 두면 옆 카드(로그인 전/후) 높이에 배너가 끌려가 크기가 달라진다 */
+	align-items: start;
+	margin: 12px 0 0;
+}
+
+.divLogin,
+#divMainSlide {
+	width: 100%;
+	height: auto;
+	margin: 0;
+	padding: 0;
+}
+
+/* ------------------------------------------------------- 로그인 카드 */
+
+#divHome {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 18px;
+	padding: 30px 26px;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow);
+	text-align: center;
+}
+
+.frmLogin {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	text-align: center;
+}
+
+.frmLogin input {
+	margin: 0;
+}
+
+#frmLogin input[type='email'],
+#frmLogin input[type='password'] {
+	width: 100%;
+	padding: 12px 14px;
+	font-size: 15px;
+	color: var(--hw-text);
+	background: #fbfcfd;
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	outline: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#frmLogin input[type='email']:focus,
+#frmLogin input[type='password']:focus {
+	border-color: var(--hw-accent);
+	box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.16);
+	background: #ffffff;
+}
+
+#btnLogin {
+	width: 100%;
+	margin-top: 4px;
+	padding: 12px 16px;
+	font-size: 15px;
+	font-weight: 700;
+	color: #ffffff;
+	background: var(--hw-accent);
+	border: 0;
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+#btnLogin:hover {
+	background: var(--hw-accent-strong);
+}
+
+.index-idpw-span {
+	margin: 0 6px;
+	color: #d6d9de;
+}
+
+.signUpATag,
+.idx-su,
+.idx-id,
+.idx-pw {
+	font-size: 14px;
+	color: var(--hw-muted);
+}
+
+.signUpATag {
+	margin-right: 14px;
+	font-weight: 700;
+	color: var(--hw-accent-strong);
+}
+
+.idx-su:hover,
+.idx-id:hover,
+.idx-pw:hover {
+	color: var(--hw-accent-strong);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+/* 체험 계정 안내 */
+.demo-hint {
+	margin-top: 4px;
+	padding-top: 16px;
+	border-top: 1px dashed var(--hw-line);
+	font-size: 13px;
+	color: var(--hw-muted);
+	line-height: 1.6;
+}
+
+.demo-hint button {
+	margin-top: 8px;
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	background: #f3f4f6;
+	border: 1px solid var(--hw-line);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.demo-hint button:hover {
+	background: var(--hw-accent-soft);
+	border-color: #ffd6b8;
+	color: var(--hw-accent-strong);
+}
+
+/* --------------------------------------------------- 로그인 후 프로필 */
+
+#divLogin {
+	padding: 0;
+}
+
+.login-frame {
+	width: 100%;
+	margin: 0;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow);
+	overflow: hidden;
+	font-weight: 600;
+}
+
+.login-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 10px;
+	padding: 14px 18px;
+	border: 0;
+	border-bottom: 1px solid var(--hw-line);
+	background: #fbfcfd;
+	border-radius: 0;
+}
+
+.login-top-left,
+.login-top-right {
+	flex: 1;
+}
+
+.login-top-left {
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.login-top-right {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px;
+	padding: 5px 10px;
+	border-radius: 999px;
+	font-size: 13px;
+	color: var(--hw-muted);
+}
+
+.login-top-right-imz {
+	margin: 0;
+}
+
+.login-top-right-bfCnt {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--hw-accent-strong);
+	margin: 0;
+}
+
+.login-top-right:hover {
+	color: var(--hw-text);
+	background-color: #f0f1f4;
+	cursor: pointer;
+}
+
+.login-profile-frame {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 18px;
+	padding: 20px 18px;
+	border: 0;
+}
+
+.login-profile-minimi,
+.login-profile-information {
+	flex: 1;
+}
+
+.login-profile-minimi {
+	display: flex;
+	justify-content: center;
+}
+
+.index-my-minimi {
+	width: 100%;
+	max-width: 128px;
+	height: auto;
+	margin: 0;
+	padding: 14px;
+	background: var(--hw-accent-soft);
+	border: 1px solid #ffe0c9;
+	border-radius: var(--hw-radius-sm);
+}
+
+.login-profile-info {
+	text-align: left;
+}
+
+.login-profile-section1,
+.login-profile-section2,
+.login-profile-section3,
+.login-profile-section4 {
+	width: 100%;
+	display: grid;
+	grid-template-columns: 24px 1fr auto;
+	align-items: center;
+	gap: 6px;
+	margin: 2px 0;
+	padding: 6px 8px;
+	border-radius: var(--hw-radius-sm);
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--hw-muted);
+}
+
+.login-profile-section1:hover,
+.login-profile-section2:hover,
+.login-profile-section3:hover,
+.login-profile-section4:hover {
+	cursor: pointer;
+	color: var(--hw-text);
+	background-color: #f4f5f7;
+}
+
+.login-profile-info-1,
+.login-profile-info-2,
+.login-profile-info-3,
+.login-profile-info-4 {
+	font-weight: 700;
+	color: var(--hw-accent-strong);
+}
+
+.my-btn {
+	display: flex;
+	gap: 8px;
+	margin-top: 14px;
+}
+
+.mainBtn1,
+.mainBtn2 {
+	flex: 1;
+	margin: 0;
+	padding: 10px 12px;
+	font-size: 14px;
+	font-weight: 700;
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.mainBtn1 {
+	color: #ffffff;
+	background-color: var(--hw-accent);
+	border: 1px solid var(--hw-accent);
+}
+
+.mainBtn1:hover {
+	background-color: var(--hw-accent-strong);
+	border-color: var(--hw-accent-strong);
+	color: #ffffff;
+}
+
+.mainBtn2 {
+	color: var(--hw-muted);
+	background-color: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+}
+
+.mainBtn2:hover {
+	background-color: #f4f5f7;
+	border-color: #d9dce1;
+	color: var(--hw-text);
+}
+
+#divLogin a {
+	text-decoration: none;
+	color: inherit;
+	margin: 0;
+}
+
+/* 접속중인 일촌 목록 */
+#friendListContainer {
+	min-width: 150px;
+	padding: 10px 12px;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	box-shadow: var(--hw-shadow);
+	font-size: 14px;
+	z-index: 20;
+}
+
+#friendListContainer div {
+	padding: 4px 2px;
+}
+
+/* ------------------------------------------------------------ 슬라이드 */
+
+#divMainSlide {
+	display: flex;
+	align-items: stretch;
+}
+
+.slideshow-container {
+	position: relative;
+	width: 100%;
+	/* 로그인 전/후 어느 쪽이든 같은 크기로 보이도록 높이를 고정한다 */
+	height: 360px;
+	margin: 0;
+	overflow: hidden;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow);
+}
+
+.mySlides {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+.mySlides img,
+.slideshow-container img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.btnContainer {
+	position: absolute;
+	width: 100%;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 3;
+	display: flex;
+	justify-content: space-between;
+	padding: 0 12px;
+	pointer-events: none;
+}
+
+.btnLeft,
+.btnRight {
+	float: none;
+	pointer-events: auto;
+}
+
+.btnClick {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	font-size: 16px;
+	font-weight: 700;
+	color: #ffffff;
+	background: rgba(20, 24, 31, 0.35);
+	border-radius: 50%;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+	user-select: none;
+}
+
+.btnClick:hover {
+	background: rgba(20, 24, 31, 0.6);
+}
+
+.divdot {
+	position: absolute;
+	bottom: 14px;
+	width: 100%;
+	text-align: center;
+	z-index: 5;
+}
+
+.dot {
+	height: 8px;
+	width: 8px;
+	margin: 0 4px;
+	background-color: rgba(255, 255, 255, 0.55);
+	border-radius: 999px;
+	display: inline-block;
+	transition: all 0.3s ease;
+	cursor: pointer;
+}
+
+.dot.active {
+	width: 22px;
+	background-color: #ffffff;
+}
+
+.fade {
+	animation-name: fade;
+	animation-duration: 1.2s;
+}
+
+@keyframes fade {
+	from {
+		opacity: 0.4;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* ------------------------------------------------- 가입/찾기 화면 공통 */
+
+.selected {
+	background-color: var(--hw-accent-soft);
+}
+
+.confirm-group {
+	text-align: center;
+}
+
+.divGender {
+	margin-bottom: 4px;
+}
+
+.divPwCheck {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.MatchMessage {
+	font-size: 13px;
+}
+
+/* ------------------------------------------------------- 말풍선 팝업 */
+
+.popup {
+	position: relative;
+	display: inline-block;
+	cursor: pointer;
+	user-select: none;
+}
+
+.popup .popuptext {
+	visibility: hidden;
+	min-width: 80px;
+	background-color: var(--hw-surface);
+	color: var(--hw-text);
+	text-align: center;
+	padding: 8px 10px;
+	position: absolute;
+	z-index: 10;
+	bottom: 120%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	box-shadow: var(--hw-shadow-sm);
+	font-size: 13px;
+}
+
+.popup .popuptext::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: var(--hw-line) transparent transparent transparent;
+}
+
+.popup .show {
+	visibility: visible;
+	animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.no-cursor {
+	cursor: default;
+}
+
+/* ------------------------------------------------------------ 반응형 */
+
+@media (max-width: 900px) {
+	.divIndexMain {
+		grid-template-columns: 1fr;
+	}
+
+	.slideshow-container {
+		height: 260px;
+	}
+}
+
+@media (max-width: 640px) {
+	.index-frame {
+		padding: 0 16px;
+	}
+
+	.index-header,
+	.divIndexMenu {
+		flex-wrap: wrap;
+		gap: 8px;
+		padding: 14px 0;
+	}
+
+	.index-header-right {
+		font-size: 14px;
+	}
+
+	.index-header-right a {
+		padding: 8px 10px;
+	}
+
+	.hello-message {
+		font-size: 18px;
+	}
+
+	#divHiUser {
+		flex-wrap: wrap;
+	}
+}

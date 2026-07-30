@@ -1,0 +1,88 @@
+@charset "UTF-8";
+
+body {
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+}
+
+/* ------------------------------------------------------------------ */
+/* 하단 푸터                                                           */
+/* 클래스는 전부 .footer 아래로만 두어 다른 화면(가입/찾기)의          */
+/* .grid-container 같은 이름과 부딪히지 않게 한다.                     */
+/* ------------------------------------------------------------------ */
+
+.footer {
+	margin-top: 70px;
+	display: block;
+	background-color: #003366;
+	color: #cfe6ff;
+	font-size: 13px;
+	line-height: 1.7;
+}
+
+.footer .footer-inner {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 28px 24px 22px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+	align-items: flex-start;
+	justify-content: space-between;
+}
+
+.footer .footer-brand {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 220px;
+}
+
+.footer .footer-logo {
+	font-weight: bold;
+	font-size: 17px;
+	letter-spacing: 0.5px;
+	color: #ffffff;
+}
+
+.footer .footer-tagline {
+	color: #8fc4f5;
+}
+
+.footer .footer-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 18px;
+	padding-top: 4px;
+}
+
+.footer .footer-nav a {
+	color: #cfe6ff;
+	text-decoration: none;
+}
+
+.footer .footer-nav a:hover {
+	color: #ffd75e;
+	text-decoration: underline;
+}
+
+.footer .footer-bottom {
+	border-top: 1px solid rgba(255, 255, 255, 0.15);
+	padding: 12px 24px 16px;
+	text-align: center;
+	color: #7fb2e0;
+	font-size: 12px;
+}
+
+.no-cursor {
+	cursor: default;
+}
+
+@media (max-width: 640px) {
+	.footer .footer-inner {
+		flex-direction: column;
+		gap: 16px;
+		padding: 22px 18px 16px;
+	}
+}

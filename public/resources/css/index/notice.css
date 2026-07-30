@@ -1,0 +1,379 @@
+@charset "UTF-8";
+
+/* 공지사항 목록 / 상세 / 작성 — main.css 의 디자인 토큰을 그대로 쓴다 */
+
+/* ------------------------------------------------------------ 섹션 제목 */
+
+.notice-write,
+.notice-default {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: auto;
+	margin: 28px 0 16px;
+	padding: 0 0 14px;
+	border-bottom: 2px solid var(--hw-text);
+	background: none;
+	color: var(--hw-text);
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.3px;
+}
+
+.notice-write p,
+.notice-default p {
+	margin: 0;
+}
+
+/* ---------------------------------------------------------------- 목록 */
+
+.notice-tanle {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+.notice-table-title {
+	height: auto;
+	display: block;
+	background: none;
+	color: var(--hw-muted);
+}
+
+.notice-table-title th {
+	padding: 12px 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	text-align: center;
+	border-bottom: 1px solid var(--hw-line);
+	background: #fbfcfd;
+}
+
+.notice-table-title-mid {
+	display: block;
+	text-align: center;
+	font-weight: 500;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-top: 0;
+	border-radius: 0 0 var(--hw-radius) var(--hw-radius);
+	overflow: hidden;
+}
+
+.notice-table-title table {
+	border: 1px solid var(--hw-line);
+	border-bottom: 0;
+	border-radius: var(--hw-radius) var(--hw-radius) 0 0;
+	overflow: hidden;
+	background: #fbfcfd;
+}
+
+.notice-table-tr {
+	height: 52px;
+	border-bottom: 1px solid #f1f2f4;
+	transition: background-color 0.12s ease;
+}
+
+.notice-table-tr:last-child {
+	border-bottom: 0;
+}
+
+.notice-table-tr:hover {
+	background-color: #fafbfc;
+}
+
+.notice-table-tr td {
+	padding: 0 10px;
+	font-size: 14px;
+	color: var(--hw-muted);
+	text-align: center;
+}
+
+.notice-td-title {
+	text-align: left;
+	font-weight: 500;
+	color: var(--hw-text) !important;
+	cursor: pointer;
+}
+
+.notice-table-tr .notice-td-title:hover {
+	color: var(--hw-accent-strong) !important;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.notice-cbx {
+	width: 16px;
+	height: 16px;
+	accent-color: var(--hw-accent);
+	cursor: pointer;
+}
+
+.col-choice {
+	width: 8%;
+}
+
+.col-number {
+	width: 10%;
+}
+
+.col-title {
+	width: 66%;
+}
+
+.col-date {
+	width: 16%;
+}
+
+/* ---------------------------------------------------------------- 버튼 */
+
+.btnNoticeGroup {
+	display: flex;
+	justify-content: flex-end;
+	flex-direction: row;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+.btn-notice,
+.btnNotice,
+.nw-btn-list,
+.nw-btn-write,
+.nd-btn-list,
+.nd-btn-update,
+.nd-btn-delete {
+	width: auto;
+	height: auto;
+	min-width: 76px;
+	margin: 0;
+	padding: 9px 16px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.btn-notice:hover,
+.btnNotice:hover,
+.nw-btn-list:hover,
+.nw-btn-write:hover,
+.nd-btn-list:hover,
+.nd-btn-update:hover,
+.nd-btn-delete:hover {
+	background: #f4f5f7;
+	border-color: #d9dce1;
+	color: var(--hw-text);
+}
+
+/* 주 동작(등록/작성)은 강조 */
+#btnWrite,
+.nw-btn-write {
+	color: #ffffff;
+	background: var(--hw-accent);
+	border-color: var(--hw-accent);
+}
+
+#btnWrite:hover,
+.nw-btn-write:hover {
+	background: var(--hw-accent-strong);
+	border-color: var(--hw-accent-strong);
+	color: #ffffff;
+}
+
+.nd-btn-delete:hover {
+	color: #d92d20;
+	border-color: #fbc8c3;
+	background: #fef3f2;
+}
+
+.btn-container {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	margin: 16px 0 24px;
+}
+
+.btn-right,
+.btn-left {
+	display: flex;
+	gap: 8px;
+}
+
+/* ---------------------------------------------------------------- 상세 */
+
+.noticeDetail-container,
+.noticeDetail-content-container,
+.notice-info-group,
+.notice-write-group {
+	resize: none;
+}
+
+.notice-title {
+	width: 100%;
+	height: auto;
+	margin: 0 0 4px;
+	padding: 14px 16px;
+	font-size: 17px;
+	font-weight: 700;
+	text-align: left;
+	color: var(--hw-text);
+	background-color: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius) var(--hw-radius) 0 0;
+	outline: none;
+}
+
+.notice-info {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin: 0;
+	padding: 10px 16px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--hw-muted);
+	background: #fbfcfd;
+	border: 1px solid var(--hw-line);
+	border-top: 0;
+}
+
+.notice-write-date {
+	text-align: right;
+}
+
+.notice-info-content {
+	width: 100%;
+	min-height: 280px;
+	max-height: none;
+	margin: 0;
+	padding: 22px 16px;
+	line-height: 1.7;
+	color: var(--hw-text);
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-top: 0;
+	border-radius: 0 0 var(--hw-radius) var(--hw-radius);
+	overflow-y: auto;
+	word-break: break-word;
+}
+
+.notice-info-content img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* ---------------------------------------------------------------- 작성 */
+
+.notice-write-title {
+	width: 100%;
+	height: auto;
+	margin-bottom: 10px;
+	padding: 12px 14px;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--hw-text);
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	outline: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notice-write-title:focus {
+	border-color: var(--hw-accent);
+	box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.16);
+}
+
+.notice-write-content {
+	width: 100%;
+	height: 300px;
+	margin-bottom: 10px;
+	padding: 12px 14px;
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1.6;
+	color: var(--hw-text);
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	resize: vertical;
+	outline: none;
+}
+
+.notice-write-content:focus {
+	border-color: var(--hw-accent);
+	box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.16);
+}
+
+/* -------------------------------------------------------------- 페이징 */
+
+.notice-paging {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 4px;
+	margin: 28px 0 8px;
+	text-align: center;
+}
+
+.spanPage {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 34px;
+	height: 34px;
+	margin: 0;
+	padding: 0 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.spanPage:hover {
+	color: var(--hw-accent-strong) !important;
+	background: var(--hw-accent-soft);
+	font-weight: 700;
+}
+
+/* 미사용(구 화면 잔재)이지만 마크업 호환을 위해 남겨 둔다 */
+.divNotice {
+	text-align: center;
+}
+
+.divNoticeBar {
+	width: 100%;
+	height: auto;
+	padding: 16px;
+	margin: 0 auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+}
+
+.divNoticeBar span {
+	color: var(--hw-text);
+	margin: 0 8px;
+	font-weight: 600;
+}
+
+@media (max-width: 640px) {
+	.col-date {
+		width: 22%;
+	}
+
+	.notice-write,
+	.notice-default {
+		font-size: 19px;
+	}
+}

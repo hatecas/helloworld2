@@ -1,0 +1,220 @@
+@charset "UTF-8";
+
+/* ==================================================================
+   공통 알림 / 확인 모달
+
+   구 코드는 window.alert() · window.confirm() 를 그대로 썼다.
+   브라우저마다 생김새가 다르고 프로젝트 디자인과 따로 놀아서
+   같은 모양의 모달로 통일했다. (lib/ui/dialog.tsx)
+   ================================================================== */
+
+.hw-dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	background: rgba(17, 24, 30, 0.42);
+	backdrop-filter: blur(2px);
+	animation: hwDialogFade 0.14s ease-out;
+	font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic',
+		'Apple SD Gothic Neo', system-ui, sans-serif;
+}
+
+.hw-dialog {
+	width: 100%;
+	max-width: 330px;
+	background: #ffffff;
+	border-radius: 16px;
+	box-shadow: 0 18px 48px rgba(16, 24, 40, 0.24);
+	overflow: hidden;
+	animation: hwDialogPop 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.hw-dialog-body {
+	padding: 26px 22px 20px;
+	text-align: center;
+}
+
+.hw-dialog-icon {
+	width: 44px;
+	height: 44px;
+	margin: 0 auto 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 21px;
+	border-radius: 50%;
+}
+
+.hw-dialog-icon.info {
+	color: #ef7420;
+	background: #fff3e9;
+}
+
+.hw-dialog-icon.ask {
+	color: #3b87ab;
+	background: #eaf4f8;
+}
+
+.hw-dialog-icon.warn {
+	color: #d92d20;
+	background: #fef3f2;
+}
+
+.hw-dialog-message {
+	font-size: 15px;
+	line-height: 1.6;
+	color: #1f2328;
+	word-break: keep-all;
+	white-space: pre-line;
+}
+
+.hw-dialog-actions {
+	display: flex;
+	gap: 8px;
+	padding: 0 18px 18px;
+}
+
+.hw-dialog-btn {
+	flex: 1;
+	padding: 12px 14px;
+	font-size: 14px;
+	font-weight: 700;
+	font-family: inherit;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	cursor: pointer;
+	transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.hw-dialog-btn.primary {
+	color: #ffffff;
+	background: #ff8a3d;
+	border-color: #ff8a3d;
+}
+
+.hw-dialog-btn.primary:hover {
+	background: #ef7420;
+	border-color: #ef7420;
+}
+
+.hw-dialog-btn.ghost {
+	color: #6b7280;
+	background: #ffffff;
+	border-color: #e6e8ec;
+}
+
+.hw-dialog-btn.ghost:hover {
+	background: #f4f5f7;
+	border-color: #d9dce1;
+	color: #1f2328;
+}
+
+.hw-dialog-btn.danger {
+	color: #ffffff;
+	background: #e0483c;
+	border-color: #e0483c;
+}
+
+.hw-dialog-btn.danger:hover {
+	background: #c93a2f;
+	border-color: #c93a2f;
+}
+
+@keyframes hwDialogFade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes hwDialogPop {
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* 팝업 창(프로필 수정 · 미니룸 설정 등)의 결과 화면 */
+.hw-result {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 100vh;
+	padding: 28px 24px;
+	text-align: center;
+	background: #f6f7f9;
+	font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic',
+		'Apple SD Gothic Neo', system-ui, sans-serif;
+}
+
+.hw-result-card {
+	width: 100%;
+	max-width: 320px;
+	padding: 32px 24px 24px;
+	background: #ffffff;
+	border: 1px solid #e6e8ec;
+	border-radius: 16px;
+	box-shadow: 0 10px 28px rgba(16, 24, 40, 0.07);
+}
+
+.hw-result-icon {
+	width: 52px;
+	height: 52px;
+	margin: 0 auto 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 25px;
+	border-radius: 50%;
+	color: #12a150;
+	background: #e9f7ef;
+}
+
+.hw-result-icon.fail {
+	color: #d92d20;
+	background: #fef3f2;
+}
+
+.hw-result-text {
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.5;
+	color: #1f2328;
+}
+
+.hw-result-sub {
+	margin-top: 6px;
+	font-size: 13px;
+	color: #6b7280;
+}
+
+.hw-result-btn {
+	width: 100%;
+	margin-top: 20px;
+	padding: 12px 16px;
+	font-size: 14px;
+	font-weight: 700;
+	font-family: inherit;
+	color: #ffffff;
+	background: #ff8a3d;
+	border: 0;
+	border-radius: 10px;
+	cursor: pointer;
+	transition: background-color 0.14s ease;
+}
+
+.hw-result-btn:hover {
+	background: #ef7420;
+}

@@ -1,0 +1,163 @@
+@charset "UTF-8";
+
+body {
+	overflow-y: auto;
+	font-family: "Noto Sans KR", sans-serif;
+}
+
+body a:hover {
+	font-weight: bold;
+}
+
+body a {
+	text-decoration: none;
+}
+
+/* 센터라인 */
+.visit-frame {
+	border-top: 1px solid gray;
+	border-bottom: 1px solid gray;
+	margin-top: 15px;
+	margin-bottom: 25px;
+}
+
+.visit-frame-write {
+	width:100%;
+	margin-top: 10px;
+	display: flex;
+	align-items: center;
+}
+
+.visit-frame-left{
+	float:left;
+	width:34%;
+}
+
+.visit-frame-right{
+	float:right;
+}
+
+.view-margin{
+	margin-bottom:10px;
+}
+
+.visit-frame-write input[type="text"] {
+	width: 320px;
+	height: 130px;
+}
+
+.visit-frame-btn {
+	margin-top: 2px;
+	margin-bottom: 10px;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.visit-minimi {
+	height: 130px;
+	width: auto;
+	background-color: #f5f5f2;
+	border: 1px solid var(--mh-line);
+	border-radius: 3px;
+	margin-right: 10px;
+}
+
+.visit-line {
+	background-color: var(--mh-line);
+}
+
+.visit-line table {
+	width: 100%;
+	font-size: 12px;
+	font-weight: bold;
+	text-align: center;
+}
+
+.visit-line-tbImg {
+	width: 10px;
+	height: auto;
+	margin-top: 1px;
+	margin-left: 5px;
+}
+
+.visit-write-text{
+	display: table;
+	width: 320px;
+	height: 130px;
+	width: 100%;
+  	min-height: 129px;
+}
+
+#char-count{
+	float:left;
+	font-size: 15px;
+}
+
+.visit-view {
+	display: table;
+	width: 320px;
+	height: 130px;
+}
+
+.visit-view-inner {
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+	font-weight:bold;
+	font-size: 12px;
+	padding-left: 5px;
+	border: 1px solid black;
+	border-radius: 5px;
+	outline:none;
+	white-space: pre-line;
+}
+
+.visit-view-inner-list {
+	display: table-cell;
+	font-weight:bold;
+	font-size: 12px;
+	padding: 10px;
+	padding-top: 0px;
+	border: 1px solid var(--mh-line);
+	border-radius: 5px;
+	outline:none;
+	white-space: pre-line;
+}
+
+.visit-page {
+	margin: 0 10px;
+}
+
+.visit-page:hover{
+	cursor: pointer;
+	font-weight: bold;
+	color: blue;
+}
+
+.visit-line {
+	margin-top: 50px;
+}
+
+.visit-line-tbImg:hover {
+	cursor: pointer;
+}
+
+#visit-comment-insert{
+	width: 320px;
+    height: 130px;
+    font-weight: bold;
+    font-size: 12px;
+    border: 1px solid black;
+    border-radius: 5px;
+    text-align: left;
+    resize: none;
+    padding-top: calc(65px - 6px); 
+    padding-bottom: calc(65px - 6px);
+    padding-left: 5px; 
+    overflow-y: hidden;
+}
+
+.page-container{
+	display: flex;
+	justify-content: center;
+}

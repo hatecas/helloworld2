@@ -1,0 +1,92 @@
+@charset "UTF-8";
+
+/* 아이디 찾기 결과 화면 */
+
+.container1 {
+	margin-top: 0;
+	align-content: center;
+}
+
+.container2 {
+	width: 100%;
+	height: auto;
+	margin: 0 auto;
+}
+
+#signUplogo {
+	text-align: center;
+}
+
+#mainLogo {
+	display: block;
+	width: auto;
+	max-width: 180px;
+	margin: 0 auto 18px;
+}
+
+#divFindIdResult {
+	width: 100%;
+	margin: 0 auto;
+	padding: 34px 26px 28px;
+	text-align: center;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow);
+}
+
+.p-userInfo {
+	margin: 0 0 10px;
+	font-size: 15px;
+	color: var(--hw-muted);
+}
+
+.p-userEmail {
+	margin: 0 0 18px;
+	padding: 14px 12px;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.3px;
+	word-break: break-all;
+	color: var(--hw-accent-strong);
+	background: var(--hw-accent-soft);
+	border-radius: var(--hw-radius-sm);
+}
+
+.copy-id-btn {
+	padding: 9px 18px;
+	font-size: 13px;
+	font-weight: 600;
+	font-family: inherit;
+	color: var(--hw-muted);
+	background: #f3f4f6;
+	border: 1px solid var(--hw-line);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.copy-id-btn:hover {
+	background: var(--hw-accent-soft);
+	border-color: #ffd6b8;
+	color: var(--hw-accent-strong);
+}
+
+.after-link {
+	margin: 22px 0 0;
+	padding-top: 18px;
+	border-top: 1px solid var(--hw-line);
+	font-size: 14px;
+	color: var(--hw-muted);
+}
+
+.after-link a {
+	color: var(--hw-muted);
+	text-decoration: none;
+}
+
+.after-link a:hover {
+	color: var(--hw-accent-strong);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}

@@ -1,0 +1,292 @@
+@charset "UTF-8";
+
+/* 회원가입 화면 — main.css 의 디자인 토큰을 그대로 쓴다 */
+
+.grid-container {
+	display: grid;
+	grid-template-columns: 1fr minmax(0, 520px) 1fr;
+	align-items: start;
+	min-height: 100vh;
+	padding: 40px 20px 60px;
+}
+
+.grid-item {
+	padding: 0;
+}
+
+.content {
+	width: 100%;
+}
+
+#divUserInfo {
+	margin: 0 auto 4px;
+	position: relative;
+	text-align: center;
+}
+
+.otherPage-logo {
+	display: block;
+	width: auto;
+	max-width: 190px;
+	margin: 0 auto;
+}
+
+.signUp-title {
+	margin: 4px 0 22px;
+	font-size: 26px;
+	font-weight: 700;
+	letter-spacing: -0.4px;
+	text-align: center;
+	color: var(--hw-text);
+}
+
+/* --------------------------------------------------------------- 카드 */
+
+.signUp-frame {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 28px 26px 26px;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow);
+}
+
+.section {
+	margin-top: 16px;
+}
+
+.section:first-child {
+	margin-top: 0;
+}
+
+.section label {
+	display: inline-block;
+	margin-bottom: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--hw-muted);
+}
+
+/* ------------------------------------------------------------- 입력 */
+
+.widthFull {
+	width: 100%;
+	margin: 0;
+	padding: 12px 14px;
+	font-size: 15px;
+	font-family: inherit;
+	color: var(--hw-text);
+	background: #fbfcfd;
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	outline: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.widthFull:focus {
+	background: #ffffff;
+	border-color: var(--hw-accent);
+	box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.16);
+}
+
+.widthFull::placeholder {
+	color: #b7bcc4;
+}
+
+body input[type='radio'] {
+	width: 16px;
+	height: 16px;
+	margin: 0 4px 0 0;
+	accent-color: var(--hw-accent);
+	cursor: pointer;
+}
+
+/* --------------------------------------------- 중복확인 버튼 / 라벨 줄 */
+
+.email-group,
+.pw-group {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+}
+
+.email-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+}
+
+.email-left label {
+	margin-bottom: 0;
+}
+
+.email-right,
+.pw-right {
+	flex: 1;
+	text-align: right;
+	font-size: 12px;
+	min-height: 16px;
+}
+
+.pw-left {
+	flex: 1;
+}
+
+.pw-left label {
+	margin-bottom: 0;
+}
+
+.btn-hover {
+	padding: 5px 11px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	background: #f3f4f6;
+	border: 1px solid var(--hw-line);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.btn-hover:hover {
+	cursor: pointer;
+	background: var(--hw-accent-soft);
+	border-color: #ffd6b8;
+	color: var(--hw-accent-strong);
+}
+
+/* 닉네임 / 핸드폰 줄은 라벨과 버튼이 같은 줄에 온다 */
+.section.no-cursor > label {
+	margin-right: 8px;
+}
+
+.MatchMessage {
+	font-size: 12px;
+}
+
+.msg-ok {
+	color: #12a150;
+	font-weight: 600;
+}
+
+.msg-ng {
+	color: #d92d20;
+	font-weight: 600;
+}
+
+/* ------------------------------------------------------------ 성별 */
+
+.divGender {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	padding: 10px 12px;
+	background: #fbfcfd;
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+}
+
+.divGender label {
+	margin: 0 12px 0 0;
+	font-weight: 500;
+	color: var(--hw-text);
+	cursor: pointer;
+}
+
+.divGender > label:first-of-type {
+	margin-right: auto;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--hw-muted);
+}
+
+/* ------------------------------------------------------- 약관 / 동의 */
+
+.info-check {
+	margin-top: 20px;
+	padding: 14px 16px;
+	height: 160px;
+	overflow-y: auto;
+	font-size: 12px;
+	line-height: 1.65;
+	color: var(--hw-muted);
+	background: #fbfcfd;
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+}
+
+.info-check b {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 13px;
+	color: var(--hw-text);
+}
+
+.info-check p {
+	margin: 2px 0;
+}
+
+.confirm-group {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	margin: 0;
+	text-align: center;
+}
+
+.confirm-group label {
+	margin: 0 16px 0 2px;
+	font-size: 14px;
+	color: var(--hw-text);
+	cursor: pointer;
+}
+
+/* ------------------------------------------------------------ 제출 */
+
+.join-ok {
+	margin-top: 22px;
+}
+
+.join-ok input {
+	width: 100%;
+	height: auto;
+	padding: 14px 16px;
+	font-size: 15px;
+	font-weight: 700;
+	color: #ffffff;
+	background: var(--hw-accent);
+	border: 0;
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.join-ok input:hover:enabled {
+	background: var(--hw-accent-strong);
+}
+
+.join-ok input:disabled {
+	background: #d6d9de;
+	cursor: not-allowed;
+}
+
+.no-cursor {
+	cursor: default;
+}
+
+@media (max-width: 640px) {
+	.grid-container {
+		grid-template-columns: 1fr;
+		padding: 24px 16px 40px;
+	}
+
+	.signUp-frame {
+		padding: 22px 18px;
+	}
+}

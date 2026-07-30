@@ -1,0 +1,49 @@
+import {
+  DEFAULT_PROFILE_IMAGE,
+  getAppliedItem,
+  getHomeOwnerInfo,
+  getMyFriends,
+  getProfile,
+  selectVisitCnt,
+} from '@/lib/db/repo';
+import { getSessionUser } from '@/lib/session';
+import type { MiniHomeCommon } from '@/lib/minihome-view';
+
+/**
+ * 구 미니홈피 컨트롤러들이 모든 화면에서 똑같이 반복하던 조회 블록
+ * (프로필 / 주인 정보 / 일촌 목록 / 메뉴 색상 / 방문자 수) 을 한 곳으로 모았다.
+ *
+ * 색상 헬퍼와 MiniHomeCommon 타입은 클라이언트 컴포넌트에서도 써야 해서
+ * lib/minihome-view.ts 로 따로 뺐다.
+ */
+export type { MiniHomeCommon };
+
+export async function loadMiniHomeCommon(userNickname: string): Promise<MiniHomeCommon | null> {
+  const owner = await getHomeOwnerInfo(userNickname);
+  if (!owner) return null;
+
+  const viewer = await getSessionUser();
+
+  const [profile, friends, menuContentPath, visitCnt] = await Promise.all([
+    getProfile(userNickname),
+    getMyFriends(userNickname),
+    getAppliedItem(userNickname, 'menu'),
+    selectVisitCnt(userNickname),
+  ]);
+
+  return {
+    userNickname,
+    viewerNickname: viewer?.userNickname ?? '',
+    isOwner: viewer?.userNickname === userNickname,
+    todayCnt: visitCnt?.todayCnt ?? 0,
+    totalCnt: visitCnt?.totalCnt ?? 0,
+    image: profile?.image ?? DEFAULT_PROFILE_IMAGE,
+    // 구 컨트롤러가 하던 개행 → <br> 치환
+    msg: (profile?.msg ?? '').replace(/\n/g, '<br>'),
+    userName: owner.userName,
+    userGender: owner.userGender,
+    title: owner.title,
+    friends,
+    menuContentPath,
+  };
+}

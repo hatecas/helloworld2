@@ -1,0 +1,338 @@
+@charset "UTF-8";
+
+/* 상점 (미니미 / 스킨 / 메뉴) — main.css 의 디자인 토큰을 그대로 쓴다 */
+
+.products {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
+	text-align: left;
+	margin-top: 8px;
+}
+
+.product-title {
+	margin: 24px 0 16px;
+	padding-bottom: 14px;
+	border-bottom: 2px solid var(--hw-text);
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.3px;
+	color: var(--hw-text);
+}
+
+.products h3 {
+	margin: 28px 0 20px;
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--hw-text);
+	text-align: left;
+}
+
+/* 상품 목록 + 장바구니 2단 */
+.content-container {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 280px;
+	gap: 24px;
+	align-items: start;
+	width: 100%;
+}
+
+.productList {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 14px;
+	width: 100%;
+	text-align: center;
+}
+
+/* ------------------------------------------------------ 미니미 카드 */
+
+.product {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	width: auto;
+	margin: 0;
+	padding: 18px 12px 14px;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.product:hover {
+	border-color: #ffd6b8;
+	box-shadow: var(--hw-shadow);
+	transform: translateY(-2px);
+}
+
+.product img {
+	margin: 0;
+}
+
+.image-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 88px;
+	height: 88px;
+	margin-bottom: 10px;
+	background: #fbfcfd;
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+}
+
+.store-minimi-img,
+.store-minimi-img:hover {
+	width: auto;
+	height: auto;
+	max-width: 56px;
+	max-height: 56px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.product-name {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--hw-text);
+}
+
+.product-price {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--hw-accent-strong);
+}
+
+/* --------------------------------------------------- 스킨 / 메뉴 카드 */
+
+.divOneProduct {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	width: auto;
+	margin: 0;
+	padding: 18px 12px 14px;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-sizing: border-box;
+	text-align: center;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.divOneProduct:hover {
+	font-weight: 400;
+	color: inherit;
+	border-color: #ffd6b8;
+	box-shadow: var(--hw-shadow);
+	transform: translateY(-2px);
+}
+
+.divProduct {
+	width: 100%;
+	height: 64px;
+	padding: 0;
+	border: 1px solid rgba(16, 24, 40, 0.12);
+	border-radius: var(--hw-radius-sm);
+	box-sizing: border-box;
+}
+
+.divOneProduct:hover .divProduct {
+	border-color: var(--hw-accent);
+}
+
+.divProduct h5 {
+	margin: 0;
+}
+
+/* ------------------------------------------------------------ 장바구니 */
+
+.cart-widget {
+	position: sticky;
+	top: 20px;
+	right: auto;
+	width: 100%;
+	max-height: none;
+	padding: 16px;
+	text-align: center;
+	background-color: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow);
+	font-size: 13px;
+}
+
+.cart-widget h2 {
+	margin: 0 0 12px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--hw-line);
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--hw-text);
+}
+
+#cart-list {
+	width: 100%;
+	table-layout: fixed;
+	border-collapse: collapse;
+}
+
+#cart-list th {
+	padding: 6px 4px;
+	width: 33.33%;
+	box-sizing: border-box;
+	text-align: center;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	border-bottom: 1px solid var(--hw-line);
+}
+
+#cart-list td {
+	padding: 8px 4px;
+	font-size: 12.5px;
+	color: var(--hw-text);
+	border-bottom: 1px solid #f4f5f7;
+	word-break: break-all;
+}
+
+.cart-list-over {
+	min-height: 90px;
+	max-height: 220px;
+	overflow-y: auto;
+}
+
+.cart-list-under {
+	position: static;
+	display: flex;
+	gap: 8px;
+	width: 100%;
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid var(--hw-line);
+}
+
+.btnCart {
+	flex: 1;
+	margin: 0;
+	padding: 9px 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	background-color: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.btnCart:hover {
+	background-color: #f4f5f7;
+	border-color: #d9dce1;
+	color: var(--hw-text);
+}
+
+#btnCartBuy {
+	color: #ffffff;
+	background-color: var(--hw-accent);
+	border-color: var(--hw-accent);
+}
+
+#btnCartBuy:hover {
+	background-color: var(--hw-accent-strong);
+	border-color: var(--hw-accent-strong);
+	color: #ffffff;
+}
+
+#dotoriIcon {
+	width: 13px;
+	height: 13px;
+	margin: 0 3px 0 0;
+	vertical-align: -1px;
+}
+
+/* ---------------------------------------------------------- 도토리 구매 */
+
+#btnOrder {
+	align-self: center;
+	margin: 24px 0 8px;
+	padding: 13px 34px;
+	font-size: 15px;
+	font-weight: 700;
+	color: #ffffff;
+	background-color: var(--hw-accent);
+	border: none;
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+#btnOrder:hover {
+	background-color: var(--hw-accent-strong);
+}
+
+.product-radio {
+	display: none;
+}
+
+.storeAtag {
+	text-decoration: none;
+}
+
+.mainBtn {
+	width: auto;
+	height: auto;
+	margin: 0;
+}
+
+/* -------------------------------------------------------------- 페이징 */
+
+.minimi-paging {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 4px;
+	margin-top: 28px;
+	font-size: 14px;
+}
+
+.spanPage {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 34px;
+	height: 34px;
+	margin: 0;
+	padding: 0 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--hw-muted);
+	border-radius: var(--hw-radius-sm);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.spanPage:hover {
+	color: var(--hw-accent-strong) !important;
+	background: var(--hw-accent-soft);
+	font-weight: 700;
+}
+
+@media (max-width: 900px) {
+	.content-container {
+		grid-template-columns: 1fr;
+	}
+
+	.cart-widget {
+		position: static;
+	}
+}

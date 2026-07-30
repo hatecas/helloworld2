@@ -1,0 +1,258 @@
+@charset "UTF-8";
+
+/* ==================================================================
+   BGM 플레이어
+
+   예전에는 책 오른쪽 중앙에 회색 상자로 붙어 있어 가로 공간을 잡아먹었다.
+   우측 상단의 슬림한 바로 옮겨서 책을 더 크게 쓸 수 있게 했다.
+   ================================================================== */
+
+.audioPlayerContainer {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	width: auto;
+	height: 44px;
+	padding: 0 14px;
+	margin: 0;
+	background: rgba(255, 255, 255, 0.82);
+	backdrop-filter: blur(6px);
+	border: 1px solid rgba(255, 255, 255, 0.9);
+	border-radius: 999px;
+	box-shadow: 0 4px 14px rgba(20, 40, 50, 0.16);
+	z-index: 5;
+}
+
+/* ------------------------------------------------------ 재생중 표시 */
+
+.audioPlayingContainer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	border: 0;
+}
+
+.audioPlayingDiv {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	margin: 0;
+	border: 0;
+	background: none;
+	flex-shrink: 0;
+}
+
+.audioPlayingDiv img {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+}
+
+#audioPlayingImg.rotating {
+	animation: rotateCD 3s linear infinite;
+}
+
+@keyframes rotateCD {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* 예전 마크업의 흰 여백 조각 — 지금 디자인에선 필요 없다 */
+.audioPlayingMargin {
+	display: none;
+}
+
+.nowPlaying {
+	overflow: hidden;
+	white-space: nowrap;
+	width: 118px;
+	height: 18px;
+	margin: 0;
+	background: none;
+	mask-image: linear-gradient(90deg, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+}
+
+.audioTitle {
+	display: inline-block;
+	padding-left: 100%;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 18px;
+	color: #26323a;
+	animation: scrollText 11s linear infinite;
+}
+
+@keyframes scrollText {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-100%);
+	}
+}
+
+/* -------------------------------------------------------------- 조작 */
+
+.audioControlsContainer {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: auto;
+	height: auto;
+}
+
+.audioBtnContainer {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	width: auto;
+	height: auto;
+	margin: 0;
+}
+
+.audioBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: none;
+	cursor: pointer;
+	transition: background-color 0.12s ease;
+}
+
+.audioBtn:hover {
+	background: rgba(20, 40, 50, 0.08);
+}
+
+.audioBtn img {
+	width: 11px;
+	height: 11px;
+	object-fit: contain;
+}
+
+/* 재생/일시정지는 가운데 큰 버튼 */
+.audioBtn.audioBtn-main {
+	width: 30px;
+	height: 30px;
+	background: #3b87ab;
+}
+
+.audioBtn.audioBtn-main:hover {
+	background: #2f6f8d;
+}
+
+.audioBtn.audioBtn-main img {
+	width: 12px;
+	height: 12px;
+	filter: brightness(0) invert(1);
+}
+
+.audioBtn:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.audioBtn:disabled:hover {
+	background: none;
+}
+
+/* -------------------------------------------------------------- 음량 */
+
+.audioVolumeContainer {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+#audioVolumeBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: none;
+	cursor: pointer;
+	transition: background-color 0.12s ease;
+}
+
+#audioVolumeBtn:hover {
+	background: rgba(20, 40, 50, 0.08);
+}
+
+#audioVolumeBtn img {
+	width: 13px;
+	height: 13px;
+	margin: 0 !important;
+}
+
+#audioVolumeControl {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 62px;
+	height: 4px;
+	background: #d5dde1;
+	border-radius: 999px;
+	cursor: pointer;
+	outline: none;
+}
+
+#audioVolumeControl::-webkit-slider-runnable-track {
+	height: 4px;
+	background: transparent;
+	border-radius: 999px;
+}
+
+#audioVolumeControl::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	width: 12px;
+	height: 12px;
+	margin-top: -4px;
+	background: #ffffff;
+	border: 2px solid #3b87ab;
+	border-radius: 50%;
+	box-shadow: 0 1px 3px rgba(20, 40, 50, 0.25);
+}
+
+#audioVolumeControl::-moz-range-track {
+	height: 4px;
+	background: #d5dde1;
+	border-radius: 999px;
+}
+
+#audioVolumeControl::-moz-range-thumb {
+	width: 12px;
+	height: 12px;
+	background: #ffffff;
+	border: 2px solid #3b87ab;
+	border-radius: 50%;
+}
+
+/* 곡이 없을 때 */
+.audioPlayerContainer.is-empty .nowPlaying {
+	mask-image: none;
+}
+
+.audioPlayerContainer.is-empty .audioTitle {
+	padding-left: 0;
+	animation: none;
+	color: #8a969d;
+	font-weight: 500;
+}

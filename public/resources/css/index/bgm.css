@@ -1,0 +1,214 @@
+.bgm-frame input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.bgm-search-group {
+	width: 400px;
+	height: 50px;
+	margin-top: 10px;
+	margin-bottom: 30px;
+	padding-left: 20px;
+	border-radius: 30px;
+	border: 2px solid orange;
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+}
+
+.bgm-search-input {
+	font-size: 16px;
+	font-weight: bold;
+	width: 300px;
+	height: 90%;
+	border: none;
+	outline: none;
+}
+
+.bgm-search-input::placeholder {
+    font-size: 14px;
+}
+
+.bgm-search-btn {
+    width: 45px; 
+    height: 45px;
+    background-image: url('/resources/images/store/searchIcon.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-color: transparent;
+    border: none;
+    margin-left: 15px;
+}
+
+.bgm-search-btn:hover {
+	cursor: pointer; 
+}
+
+.bgm-list-group {
+	border-top: 1px dotted orange;
+	border-bottom: 2px solid orange;
+	height: 50px;
+	font-weight: bold;
+}
+
+.bgm-grid {
+	width: 100%;
+	display: grid;
+    grid-template-columns: 5% 5% 30% 30% 20% 10%;
+    align-items: center;
+    text-align: center;
+    gap: 5px;
+    height: 40px;
+}
+
+.bgm-list {
+	border-bottom: 2px dotted skyblue;
+}
+
+.bgm-list:hover {
+	cursor: pointer;
+	background-color: yellow;
+}
+
+
+.bgm-buy {
+	margin: 40px 0;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+}
+
+.bgm-buy input {
+	padding: 5px 20px;
+}
+
+/***** bgmBuy.jsp *****/
+.bgmBuy-frame {
+	margin: 10px 25px;
+}
+.bgmBuy-title-group {
+	display:flex;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+
+.bgmBuy-title {
+	font-size: 40px;
+	font-weight: bold;
+	margin-top: 15px;
+	text-decoration: underline;
+	text-decoration-color: orange;
+}
+
+.bgmBuy-carImg {
+	align-items: flex-end;
+}
+.bgmBuy-carImg img {
+	opacity: 0.5;
+	width: 150px;
+}
+
+.bgmBuy-list-cnt {
+	margin-right: 10px;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.bgmBuy-list-cnt-left {
+	font-size: bold;
+}
+
+.bgmBuy-list-cnt-right {
+	margin-left: 10px;
+	font-size: 18px;
+	font-weight: bold;
+	color: red;
+}
+
+.bgmBuy-list-group {
+	height: 250px;
+	border: 1px solid red;
+	overflow-y: auto;
+}
+
+.bgmBuy-list-table {
+	width: 100%;
+	padding-left: 15px;
+}
+
+.bgmBuy-list-table th,
+.bgmBuy-list-table td {
+	text-align: left;
+}
+
+.bgmBuy-list-table th {
+	margin-bottom: 15px;
+}
+
+.bgmBuy-list-table td {
+	font-size: 12px;
+}
+
+.bgmBuy-data-title,
+.bgmBuy-data-artist {
+	width: 40%;
+}
+
+.bgmBuy-data-price {
+	width: 20%;
+}
+
+.bgmBuy-total {
+	display: flex;
+	justify-content: flex-end;
+	text-align: center;
+}
+
+.bgmBuy-totla-left {
+	backgraound-color: yellow
+}
+
+.bgmBuy-total-right {
+	color: red;
+	font-size: 16px;
+	font-weight: bold;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+.bgmBuy-btn-group {
+	display: flex;
+	justify-content: space-between;
+}
+
+.bgmBuy-btn-n,
+.bgmBuy-btn-y {
+	text-align: center;
+	margin-top: 15px;
+}
+
+.bgmBuy-btn-n {
+	flex: 1;
+	margin-left: 100px;
+}
+
+.bgmBuy-btn-y {
+	flex: 1;
+	margin-right: 100px;
+}
+
+.bgmBuy-btn-n input,
+.bgmBuy-btn-y input{
+	padding: 5px 25px;
+}
+
+
+
+
+
+
+
+
+
+
