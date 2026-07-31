@@ -48,9 +48,32 @@
 	flex-shrink: 0;
 }
 
-.audioPlayingDiv img {
-	width: 22px;
-	height: 22px;
+/* CSS 로 그린 바이닐 디스크 (구식 CD 이미지 대체) */
+.audioDisc {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background:
+		/* 가운데 라벨 */
+		radial-gradient(circle at 50% 50%, #f0f3f5 0 3px, transparent 3px),
+		radial-gradient(circle at 50% 50%, #3b87ab 3px 7px, transparent 7px),
+		/* 홈(그루브) 링 */
+		repeating-radial-gradient(circle at 50% 50%, #2b2f33 7px 8px, #23272b 8px 9px),
+		#1c2023;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 1px 3px rgba(20, 40, 50, 0.35);
+	position: relative;
+}
+
+/* 중심 핀홀 */
+.audioDisc::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 2px;
+	height: 2px;
+	margin: -1px 0 0 -1px;
+	background: #f0f3f5;
 	border-radius: 50%;
 }
 
@@ -76,7 +99,8 @@
 	overflow: hidden;
 	white-space: nowrap;
 	width: 118px;
-	height: 18px;
+	/* 한글 받침·꼬리가 잘리지 않도록 줄 높이만큼 넉넉히 준다 */
+	height: 22px;
 	margin: 0;
 	background: none;
 	mask-image: linear-gradient(90deg, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
@@ -87,7 +111,7 @@
 	padding-left: 100%;
 	font-size: 12px;
 	font-weight: 600;
-	line-height: 18px;
+	line-height: 22px;
 	color: #26323a;
 	animation: scrollText 11s linear infinite;
 }

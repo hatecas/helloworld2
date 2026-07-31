@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
 
 interface VisitRow {
@@ -40,6 +40,11 @@ export default function VisitClient({
 }) {
   const router = useRouter();
   const [visits, setVisits] = useState(initialVisits);
+  // router.refresh() 로 서버에서 새 방명록 목록을 받아오면 prop 만 바뀌고
+  // useState 초기값은 그대로라 화면이 갱신되지 않는다. prop 이 바뀔 때마다 동기화한다.
+  useEffect(() => {
+    setVisits(initialVisits);
+  }, [initialVisits]);
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
@@ -148,8 +153,8 @@ export default function VisitClient({
             />
           </div>
         </div>
-        <div id="char-count">{byteCount}/5000</div>
-        <div className="visit-frame-btn">
+        <div className="visit-write-footer">
+          <span id="char-count">{byteCount}/5000</span>
           <input
             type="button"
             value="등록"

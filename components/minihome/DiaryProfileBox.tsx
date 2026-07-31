@@ -1,7 +1,7 @@
 'use client';
 
 import ProfileIdentity from '@/components/minihome/ProfileIdentity';
-import JqueryDatePicker from '@/components/minihome/JqueryDatePicker';
+import Calendar from '@/components/minihome/Calendar';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
 
 /**
@@ -15,7 +15,7 @@ export default function DiaryProfileBox({ common }: { common: MiniHomeCommon }) 
   return (
     <div className="box profile-box diary-box">
       <div className="profile-image">
-        <JqueryDatePicker
+        <Calendar
           id="datepicker"
           inline
           onSelect={(isoDate) =>

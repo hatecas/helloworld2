@@ -6,13 +6,45 @@ import { useState } from 'react';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
 
+interface SearchResult {
+  userNickname: string;
+  userName: string;
+  userEmail: string;
+}
+
 /**
- * 프로필 칸 맨 아래 블록 (홈피 주인 이름 + 일촌신청 팝업 + 파도타기 셀렉트).
+ * 프로필 칸 맨 아래 블록 (홈피 주인 이름 + 일촌신청 버튼 + 파도타기 + 미니홈피 검색).
  * main / board / diary / … / settingSkin 이 전부 같은 마크업을 갖고 있어 따로 뺐다.
  */
 export default function ProfileIdentity({ common }: { common: MiniHomeCommon }) {
   const router = useRouter();
-  const [popupOpen, setPopupOpen] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  const searchMinihome = async () => {
+    if (!keyword.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch('/index/searchMinihome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword }),
+      });
+      const json = (await res.json()) as { results: SearchResult[] };
+      setResults(json.results ?? []);
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const visit = (nickname: string) => {
+    setResults(null);
+    setKeyword('');
+    router.push(`/mnHome/mainView/${encodeURIComponent(nickname)}`);
+  };
 
   const requestFriendship = async () => {
     if (!common.viewerNickname) {
@@ -41,25 +73,20 @@ export default function ProfileIdentity({ common }: { common: MiniHomeCommon }) 
 
   return (
     <div className="left-3">
-      <div
-        className="profile-username font-kyobohand mainpopup"
-        onClick={() => setPopupOpen((v) => !v)}
-      >
-        {!common.isOwner && (
-          <div
-            className={popupOpen ? 'mainpopuptext show' : 'mainpopuptext'}
-            id="myPopup"
-            onClick={(e) => {
-              e.stopPropagation();
-              void requestFriendship();
-            }}
-          >
-            일촌신청
-          </div>
-        )}
+      <div className="profile-username font-kyobohand">
         {common.userName}
         {common.userGender === 'M' ? '👦' : '👧'}
       </div>
+
+      {common.canRequestFriend && (
+        <button
+          type="button"
+          className="profile-friend-btn"
+          onClick={() => void requestFriendship()}
+        >
+          🌳 일촌신청
+        </button>
+      )}
 
       <div className="profile-dropDown">
         <select
@@ -78,6 +105,49 @@ export default function ProfileIdentity({ common }: { common: MiniHomeCommon }) 
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="profile-search">
+        <div className="profile-search-bar">
+          <input
+            type="text"
+            className="profile-search-input"
+            placeholder="미니홈피 찾기"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            onKeyUp={(e) => {
+              if (e.key === 'Enter') void searchMinihome();
+            }}
+          />
+          <button
+            type="button"
+            className="profile-search-btn"
+            disabled={searching}
+            onClick={() => void searchMinihome()}
+          >
+            {searching ? '…' : '찾기'}
+          </button>
+        </div>
+
+        {results !== null && (
+          <div className="profile-search-results">
+            {results.length === 0 ? (
+              <div className="profile-search-empty">검색 결과가 없습니다.</div>
+            ) : (
+              results.map((r) => (
+                <button
+                  type="button"
+                  key={r.userNickname}
+                  className="profile-search-row"
+                  onClick={() => visit(r.userNickname)}
+                >
+                  <span className="profile-search-name">{r.userName}</span>
+                  <span className="profile-search-nick">({r.userNickname})</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

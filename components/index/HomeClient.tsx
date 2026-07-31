@@ -22,6 +22,13 @@ interface NewInfo {
   friendList: string[];
 }
 
+interface FriendReq {
+  seq: number;
+  requesterNickname: string;
+  requesterName: string;
+  createDate: string;
+}
+
 const SLIDES = [
   '/resources/images/mainSlideImg1.jpg',
   '/resources/images/slideImg1.png',
@@ -42,6 +49,8 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [friendReqs, setFriendReqs] = useState<FriendReq[]>([]);
 
   const alerted = useRef(false);
 
@@ -130,17 +139,56 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
     }
   }, []);
 
-  const openMiniHomepage = () => {
+  const openMiniHomepage = (nickname: string = userNickname) => {
     const width = 1200;
     const height = 720;
     const left = (window.innerWidth - width) / 2;
     const top = (window.innerHeight - height) / 2;
     const newWindow = window.open(
-      `/mnHome/mainView/${encodeURIComponent(userNickname)}`,
+      `/mnHome/mainView/${encodeURIComponent(nickname)}`,
       'MiniHomepage',
       `width=${width}, height=${height}, left=${left}, top=${top}`,
     );
     newWindow?.focus();
+  };
+
+  const loadFriendReqs = async () => {
+    try {
+      const res = await fetch('/index/friendRequests');
+      const json = (await res.json()) as { requests: FriendReq[] };
+      setFriendReqs(json.requests ?? []);
+    } catch {
+      setFriendReqs([]);
+    }
+  };
+
+  const toggleReqs = () => {
+    const next = !reqOpen;
+    setReqOpen(next);
+    if (next) void loadFriendReqs();
+  };
+
+  const respondFriend = async (seq: number, accept: boolean) => {
+    try {
+      await fetch(accept ? '/mnHome/acceptFriends' : '/mnHome/rejectFriends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seq, fStatus: accept ? 1 : -1 }),
+      });
+      await showAlert(accept ? '일촌신청을 수락했습니다.' : '일촌신청을 거절했습니다.');
+      setFriendReqs((prev) => prev.filter((r) => r.seq !== seq));
+      // 상단 카운트도 갱신
+      fetch('/index/member/getNew', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userNickname }),
+      })
+        .then((r) => r.json())
+        .then((j: NewInfo) => setInfo(j))
+        .catch(() => undefined);
+    } catch {
+      void showAlert('잠시 후 다시 시도해주세요.');
+    }
   };
 
   return (
@@ -175,9 +223,6 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
             </a>
             <a href="/notice/noticeView" className="index-a-notice">
               공지사항
-            </a>
-            <a href="/index/mapView" className="index-a-map">
-              찾아오는 길
             </a>
             {loggedIn && (
               <a id="linkLogout" href="/index/member/logout" className="index-a-logout">
@@ -305,7 +350,11 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                           {info?.newContent ?? '-'}
                         </span>
                       </div>
-                      <div className="login-profile-section4">
+                      <div
+                        className="login-profile-section4 login-profile-clickable"
+                        onClick={toggleReqs}
+                        title="클릭하면 받은 일촌신청을 확인합니다"
+                      >
                         <span>💕</span>
                         <span>일촌 신청</span>
                         <span className="login-profile-info-4" id="newFriend">
@@ -319,7 +368,7 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                         className="mainBtn1"
                         id="btnGoMinihome"
                         value="내 미니홈피"
-                        onClick={openMiniHomepage}
+                        onClick={() => openMiniHomepage()}
                       />
                       <input
                         type="button"
@@ -348,6 +397,42 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                   )}
                 </div>
               )}
+
+              {reqOpen && (
+                <div id="friendReqContainer">
+                  {friendReqs.length === 0 ? (
+                    <div className="friend-req-empty">받은 일촌신청이 없습니다.</div>
+                  ) : (
+                    friendReqs.map((req) => (
+                      <div className="friend-req-row" key={req.seq}>
+                        <div className="friend-req-info">
+                          <a href={`/mnHome/mainView/${encodeURIComponent(req.requesterNickname)}`}>
+                            {req.requesterName}
+                          </a>
+                          <span className="friend-req-nick">({req.requesterNickname})</span>
+                        </div>
+                        <div className="friend-req-actions">
+                          <button
+                            type="button"
+                            className="friend-req-accept"
+                            onClick={() => void respondFriend(req.seq, true)}
+                          >
+                            수락
+                          </button>
+                          <button
+                            type="button"
+                            className="friend-req-reject"
+                            onClick={() => void respondFriend(req.seq, false)}
+                          >
+                            거절
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
             </div>
           )}
 

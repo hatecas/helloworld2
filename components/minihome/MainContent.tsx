@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -84,7 +85,8 @@ export default function MainContent({
     total: number,
     href: string,
   ) => (
-    <div className="menu-item" onClick={() => router.push(href)}>
+    // Link 로 바꿔 프리페치가 걸리게 한다 → 다이어리·사진첩 이동이 빨라진다.
+    <Link className="menu-item" href={href} prefetch>
       {label}
       <span className="menu-num">
         {recent}/{total}
@@ -92,7 +94,7 @@ export default function MainContent({
       {recent > 0 && (
         <img src="/resources/images/minihome/newIcon.png" alt="new Icon" className="minihome-nIcon" />
       )}
-    </div>
+    </Link>
   );
 
   return (

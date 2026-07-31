@@ -1,47 +1,53 @@
 @charset "UTF-8";
 
+/* 도토리 사용/충전 내역 — 통일된 세련된 표 */
+
+/* 배경을 채우도록 폭 100% + 넉넉한 행 높이 */
 .set-dtr-use-frame {
-	margin-left: 10px;
-	margin-right: 10px;
+	width: 100%;
+	padding: 4px 6px;
+	box-sizing: border-box;
 }
 
 .set-dtr-use-title {
-	font-weight: bold;
-	border-bottom: 2px solid gray;
-	padding-bottom: 5px;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--mh-ink);
+	border-bottom: 1px solid var(--mh-line);
+	padding-bottom: 8px;
 }
 
 .set-dtr-use-list {
-	border-bottom: 2px dotted gray;
-	padding-top: 10px;
-	padding-bottom: 10px;
-	margin-top: 15px;
-	font-size: 14px;
-	align-items: center;
-}
-
-.set-dtr-use-list-header {
-	font-weight: bold;
-	color: var(--mh-accent);
-	width: 100%;
+	margin-top: 14px;
+	min-height: 320px;
+	border: 1px solid var(--mh-line);
+	border-radius: 10px;
+	overflow: hidden;
 }
 
 .set-dtr-use-list-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.set-dtr-use-list-table thead th {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--mh-muted);
+	background: #f4f7f9;
+	padding: 12px 8px;
+	border-bottom: 1px solid var(--mh-line);
 	text-align: center;
-	margin: 0 auto;
 }
 
-.set-dtr-use-list-table th {
-	color: var(--mh-accent);
-	font-size: 14px;
+.set-dtr-use-list-table tbody td {
+	font-size: 13px;
+	color: var(--mh-ink);
+	padding: 12px 8px;
+	text-align: center;
+	border-bottom: 1px solid #eef2f4;
 }
 
-..set-dtr-use-list-table td {
-	color: gray;
-	font-size: 12px;
-}
-
-.set-dtr-ust-list-table th,
-.set-dtr-ust-list-table td {
-  padding: 5px 10px;
+.set-dtr-use-list-table tbody tr:hover {
+	background: #eef4f7;
 }

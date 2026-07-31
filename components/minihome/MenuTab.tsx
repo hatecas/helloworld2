@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { menuBackgroundColor, menuTextColor } from '@/lib/minihome-view';
 
@@ -19,8 +19,6 @@ export default function MenuTab({
   isOwner: boolean;
   menuContentPath: string;
 }) {
-  const router = useRouter();
-
   const background = menuBackgroundColor(menuContentPath);
   const color = menuTextColor(menuContentPath);
 
@@ -38,19 +36,20 @@ export default function MenuTab({
       {tabs
         .filter((tab) => !tab.ownerOnly || isOwner)
         .map((tab) => (
-          <div
+          // next/link 로 바꿔 뷰포트에 들어오는 즉시 자동 프리페치된다 → 탭 이동이 즉각적.
+          <Link
             key={tab.id}
             id={tab.id}
+            href={tab.href}
+            prefetch
             className="menu-content"
             data-tab={tab.href}
             style={{ backgroundColor: background }}
-            onMouseEnter={() => router.prefetch(tab.href)}
-            onClick={() => router.push(tab.href)}
           >
             <span className="menu-content-span" style={{ color }}>
               {tab.label}
             </span>
-          </div>
+          </Link>
         ))}
     </div>
   );

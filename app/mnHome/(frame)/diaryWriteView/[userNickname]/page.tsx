@@ -21,10 +21,7 @@ export default async function DiaryWriteViewPage({
   return (
     <>
       <Stylesheets
-        hrefs={[
-          '/resources/css/minihome/diary.css',
-          '/resources/css/minihome/jquery-ui(1.13.2).css',
-        ]}
+        hrefs={['/resources/css/minihome/diary.css']}
       />
       <MiniHomeShell common={common}>
         <DiaryEditorClient mode="write" userNickname={userNickname} userName={common.userName} />

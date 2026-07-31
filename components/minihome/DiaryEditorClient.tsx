@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import SmartEditor, { type SmartEditorHandle } from '@/components/SmartEditor';
-import JqueryDatePicker from '@/components/minihome/JqueryDatePicker';
+import Calendar from '@/components/minihome/Calendar';
 import { showAlert } from '@/lib/ui/dialog';
 
 /** views/miniHome/diaryWrite.jsp + diaryModify.jsp (resources/js/diary.js) */
@@ -101,7 +101,7 @@ export default function DiaryEditorClient({
         <span>
           작성일 :{' '}
           {mode === 'write' ? (
-            <JqueryDatePicker id="datepicker2" inline={false} onSelect={setDiaryDate} />
+            <Calendar id="datepicker2" inline={false} onSelect={setDiaryDate} />
           ) : (
             <input type="text" id="datepicker2" value={diaryDate} readOnly />
           )}

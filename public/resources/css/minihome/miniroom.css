@@ -1,10 +1,18 @@
 .miniroom-canvas{
-	width:100%;
+	/*
+	 * 편집 화면(miniroomEdit.css .div-canvas)이 503x283 캔버스에 미니미 좌표(px)를
+	 * 저장한다. 좌표가 깨지지 않도록 캔버스는 논리적으로 503x283 을 유지하되,
+	 * transform:scale 로 통째 확대해 화면에는 더 크게(비율 그대로) 보이게 한다.
+	 * (배경·미니미 위치가 모두 같은 비율로 커져 편집한 그대로 유지됨)
+	 */
+	width:503px;
 	height:283px;
+	transform: scale(1.18);
+	transform-origin: top left;
 	position:relative;
-	background-repeat: no-repeat; /* 이미지 반복 없음 */
-	background-position: center; /* 배경 이미지 중앙 정렬 */
-	background-size: cover; /* 배경 이미지가 요소 전체를 커버하도록 설정 */
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 100% 100%;
 }
 
 .miniroom-minimi{

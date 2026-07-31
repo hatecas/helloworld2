@@ -216,6 +216,34 @@ export async function getPendingFriendRequestCount(userNickname: string): Promis
   return rows.filter((f) => f.del_yn.toUpperCase() !== 'Y').length;
 }
 
+export interface PendingFriendRequest {
+  seq: number;
+  requesterNickname: string;
+  requesterName: string;
+  createDate: string;
+}
+
+/** 나에게 들어온 대기중 일촌 신청 목록 (신청자 이름 포함) — 메인 화면에서 수락/거절용 */
+export async function selectPendingFriendRequests(
+  userNickname: string,
+): Promise<PendingFriendRequest[]> {
+  const rows = (await db().select('friends', { friendNickname: userNickname, fStatus: 0 })).filter(
+    (f) => f.del_yn.toUpperCase() !== 'Y',
+  );
+  if (rows.length === 0) return [];
+
+  const requesters = [...new Set(rows.map((f) => f.userNickname))];
+  const users = await db().selectIn('user', 'userNickname', requesters);
+  const nameOf = new Map(users.map((u) => [u.userNickname, u.userName]));
+
+  return rows.map((f) => ({
+    seq: f.seq,
+    requesterNickname: f.userNickname,
+    requesterName: nameOf.get(f.userNickname) ?? f.userNickname,
+    createDate: ymd(f.createDate),
+  }));
+}
+
 /** 최근 24시간 내 새 컨텐츠 수 (selectNewContent) */
 export async function selectNewContentCount(userNickname: string): Promise<number> {
   const t = await tabs(userNickname);
@@ -312,6 +340,19 @@ export async function getMyFriends(
   return nicknames
     .filter((n) => emailOf.has(n))
     .map((n) => ({ Name: n, userEmail: emailOf.get(n)! }));
+}
+
+/**
+ * 두 사람 사이에 이미 (삭제되지 않은) 일촌 관계가 있는지 — 신청중(0)/승인(1) 모두 포함.
+ * insertFriendRequest 가 -1 로 막는 조건과 동일하다. 일촌신청 버튼 노출 여부에 쓴다.
+ */
+export async function hasFriendRelation(a: string, b: string): Promise<boolean> {
+  if (!a || !b || a === b) return false;
+  const rows = await db().selectOr('friends', [
+    { userNickname: a, friendNickname: b },
+    { userNickname: b, friendNickname: a },
+  ]);
+  return rows.some((f) => f.del_yn.toUpperCase() !== 'Y');
 }
 
 /** friendCheck: 두 사람이 일촌인지 (1/0) */
@@ -633,6 +674,39 @@ export async function searchUser(userNickname: string) {
     userPhone: u.userPhone,
     createDate: ymdDot(u.createDate),
   };
+}
+
+export interface MinihomeSearchResult {
+  userNickname: string;
+  userName: string;
+  userEmail: string;
+}
+
+/**
+ * 닉네임/이름 부분검색으로 방문할 미니홈피를 찾는다.
+ * (searchUser 는 완전일치라 "둘러보기" 에는 쓸 수 없어 따로 둔다)
+ */
+export async function searchUsers(
+  keyword: string,
+  { exclude, limit = 20 }: { exclude?: string; limit?: number } = {},
+): Promise<MinihomeSearchResult[]> {
+  const q = keyword.trim().toLowerCase();
+  if (!q) return [];
+
+  const rows = await db().select('user');
+  return rows
+    .filter((u) => u.userNickname !== exclude)
+    .filter(
+      (u) =>
+        u.userNickname.toLowerCase().includes(q) ||
+        (u.userName ?? '').toLowerCase().includes(q),
+    )
+    .slice(0, limit)
+    .map((u) => ({
+      userNickname: u.userNickname,
+      userName: u.userName,
+      userEmail: u.userEmail,
+    }));
 }
 
 /** insertFriendRequest: 이미 관계가 있으면 -1 */

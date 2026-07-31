@@ -58,33 +58,28 @@ export default function SettingSideBox({
   return (
     <div className="box profile-box">
       <div className="setting-folder-group">
-        <div>
-          {groups.map((group) => (
-            <div key={group.title}>
-              <span>
-                <img className="setting-menu-dot" src="/resources/images/minihome/menu-dot.png" alt="" />
-              </span>
-              <span className="setting-menu-title">{group.title}</span>
-              <ul className="tree">
-                {group.items.map((item) => (
-                  <li key={item.key}>
-                    <a>
-                      <span
-                        className={
-                          active === item.key ? 'setting-menu-list set-on' : 'setting-menu-list'
-                        }
-                        id={item.id}
-                        onClick={() => router.push(item.href)}
-                      >
-                        {item.label}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+        {groups.map((group) => (
+          <div className="setting-group" key={group.title}>
+            <div className="setting-group-title">
+              <img className="setting-menu-dot" src="/resources/images/minihome/menu-dot.png" alt="" />
+              <span>{group.title}</span>
             </div>
-          ))}
-        </div>
+            <ul className="setting-menu-ul">
+              {group.items.map((item) => (
+                <li
+                  key={item.key}
+                  id={item.id}
+                  className={
+                    active === item.key ? 'setting-menu-item set-on' : 'setting-menu-item'
+                  }
+                  onClick={() => router.push(item.href)}
+                >
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
 
       <div className="profile-dot">-----------------------------------</div>

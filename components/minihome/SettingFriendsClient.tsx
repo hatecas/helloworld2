@@ -37,7 +37,6 @@ export default function SettingFriendsClient({
   const [nameFilter, setNameFilter] = useState(searchName);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [popupOpen, setPopupOpen] = useState(false);
 
   const searchUser = async () => {
     if (!keyword.trim()) return;
@@ -58,6 +57,27 @@ export default function SettingFriendsClient({
     } catch {
       setResult(null);
       setNotFound(true);
+    }
+  };
+
+  const requestFriendship = async (responseUser: string) => {
+    if (responseUser === userNickname) {
+      void showAlert('자기 자신에게는 일촌신청을 할 수 없습니다.');
+      return;
+    }
+    if (!await showConfirm(`${responseUser}님께 일촌신청을 보내겠습니까?`)) return;
+    try {
+      const res = await fetch('/mnHome/friendRequest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestUser: userNickname, responseUser }),
+      });
+      const data = (await res.json()) as { code?: string };
+      if (data.code === '1') void showAlert('일촌신청을 보냈습니다.');
+      else if (data.code === '-1') void showAlert('이미 신청 내역이 있습니다.');
+      else void showAlert('잠시 후 다시 시도해주세요.');
+    } catch {
+      void showAlert('잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -111,10 +131,12 @@ export default function SettingFriendsClient({
       </table>
     );
 
+  const goVisit = (nickname: string) => router.push(`/mnHome/mainView/${nickname}`);
+
   return (
     <div className="set-frd-frame">
       <div className="set-frd-search-frame">
-        <div className="set-frd-search-title KyoboHand">친구찾기</div>
+        <div className="set-frd-search-title">친구찾기</div>
         <div className="set-frd-search">
           <input
             type="text"
@@ -129,73 +151,73 @@ export default function SettingFriendsClient({
               if (e.key === 'Enter') void searchUser();
             }}
           />
-          <input
-            type="button"
-            id="btnSearchUser"
-            className="set-frd-search-btn"
-            value="찾기"
-            onClick={() => void searchUser()}
-          />
+          <button type="button" id="btnSearchUser" className="set-frd-search-btn" onClick={() => void searchUser()}>
+            찾기
+          </button>
         </div>
-        <div id="searchResult" className="set-frd-search-place popup">
-          {notFound && '검색결과가 없습니다.'}
-          {result && (
-            <>
-              <div className={popupOpen ? 'popuptext show' : 'popuptext'} id="myPopup">
-                <a href={`/mnHome/mainView/${result.userNickname}`}>방문하기</a>
-              </div>
-              <div className="popup" id="resultContainer" onClick={() => setPopupOpen((v) => !v)}>
-                <img
-                  src="/resources/images/minihome/homeIcon.png"
-                  className="friend-home-Img"
-                  id="friend-home-popup"
-                  alt="홈"
-                />
-                {result.userName}({result.userEmail})
-              </div>
-            </>
-          )}
-        </div>
+
+        {notFound && <div className="set-frd-search-empty">검색결과가 없습니다.</div>}
+        {result && (
+          <div className="set-frd-result-card">
+            <span className="set-frd-result-name">
+              <img src="/resources/images/minihome/homeIcon.png" className="friend-home-Img" alt="홈" />
+              {result.userName}
+              <span className="set-frd-result-email">({result.userEmail})</span>
+            </span>
+            <span className="set-frd-result-actions">
+              <button type="button" onClick={() => goVisit(result.userNickname)}>
+                방문하기
+              </button>
+              <button type="button" className="set-frd-result-req" onClick={() => void requestFriendship(result.userNickname)}>
+                일촌신청
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="set-frd-mid">
-        <div className="set-frd-mid-btn">
-          <div className="set-frd-mid-bf">
-            <input
-              type="button"
-              className="set-frd-mid-bf-ipt"
-              value="나의일촌"
-              onClick={() => setTab('friend')}
-            />
-          </div>
-          <div className="set-frd-mid-request">
-            <input
-              type="button"
-              className="set-frd-mid-req-ipt"
-              value="받은신청"
-              onClick={() => setTab('request')}
-            />
-          </div>
-          <div className="set-frd-mid-accept">
-            <input
-              type="button"
-              className="set-frd-act-bf-ipt"
-              value="보낸신청"
-              onClick={() => setTab('accept')}
-            />
-          </div>
-          <div className="set-frd-mid-search">
+        <div className="set-frd-tabs">
+          <button
+            type="button"
+            className={tab === 'friend' ? 'set-frd-tab active' : 'set-frd-tab'}
+            onClick={() => setTab('friend')}
+          >
+            나의일촌
+          </button>
+          <button
+            type="button"
+            className={tab === 'request' ? 'set-frd-tab active' : 'set-frd-tab'}
+            onClick={() => setTab('request')}
+          >
+            받은신청
+          </button>
+          <button
+            type="button"
+            className={tab === 'accept' ? 'set-frd-tab active' : 'set-frd-tab'}
+            onClick={() => setTab('accept')}
+          >
+            보낸신청
+          </button>
+          <div className="set-frd-namefilter">
             <input
               type="text"
               className="set-frd-mid-input"
-              placeholder="닉네임을 입력하세요"
+              placeholder="닉네임으로 필터"
               id="searchBfName"
               value={nameFilter}
               onChange={(e) => setNameFilter(e.target.value)}
+              onKeyUp={(e) => {
+                if (e.key === 'Enter')
+                  router.push(
+                    nameFilter
+                      ? `/mnHome/settingFriends/${userNickname}/${encodeURIComponent(nameFilter)}`
+                      : `/mnHome/settingFriends/${userNickname}`,
+                  );
+              }}
             />
-            <input
+            <button
               type="button"
-              value="찾기"
               id="searchBf"
               onClick={() =>
                 router.push(
@@ -204,7 +226,9 @@ export default function SettingFriendsClient({
                     : `/mnHome/settingFriends/${userNickname}`,
                 )
               }
-            />
+            >
+              찾기
+            </button>
           </div>
         </div>
 
@@ -212,16 +236,16 @@ export default function SettingFriendsClient({
           <div className="set-frd-bf-list" style={{ display: tab === 'friend' ? 'block' : 'none' }}>
             {table(bf, '아직 일촌이 없습니다.', (row) => (
               <>
-                <input
+                <button
                   type="button"
                   className="set-frd-bf-tb-input"
-                  value="방문하기"
                   onClick={() => router.push(`/mnHome/mainView/${row.otherNickname}`)}
-                />
-                <input
+                >
+                  방문하기
+                </button>
+                <button
                   type="button"
                   className="set-frd-bf-tb-input"
-                  value="일촌끊기"
                   id="unfriend"
                   onClick={() =>
                     void updateFriendship(
@@ -231,7 +255,9 @@ export default function SettingFriendsClient({
                       '일촌을 끊었습니다.',
                     )
                   }
-                />
+                >
+                  일촌끊기
+                </button>
               </>
             ))}
           </div>
@@ -242,10 +268,9 @@ export default function SettingFriendsClient({
           >
             {table(fRes, '앗! 아직 일촌 신청이 안왔어요.', (row) => (
               <>
-                <input
+                <button
                   type="button"
                   className="set-frd-bf-tb-input accept"
-                  value="수락"
                   onClick={() =>
                     void updateFriendship(
                       '/mnHome/acceptFriends',
@@ -254,11 +279,12 @@ export default function SettingFriendsClient({
                       '일촌신청을 수락했습니다.',
                     )
                   }
-                />
-                <input
+                >
+                  수락
+                </button>
+                <button
                   type="button"
                   className="set-frd-bf-tb-input reject"
-                  value="거절"
                   onClick={() =>
                     void updateFriendship(
                       '/mnHome/rejectFriends',
@@ -267,7 +293,9 @@ export default function SettingFriendsClient({
                       '일촌신청을 거절했습니다.',
                     )
                   }
-                />
+                >
+                  거절
+                </button>
               </>
             ))}
           </div>
@@ -277,10 +305,9 @@ export default function SettingFriendsClient({
             style={{ display: tab === 'accept' ? 'block' : 'none' }}
           >
             {table(fReq, '일촌 신청 목록이 없습니다.', (row) => (
-              <input
+              <button
                 type="button"
                 className="set-frd-bf-tb-input cancle"
-                value="취소"
                 onClick={() =>
                   void updateFriendship(
                     '/mnHome/cancleFriends',
@@ -289,7 +316,9 @@ export default function SettingFriendsClient({
                     '일촌신청을 취소했습니다.',
                   )
                 }
-              />
+              >
+                취소
+              </button>
             ))}
           </div>
         </div>

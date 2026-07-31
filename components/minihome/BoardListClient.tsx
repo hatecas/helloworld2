@@ -140,7 +140,7 @@ export default function BoardListClient({
             data-page={`/mnHome/boardView/${userNickname}/${page}`}
             onClick={() => router.push(`/mnHome/boardView/${userNickname}/${page}`)}
           >
-            | {page}
+            {page}
           </span>
         ))}
       </div>

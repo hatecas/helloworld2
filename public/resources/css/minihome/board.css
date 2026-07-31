@@ -1,85 +1,116 @@
 @charset "UTF-8";
 
-body {
-	overflow-y: auto;
-	font-family: "Noto Sans KR", sans-serif;
-}
-
-body a:hover {
-	font-weight: bold;
-}
-
-body a {
-	text-decoration: none;
-}
-
+/* 목록 표 — 예전의 검은 실선/점선 테두리를 걷어내고 깔끔한 카드형으로 */
 .board-container{
-	margin-top:20px;
-	border-top: 1px solid black;
-	padding-top: 4px;
+	margin-top:16px;
 }
 
+.board-table{
+	width: 100%;
+	border-collapse: collapse;
+}
 
-thead tr:last-child th {
-	border-bottom: 1px dotted #000;
-	padding-bottom:4px;
+.board-table thead th {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--mh-muted);
+	background: #f4f7f9;
+	padding: 9px 8px;
+	border-bottom: 1px solid var(--mh-line);
+}
+
+.board-table thead th:first-child {
+	border-top-left-radius: 8px;
+}
+
+.board-table thead th:last-child {
+	border-top-right-radius: 8px;
+}
+
+.board-table tbody tr {
+	border-bottom: 1px solid #eef2f4;
+	transition: background-color 0.12s ease;
+}
+
+.board-table tbody tr:hover {
+	background: #eef4f7;
+}
+
+.board-table td {
+	padding: 9px 8px;
 }
 
 .th-checkbox{
-	width: 25px;
-	height: 25px;
+	width: 34px;
 }
 
 .th-title{
-	width: 300px;
-	height: 25px;
-
+	width: auto;
+	text-align: left;
+	padding-left: 12px !important;
 }
 
 .th-writer{
-	width: 150px;
-	height: 25px;
+	width: 120px;
 }
 
 .th-view{
-	width: 100px;
-	height: 25px;
+	width: 80px;
 }
 
 .td-checkbox{
 	text-align: center;
-	height: 25px;
 }
 
 .td-title{
-	padding-left: 10px;
-	font-size: 15px;
+	padding-left: 12px;
+	font-size: 14px;
 	cursor: pointer;
+}
+
+.td-title:hover{
+	color: var(--mh-accent);
 }
 
 .td-writer{
 	text-align: center;
-	font-size: 15px;
-	color: steelblue;
+	font-size: 13px;
+	color: var(--mh-blue);
 }
 
 .td-view{
 	text-align: center;
-	font-size: 15px;
+	font-size: 13px;
+	color: var(--mh-muted);
 }
 
 .board-btn{
-	margin-top: 10px;
-	text-align: right;
+	margin-top: 12px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
 }
 
 .board-pages{
 	text-align: center;
+	margin-top: 14px;
+	display: flex;
+	justify-content: center;
+	gap: 4px;
 }
 
 .board-page{
 	font-size: 13px;
+	color: var(--mh-muted);
+	padding: 3px 9px;
+	border-radius: 6px;
 	cursor: pointer;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.board-page:hover{
+	background: #eef4f7;
+	color: var(--mh-blue);
 }
 
 .newIcon{
@@ -291,6 +322,7 @@ thead tr:last-child th {
 
 .noneMsg{
 	text-align :center;
-	border-bottom: 1px dotted #000;
-	height : 50px;
+	color: var(--mh-muted);
+	font-size: 13px;
+	padding: 28px 0;
 }

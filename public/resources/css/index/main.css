@@ -539,6 +539,188 @@ a {
 	padding: 4px 2px;
 }
 
+/* 받은 일촌신청 (메인에서 수락/거절) */
+.login-profile-clickable {
+	cursor: pointer;
+	border-radius: 6px;
+	transition: background-color 0.12s ease;
+}
+
+.login-profile-clickable:hover {
+	background: rgba(42, 140, 168, 0.08);
+}
+
+#friendReqContainer {
+	margin-top: 8px;
+	padding: 6px;
+	background: var(--hw-surface, #fff);
+	border: 1px solid var(--hw-line, #d8e0e4);
+	border-radius: var(--hw-radius-sm, 8px);
+	box-shadow: var(--hw-shadow, 0 2px 8px rgba(20, 40, 50, 0.1));
+}
+
+.friend-req-empty {
+	padding: 8px 6px;
+	font-size: 13px;
+	color: #7a8790;
+	text-align: center;
+}
+
+.friend-req-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 7px 6px;
+	border-bottom: 1px solid #eef2f4;
+}
+
+.friend-req-row:last-child {
+	border-bottom: none;
+}
+
+.friend-req-info {
+	font-size: 13px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.friend-req-nick {
+	margin-left: 4px;
+	color: #8a969d;
+	font-size: 12px;
+}
+
+.friend-req-actions {
+	display: flex;
+	gap: 5px;
+	flex-shrink: 0;
+}
+
+.friend-req-accept,
+.friend-req-reject {
+	padding: 5px 12px;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: inherit;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.friend-req-accept {
+	color: #fff;
+	background: rgb(42, 140, 168);
+}
+
+.friend-req-accept:hover {
+	background: #2f6f8d;
+}
+
+.friend-req-reject {
+	color: #c0392b;
+	background: #fdf1f0;
+	border: 1px solid #f0c4bf;
+}
+
+.friend-req-reject:hover {
+	background: #fbe4e2;
+}
+
+/* ------------------------------------------------ 미니홈피 검색(방문) */
+
+#minihomeSearch {
+	margin-top: 12px;
+}
+
+.minihome-search-bar {
+	display: flex;
+	gap: 6px;
+}
+
+.minihome-search-input {
+	flex: 1;
+	min-width: 0;
+	padding: 8px 10px;
+	font-size: 13px;
+	font-family: inherit;
+	color: var(--hw-ink, #223);
+	background: var(--hw-surface, #fff);
+	border: 1px solid var(--hw-line, #cdd);
+	border-radius: var(--hw-radius-sm, 6px);
+	outline: none;
+}
+
+.minihome-search-input:focus {
+	border-color: rgb(42, 140, 168);
+}
+
+.minihome-search-btn,
+.minihome-search-visit {
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	font-family: inherit;
+	color: #fff;
+	background: rgb(42, 140, 168);
+	border: none;
+	border-radius: var(--hw-radius-sm, 6px);
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.minihome-search-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.minihome-search-results {
+	margin-top: 8px;
+	max-height: 200px;
+	overflow-y: auto;
+	background: var(--hw-surface, #fff);
+	border: 1px solid var(--hw-line, #cdd);
+	border-radius: var(--hw-radius-sm, 6px);
+}
+
+.minihome-search-empty {
+	padding: 10px 12px;
+	font-size: 13px;
+	color: #889;
+}
+
+.minihome-search-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--hw-line, #eef);
+}
+
+.minihome-search-row:last-child {
+	border-bottom: none;
+}
+
+.minihome-search-name {
+	font-size: 13px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.minihome-search-nick {
+	margin-left: 4px;
+	color: #889;
+	font-size: 12px;
+}
+
+.minihome-search-visit {
+	padding: 6px 12px;
+	font-size: 12px;
+}
+
 /* ------------------------------------------------------------ 슬라이드 */
 
 #divMainSlide {

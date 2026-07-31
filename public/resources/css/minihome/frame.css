@@ -28,7 +28,14 @@ body {
 	font-size: 16px;
 	font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 	color: var(--mh-ink);
-	overflow-y: auto;
+	/*
+	 * 예전엔 overflow-y:auto 라 페이지마다 세로 스크롤바가 생겼다 사라졌다 하면서
+	 * 가운데 정렬된 책(.main-frame)이 스크롤바 폭만큼 좌우로 흔들렸다.
+	 * (탭을 옮길 때마다 이름·파도타기 위치가 바뀌던 원인)
+	 * 스크롤바 자리를 항상 예약해 폭을 고정한다.
+	 */
+	overflow-y: scroll;
+	scrollbar-gutter: stable;
 	-webkit-font-smoothing: antialiased;
 }
 
@@ -149,47 +156,56 @@ body a:hover {
 .profile-box {
 	display: flex;
 	flex-direction: column;
-	padding: 1rem;
+	padding: 0.8rem;
 	max-width: 220px;
 	min-width: 219.9px;
-	min-height: 449.9px;
-	max-height: 450px;
+	/*
+	 * 예전엔 높이를 450px 로 못박아, 파도타기 밑에 검색창을 넣자 칸 밖으로 넘쳤다.
+	 * 세로는 프로필 칸(약 474px)에 맞게 채우도록 flex 에 맡기고(cap 제거),
+	 * 사진·멘트 영역을 조금씩 줄여 이름·파도타기·검색창까지 안에 들어오게 했다.
+	 * (.box 의 flex:3 이 프로필 칸 높이를 채운다)
+	 */
+	box-sizing: border-box;
 }
 
 .left-1 {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 199.9px;
-	max-height: 200px;
+	flex: 0 0 auto;
+	height: 160px;
 }
 
 .profile-image {
-	overflow: auto;
+	overflow: hidden;
 }
 
 .profile-image-img {
 	width: auto;
 	height: auto;
 	max-width: 212px;
-	max-height: 200px;
+	max-height: 160px;
 	display: block;
 	margin: 0 auto;
 	border-radius: 6px;
 }
 
 .left-2 {
-	min-height: 129.9px;
-	max-height: 130px;
+	flex: 1 1 auto;
+	min-height: 60px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
 .profile-text {
 	font-size: 13px;
-	line-height: 1.7;
+	line-height: 1.6;
 	flex: 1;
-	margin-bottom: 20px;
+	margin-bottom: 8px;
 	margin-left: 10px;
-	min-height: 65px;
+	min-height: 40px;
+	overflow-y: auto;
 	color: var(--mh-ink);
 	word-break: break-word;
 }
@@ -226,7 +242,6 @@ body a:hover {
 
 .left-3 {
 	min-height: 59.9px;
-	max-height: 60px;
 }
 
 .profile-username {
@@ -235,18 +250,45 @@ body a:hover {
 	font-weight: 600;
 }
 
+/* .page button 전역 스타일보다 우선하도록 .page 로 스코프를 올린다 */
+.page .profile-friend-btn {
+	display: inline-block;
+	margin-bottom: 6px;
+	padding: 5px 12px;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	color: #ffffff;
+	background: var(--mh-blue, rgb(42, 140, 168));
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: filter 0.15s ease;
+}
+
+.page .profile-friend-btn:hover {
+	filter: brightness(1.08);
+	background: var(--mh-blue, rgb(42, 140, 168));
+}
+
 .profile-dot {
-	color: #a9c4d1;
+	/* 예전엔 '-----' 글자를 그대로 써서 길이가 짧거나 잘렸다.
+	   글자는 감추고 칸 전체폭을 채우는 점선 테두리로 대체한다. */
+	height: 0;
+	font-size: 0;
+	line-height: 0;
+	color: transparent;
+	border-top: 1px dashed #a9c4d1;
+	margin: 10px 0;
 	overflow: hidden;
-	white-space: nowrap;
-	font-size: 11px;
-	line-height: 1;
-	margin: 4px 0;
 }
 
 #friendSelect {
-	min-width: 212px;
-	max-width: 212.1px;
+	/* 예전 고정폭(212px)이 프로필 칸 안쪽보다 넓어 가로로 넘쳤다. 칸에 맞춘다. */
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
 	margin-top: 8px;
 	padding: 5px 8px;
 	font-size: 12px;
@@ -261,6 +303,109 @@ body a:hover {
 
 #friendSelect:focus {
 	border-color: var(--mh-blue);
+}
+
+/* ------------------------------------ 프로필 칸 미니홈피 검색(방문) */
+
+.profile-search {
+	margin-top: 8px;
+	position: relative;
+}
+
+.profile-search-bar {
+	display: flex;
+	gap: 4px;
+}
+
+.profile-search-input {
+	flex: 1;
+	min-width: 0;
+	padding: 5px 8px;
+	font-size: 12px;
+	font-family: inherit;
+	color: var(--mh-ink);
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 6px;
+	outline: none;
+}
+
+.profile-search-input:focus {
+	border-color: var(--mh-blue);
+}
+
+.page .profile-search-btn {
+	flex-shrink: 0;
+	padding: 5px 10px;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: inherit;
+	color: #ffffff;
+	background: var(--mh-blue);
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.page .profile-search-btn:hover {
+	background: #2f6f8d;
+	color: #ffffff;
+}
+
+.page .profile-search-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.profile-search-results {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: calc(100% + 4px);
+	z-index: 6;
+	max-height: 160px;
+	overflow-y: auto;
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(20, 40, 50, 0.16);
+}
+
+.profile-search-empty {
+	padding: 8px 10px;
+	font-size: 12px;
+	color: var(--mh-muted);
+}
+
+.page .profile-search-row {
+	display: block;
+	width: 100%;
+	text-align: left;
+	padding: 7px 10px;
+	font-size: 12px;
+	font-weight: 500;
+	font-family: inherit;
+	color: var(--mh-ink);
+	background: none;
+	border: 0;
+	border-bottom: 1px solid #eef2f4;
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.page .profile-search-row:last-child {
+	border-bottom: none;
+}
+
+.page .profile-search-row:hover {
+	background: #eef2f4;
+	color: var(--mh-ink);
+	border-color: #eef2f4;
+}
+
+.profile-search-nick {
+	margin-left: 4px;
+	color: var(--mh-muted);
 }
 
 /* ------------------------------------------------ 중앙 (컨텐츠 라인) */
@@ -395,14 +540,17 @@ input.content-title-name:focus {
 	padding: 3px 2px;
 	border-radius: 4px;
 	cursor: pointer;
+	/* Link(<a>) 로 바뀌어도 기본 링크 색이 아니라 본문 색을 유지 */
+	color: var(--mh-ink);
 	transition: background-color 0.12s ease;
 }
 
 .menu-item:hover {
 	background: #e8eef1;
+	color: var(--mh-ink);
 }
 
-.menu-num {
+.menu-item .menu-num {
 	font-family: 'NeoDunggeunmo';
 	padding-left: 6px;
 	color: #003399;
@@ -417,7 +565,13 @@ input.content-title-name:focus {
 /* ------------------------------------------------------------ 미니룸 */
 
 .miniroom {
-	flex: 1;
+	/* 캔버스가 고정 높이(283px)라 flex 로 늘리면(=축소되면) 세로가 잘렸다.
+	   내용 높이 그대로 두고 content-box 스크롤에 맡긴다.
+	   제목 탭·캔버스를 모두 503px 로 묶어 가운데 정렬한다(제목-박스 좌측선도 일치). */
+	flex: 0 0 auto;
+	width: 593px;
+	max-width: 100%;
+	margin: 0 auto;
 	display: flex;
 	flex-direction: column;
 }
@@ -471,11 +625,12 @@ input.content-title-name:focus {
 }
 
 .miniroom-gif-box {
+	/* 503x283 캔버스를 1.18배 확대(=593x334)해 담는다. 좌우 흰 여백 없음. */
+	width: 100%;
+	height: 334px;
 	border: 1px solid var(--mh-line);
 	border-radius: 0 6px 6px 6px;
 	overflow: hidden;
-	flex: 1;
-	display: flex;
 	background: #ffffff;
 }
 
@@ -568,12 +723,13 @@ input.content-title-name:focus {
 	margin-bottom: 3px;
 	line-height: 1;
 	box-shadow: 2px 2px 5px rgba(20, 40, 50, 0.16);
-	transition: transform 0.12s ease, box-shadow 0.12s ease;
+	transition: filter 0.12s ease, box-shadow 0.12s ease;
 }
 
+/* 예전엔 hover 때 옆으로 밀리며(translateX) 튀는 느낌이었다. 위치는 그대로 두고 밝기만 바꾼다. */
 .menu-content:hover {
 	cursor: pointer;
-	transform: translateX(3px);
+	filter: brightness(1.08);
 	box-shadow: 3px 3px 8px rgba(20, 40, 50, 0.22);
 }
 
@@ -947,4 +1103,165 @@ input.content-title-name:focus {
 .page .setting-bgm-search-input:focus {
 	border: 0;
 	box-shadow: none;
+}
+
+/* ============================================== 달력 (Calendar.tsx) */
+
+.cal {
+	width: 100%;
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 8px;
+	padding: 8px;
+	box-sizing: border-box;
+	user-select: none;
+}
+
+.cal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+
+.cal-title {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--mh-ink);
+	letter-spacing: 0.2px;
+}
+
+/* .page button 전역 스타일을 덮어쓰기 위해 .cal 로 스코프 */
+.cal .cal-nav {
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 16px;
+	line-height: 1;
+	color: var(--mh-muted);
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.cal .cal-nav:hover {
+	background: #eef2f4;
+	color: var(--mh-ink);
+	border-color: transparent;
+}
+
+.cal-weekdays,
+.cal-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 2px;
+}
+
+.cal-weekday {
+	text-align: center;
+	font-size: 10px;
+	font-weight: 700;
+	color: var(--mh-muted);
+	padding: 2px 0;
+}
+
+.cal-sun {
+	color: #d9534f;
+}
+
+.cal-sat {
+	color: #3b7bbf;
+}
+
+.cal-cell {
+	aspect-ratio: 1 / 1;
+}
+
+.cal-empty {
+	visibility: hidden;
+}
+
+/* 날짜 버튼 — .page button 전역 스타일을 .cal 스코프로 덮는다 */
+.cal .cal-day {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	color: var(--mh-ink);
+	background: #ffffff;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.cal .cal-day.cal-sun {
+	color: #d9534f;
+}
+
+.cal .cal-day.cal-sat {
+	color: #3b7bbf;
+}
+
+.cal .cal-day:hover {
+	background: #eef2f4;
+	color: var(--mh-ink);
+	border-color: transparent;
+}
+
+.cal .cal-day.cal-today {
+	border-color: var(--mh-blue);
+}
+
+.cal .cal-day.cal-selected {
+	background: var(--mh-blue);
+	color: #ffffff;
+	border-color: var(--mh-blue);
+}
+
+.cal-inline {
+	width: 100%;
+}
+
+/* 팝업(작성 화면) */
+.cal-popup-wrap {
+	position: relative;
+	display: inline-block;
+}
+
+.page .cal-input {
+	padding: 4px 8px;
+	font-size: 12px;
+	font-family: inherit;
+	color: var(--mh-ink);
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 6px;
+	cursor: pointer;
+	min-width: 120px;
+}
+
+.page .cal-input:focus {
+	border-color: var(--mh-blue);
+	outline: none;
+}
+
+.cal-popup {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 20;
+	width: 240px;
+	box-shadow: 0 6px 18px rgba(20, 40, 50, 0.18);
+	border-radius: 8px;
 }

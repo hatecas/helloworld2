@@ -52,13 +52,10 @@ export default function SettingColorClient({
     }
   };
 
-  const swatchStyle = (color: string, indent: boolean) => ({
-    width: 200,
-    height: 30,
-    marginBottom: 10,
-    ...(indent ? { marginLeft: 20 } : { marginRight: 5 }),
-    border: '2px solid black',
-    borderRadius: 5,
+  const swatchStyle = (color: string) => ({
+    height: 34,
+    borderRadius: 8,
+    border: '1px solid #cfd8dc',
     backgroundColor: skinBackgroundColor(color),
   });
 
@@ -71,7 +68,7 @@ export default function SettingColorClient({
         <div
           className={`set-${prefix}-selected-${prefix}`}
           id={`${prefix}-item-color-select`}
-          style={swatchStyle(applied, false)}
+          style={{ ...swatchStyle(applied), width: 150 }}
         />
       </div>
 
@@ -91,8 +88,10 @@ export default function SettingColorClient({
                 className={`${prefix}-item-color`}
                 data-product-name={item.productName}
                 style={{
-                  ...swatchStyle(item.contentPath, true),
-                  outline: selected === item.productName ? '3px solid orange' : undefined,
+                  ...swatchStyle(item.contentPath),
+                  width: '100%',
+                  outline: selected === item.productName ? '3px solid #3b87ab' : undefined,
+                  outlineOffset: 1,
                 }}
               />
               <div className={`${prefix}-item-name`}>{item.productName}</div>

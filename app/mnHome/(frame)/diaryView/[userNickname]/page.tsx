@@ -28,10 +28,7 @@ export default async function DiaryViewPage({
   return (
     <>
       <Stylesheets
-        hrefs={[
-          '/resources/css/minihome/diary.css',
-          '/resources/css/minihome/jquery-ui(1.13.2).css',
-        ]}
+        hrefs={['/resources/css/minihome/diary.css']}
       />
       <MiniHomeShell common={common} profileSlot={<DiaryProfileBox common={common} />}>
         <DiaryClient

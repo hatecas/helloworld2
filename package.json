@@ -4,7 +4,9 @@
   "private": true,
   "description": "HelloWorld 미니홈피 — Spring MVC/JSP/MyBatis 에서 Next.js 로 이전한 버전",
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
     "dev": "next dev",
+    "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

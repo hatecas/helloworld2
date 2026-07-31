@@ -83,14 +83,24 @@
 }
 
 .album-submit input {
-	background-color: white;
-	border-radius: 2px;
-	border: 1px solid gray;
-	margin-right: 20px;
-	padding: 0 20px;
+	/* 예전엔 height:25 + padding:0 이라 글씨가 세로 중앙이 아니었고 흰 버튼이 낡아 보였다.
+	   auto 높이 + 대칭 패딩으로 세로 중앙, 파란 버튼으로 현대화. */
+	margin-right: 4px;
+	padding: 7px 16px;
+	height: auto;
+	line-height: 1.4;
 	font-size: 12px;
-	font-weight: bold;
-	height: 25px;
+	font-weight: 600;
+	color: #ffffff;
+	background: var(--mh-blue);
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background-color 0.12s ease;
+}
+
+.album-submit input:hover {
+	background: #2f6f8d;
 }
 
 .album-overflow {
@@ -106,23 +116,26 @@
 }
 
 .album-db-group {
-	border: 1px solid gray;
-	border-radius: 5px;
+	border: 1px solid var(--mh-line);
+	border-radius: 8px;
+	overflow: hidden;
+	background: #ffffff;
 }
 
 .diary-date-right {
 	text-align: right;
-	font-size: 12px;
-	color: purple;
-	padding-right: 10px;
-	padding-top: 5px;
-	padding-bottom: 5px;
+	font-size: 11px;
+	color: var(--mh-muted);
+	padding: 6px 12px 0;
 }
 
 .diary-content {
 	overflow-y: auto;
-	min-height: 200px;
-	padding: 10px;
+	min-height: 180px;
+	padding: 14px;
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--mh-ink);
 }
 
 .album-public{
@@ -184,16 +197,15 @@
 
 
 .diary-title{
-  border-top: 1px solid #9e9c9c;
+  /* 회색 바(구식) → 깔끔한 헤더 */
   border-bottom: 1px solid var(--mh-line);
-  background-color: #e6e6e6;
+  background-color: #f4f7f9;
   width: 100%;
-  hight: 30px;
-  padding-top: 3px;
-  padding-bottom: 3px;
-  font-size: 12px;
-  font-weight: bold;
-  text-align: center;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mh-ink);
+  box-sizing: border-box;
 }
 
 

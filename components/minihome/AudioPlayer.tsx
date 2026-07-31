@@ -85,11 +85,11 @@ export default function AudioPlayer({ playlist }: { playlist: Track[] }) {
 
       <div className="audioPlayingContainer">
         <div className="audioPlayingDiv">
-          <img
+          {/* 예전 nowPlaying.png(구식 CD) 대신 CSS 로 그린 세련된 바이닐 디스크 */}
+          <div
             id="audioPlayingImg"
-            className={playing ? 'rotating' : undefined}
-            src={`${IMG}/nowPlaying.png`}
-            alt=""
+            className={playing ? 'audioDisc rotating' : 'audioDisc'}
+            aria-hidden="true"
           />
         </div>
         <div className="audioPlayingMargin" />

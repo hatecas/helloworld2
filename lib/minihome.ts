@@ -4,6 +4,7 @@ import {
   getHomeOwnerInfo,
   getMyFriends,
   getProfile,
+  hasFriendRelation,
   selectVisitCnt,
 } from '@/lib/db/repo';
 import { getSessionUser } from '@/lib/session';
@@ -23,18 +24,21 @@ export async function loadMiniHomeCommon(userNickname: string): Promise<MiniHome
   if (!owner) return null;
 
   const viewer = await getSessionUser();
+  const isOwner = viewer?.userNickname === userNickname;
 
-  const [profile, friends, menuContentPath, visitCnt] = await Promise.all([
+  const [profile, friends, menuContentPath, visitCnt, alreadyRelated] = await Promise.all([
     getProfile(userNickname),
     getMyFriends(userNickname),
     getAppliedItem(userNickname, 'menu'),
     selectVisitCnt(userNickname),
+    viewer && !isOwner ? hasFriendRelation(viewer.userNickname, userNickname) : Promise.resolve(true),
   ]);
 
   return {
     userNickname,
     viewerNickname: viewer?.userNickname ?? '',
-    isOwner: viewer?.userNickname === userNickname,
+    isOwner,
+    canRequestFriend: Boolean(viewer) && !isOwner && !alreadyRelated,
     todayCnt: visitCnt?.todayCnt ?? 0,
     totalCnt: visitCnt?.totalCnt ?? 0,
     image: profile?.image ?? DEFAULT_PROFILE_IMAGE,

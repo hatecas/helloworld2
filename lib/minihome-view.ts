@@ -7,6 +7,8 @@ export interface MiniHomeCommon {
   userNickname: string;
   viewerNickname: string;
   isOwner: boolean;
+  /** 방문자가 이 홈피 주인에게 일촌신청을 보낼 수 있는지 (이미 일촌/신청중이면 false) */
+  canRequestFriend: boolean;
   todayCnt: number;
   totalCnt: number;
   image: string;

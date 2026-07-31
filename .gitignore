@@ -137,3 +137,5 @@ $RECYCLE.BIN/
 */pom.properties
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,eclipse,java
+# 디버그 스크린샷
+screenshot*.png

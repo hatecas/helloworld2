@@ -1,233 +1,307 @@
 @charset "UTF-8";
+
+/* ================================================================
+   일촌현황 — 통일된 세련된 UI
+   ================================================================ */
+
 .set-frd-frame {
-	padding-left: 10px;
-	padding-right: 10px;
+	width: 100%;
+	padding: 4px 6px;
+	box-sizing: border-box;
 }
 
+/* ---------------------------------------------- 친구찾기 */
 .set-frd-search-frame {
-	border-bottom: 1px solid gray;
-	display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 10px;
-}
-
-.set-frd-search-group {
-	height: 20px;
-	padding-bottom: 10px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid var(--mh-line);
 }
 
 .set-frd-search-title {
-	font-size: 20px;
-	font-weight: bold;
-	grid-column: 1 / 2;
-    grid-row: 1 / 3;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--mh-ink);
+	margin-bottom: 8px;
 }
 
 .set-frd-search {
-	grid-column: 2 / 3;
-    grid-row: 1 / 2;
-    display: flex;
-    justify-content: space-between;
+	display: flex;
+	gap: 6px;
 }
 
 .set-frd-search-input {
-	font-size: 12px;
-	font-weight: bold;
-	width: 250px;
-	height: 40px;
-	border: 2px solid var(--mh-accent);
-	border-radius: 5px;
-	padding-top:12px;
-	padding-bottom:12px;
-	margin-right: 5px;
-	margin-top: 3px;
-	outline: none;
-	align-items: center;
-	color: blue;
-	text-align: center;
 	flex: 1;
+	min-width: 0;
+	height: 38px;
+	box-sizing: border-box;
+	padding: 0 12px;
+	font-size: 13px;
+	font-family: inherit;
+	color: var(--mh-ink);
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 8px;
+	outline: none;
 }
 
-.set-frd-search-btn {
-	flex: 0;
+.set-frd-search-input:focus {
+	border-color: var(--mh-blue);
 }
 
-.set-frd-search-place {
-	margin: 0 auto;
-	margin-bottom: 10px;
-	margin-right: 50px;
-	border-bottom: 2px solid var(--mh-accent);
-	padding-top: 10px;
+.set-frd-frame .set-frd-search-btn {
+	flex-shrink: 0;
+	padding: 0 20px;
+	height: 38px;
+	font-size: 13px;
+	font-weight: 600;
+	font-family: inherit;
+	color: #ffffff;
+	background: var(--mh-blue);
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+.set-frd-frame .set-frd-search-btn:hover {
+	background: #2f6f8d;
+}
+
+.set-frd-search-empty {
+	margin-top: 10px;
+	font-size: 13px;
+	color: var(--mh-muted);
+}
+
+.set-frd-result-card {
+	margin-top: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 10px 12px;
+	background: #f4f7f9;
+	border: 1px solid var(--mh-line);
+	border-radius: 8px;
+}
+
+.set-frd-result-name {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--mh-ink);
+}
+
+.set-frd-result-email {
+	color: var(--mh-muted);
+	font-weight: 400;
 	font-size: 12px;
-	font-weight: bold;
-	color: blue;
-	width: 83%;
-	height: 25px;
-	text-align: center;
-	grid-column: 2 / 3;
-    grid-row: 2 / 3;
 }
 
-.set-frd-mid-bg {
-	height: 200px;
-	border-bottom: 1px dotted gray;
+.friend-home-Img {
+	width: 13px;
+	height: auto;
 }
 
-.set-frd-mid-btn {
+.set-frd-result-actions {
 	display: flex;
-	justify-content: flex-start;
-	margin-top: 25px;
+	gap: 6px;
+	flex-shrink: 0;
 }
 
-.set-frd-mid-bf-ipt,
-.set-frd-mid-req-ipt,
-.set-frd-act-bf-ipt {
-	border: 2px solid var(--mh-accent);
-	border-top-right-radius: 5px;
-	border-top-left-radius: 5px;
-	border-bottom: none;
+.set-frd-frame .set-frd-result-actions button {
+	padding: 6px 13px;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: inherit;
+	color: var(--mh-muted);
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 6px;
+	cursor: pointer;
 }
 
-.set-frd-mid-bf {
-	margin-left: 5px;
+.set-frd-frame .set-frd-result-actions button:hover {
+	background: #eef2f4;
+	color: var(--mh-ink);
 }
 
+.set-frd-frame .set-frd-result-actions .set-frd-result-req {
+	background: var(--mh-blue);
+	color: #ffffff;
+	border-color: var(--mh-blue);
+}
 
-.set-frd-mid-search {
+.set-frd-frame .set-frd-result-actions .set-frd-result-req:hover {
+	background: #2f6f8d;
+	color: #ffffff;
+}
+
+/* ---------------------------------------------- 탭 */
+.set-frd-mid {
+	margin-top: 16px;
+}
+
+.set-frd-tabs {
 	display: flex;
-    align-items: center;
-    margin-left: 78px;
+	align-items: center;
+	gap: 6px;
+}
+
+.set-frd-frame .set-frd-tab {
+	padding: 7px 15px;
+	font-size: 13px;
+	font-weight: 600;
+	font-family: inherit;
+	color: var(--mh-muted);
+	background: #eef2f4;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.set-frd-frame .set-frd-tab:hover {
+	background: #e2eaee;
+	color: var(--mh-ink);
+}
+
+.set-frd-frame .set-frd-tab.active {
+	background: var(--mh-blue);
+	color: #ffffff;
+}
+
+.set-frd-namefilter {
+	margin-left: auto;
+	display: flex;
+	gap: 5px;
 }
 
 .set-frd-mid-input {
-	font-size: 12px;
 	width: 150px;
-	height: 12px;
-	border: 2px solid var(--mh-accent);
-	border-radius: 5px;
-	padding-top:12px;
-	padding-bottom:12px;
+	height: 34px;
+	box-sizing: border-box;
+	padding: 0 10px;
+	font-size: 12px;
+	font-family: inherit;
+	color: var(--mh-ink);
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 6px;
 	outline: none;
-	align-items: center;
-	margin-right: 5px;
-	margin-left: 5px;
-	color: blue;
-	text-align: center;
+}
+
+.set-frd-mid-input:focus {
+	border-color: var(--mh-blue);
+}
+
+.set-frd-frame .set-frd-namefilter button {
+	padding: 0 13px;
+	height: 34px;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: inherit;
+	color: #ffffff;
+	background: var(--mh-blue);
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.set-frd-frame .set-frd-namefilter button:hover {
+	background: #2f6f8d;
+}
+
+/* ---------------------------------------------- 목록 패널 (배경 채우게 크게) */
+.set-frd-mid-bg {
+	margin-top: 12px;
 }
 
 .set-frd-bf-list,
 .set-frd-bf-request,
 .set-frd-bf-accept {
-	padding: 10px 20px;
-	display: flax;
-	width: 89%;
-	height: 150px;
-	margin-left: 3px;
-	background-color: white;
-	border: 2px solid var(--mh-accent);
+	min-height: 270px;
+	padding: 6px 14px;
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 10px;
 	overflow-y: auto;
-	overflow-x: hidden;
 }
 
-.set-frd-bf-request,
-.set-frd-bf-accept {
-	display: none;
-}
-
-.set-frd-bf-list table,
-..set-frd-bf-request table,
-.set-frd-bf-accept table{
-	font-family: Arial, sans-serif;
+.set-frd-bf-table {
 	width: 100%;
-	margin: 5px auto;
+	border-collapse: collapse;
 	text-align: center;
-	table-layout: fixed;
 }
 
-.set-frd-bf-list tr,
-.set-frd-bf-request tr,
-.set-frd-bf-accept tr {
-}
-
-.set-frd-bf-list td,
-.set-frd-bf-request td,
-.set-frd-bf-accept td {
-    text-align: center;
-	border-bottom: 1px dotted gray;
-	font-size: 14px;
-	height: 35px;
-	width: 25%;
-}
-
-.set-frd-bf-tb-input {
-	background-color: white;
-	border: none;
+.set-frd-bf-table tr:first-child td {
 	font-size: 12px;
-	color: var(--mh-accent);
-	padding-left: 10px;
-	padding-right: 10px;
+	font-weight: 700;
+	color: var(--mh-muted);
+	background: #f4f7f9;
+	padding: 10px 6px;
+	border-bottom: 1px solid var(--mh-line);
+	white-space: nowrap;
 }
 
-.set-frd-bf-tb-input:hover {
+.set-frd-bf-table td {
+	padding: 10px 6px;
+	font-size: 13px;
+	color: var(--mh-ink);
+	border-bottom: 1px solid #eef2f4;
+	vertical-align: middle;
+}
+
+/* 액션 버튼 칸은 버튼이 잘리거나 겹치지 않게 내용 크기로 두고 한 줄 유지 */
+.set-frd-bf-table td:last-child {
+	white-space: nowrap;
+	width: 1%;
+}
+
+.set-frd-bf-table tr:not(:first-child):hover td {
+	background: #f7fafb;
+}
+
+.set-frd-frame .set-frd-bf-tb-input {
+	padding: 5px 11px;
+	margin: 2px;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: inherit;
+	color: var(--mh-muted);
+	background: #ffffff;
+	border: 1px solid var(--mh-line);
+	border-radius: 6px;
 	cursor: pointer;
-	font-weight: bold;
+	transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.friend-home-Img {
-	width: 10px;
-	height: auto;
-	margin-top: 1px;
-	margin-left: 5px;
+.set-frd-frame .set-frd-bf-tb-input:hover {
+	background: #eef2f4;
+	color: var(--mh-ink);
 }
 
-/* Popup container - can be anything you want */
-.popup {
-  position: relative;
-  display: inline-block;
-  cursor: pointer;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+.set-frd-frame .set-frd-bf-tb-input.accept {
+	background: var(--mh-blue);
+	color: #ffffff;
+	border-color: var(--mh-blue);
 }
 
-/* The actual popup */
-.popup .popuptext {
-  visibility: hidden;
-  width: 60px;
-  background-color: white;
-  color: black;
-  text-align: center;
-  padding: 6px 0;
-  position: absolute;
-  z-index: 1;
-  bottom: 70%;
-  left: 50%;
-  margin-left: -80px;
-  border : 1px solid grey;
+.set-frd-frame .set-frd-bf-tb-input.accept:hover {
+	background: #2f6f8d;
+	color: #ffffff;
 }
 
-
-/* Popup arrow */
-.popup .popuptext::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #555 transparent transparent transparent;
+.set-frd-frame .set-frd-bf-tb-input.reject,
+.set-frd-frame .set-frd-bf-tb-input.cancle,
+.set-frd-frame #unfriend {
+	color: #c0392b;
 }
 
-
-/* Toggle this class - hide and show the popup */
-.popup .show {
-  visibility: visible;
-  -webkit-animation: fadeIn 1s;
-  animation: fadeIn 1s;
+.set-frd-frame .set-frd-bf-tb-input.reject:hover,
+.set-frd-frame .set-frd-bf-tb-input.cancle:hover,
+.set-frd-frame #unfriend:hover {
+	background: #fdf1f0;
+	color: #c0392b;
+	border-color: #f0c4bf;
 }
