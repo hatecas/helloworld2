@@ -8,19 +8,16 @@ import { CATALOG, DEFAULT_PARTS, type AvatarParts, type Gender } from '@/lib/ava
 import { showAlert } from '@/lib/ui/dialog';
 
 const STORAGE_KEY = 'helloworld_avatar';
-const TABS: Array<{ key: 'eyes' | 'hair' | 'top' | 'acc'; label: string }> = [
-  { key: 'eyes', label: '눈' },
+const TABS: Array<{ key: 'hair' | 'bottom'; label: string }> = [
   { key: 'hair', label: '헤어' },
-  { key: 'top', label: '옷' },
-  { key: 'acc', label: '악세사리' },
+  { key: 'bottom', label: '하의' },
 ];
 
-/** 도트 감성 아바타 꾸미기 (프로토타입). 저장은 우선 브라우저(localStorage). */
+/** 아바타 꾸미기 (실제 LPC 도트 에셋). 저장은 우선 브라우저(localStorage). */
 export default function AvatarEditPage() {
   const [parts, setParts] = useState<AvatarParts>(DEFAULT_PARTS);
-  const [tab, setTab] = useState<'eyes' | 'hair' | 'top' | 'acc'>('hair');
+  const [tab, setTab] = useState<'hair' | 'bottom'>('hair');
 
-  // 저장해 둔 아바타가 있으면 불러온다
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -37,10 +34,8 @@ export default function AvatarEditPage() {
     const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
     setParts({
       gender: pick(CATALOG.gender).id,
-      eyes: pick(CATALOG.eyes).id,
       hair: pick(CATALOG.hair).id,
-      top: pick(CATALOG.top).id,
-      acc: pick(CATALOG.acc).id,
+      bottom: pick(CATALOG.bottom).id,
     });
   };
 
@@ -60,14 +55,11 @@ export default function AvatarEditPage() {
         <h1 className="av-title">아바타 꾸미기</h1>
 
         <div className="av-stage">
-          {/* 미리보기 */}
           <div className="av-preview">
-            <AvatarView parts={parts} size={168} />
+            <AvatarView parts={parts} size={200} />
           </div>
 
-          {/* 컨트롤 */}
           <div className="av-controls">
-            {/* 성별(기본 프리셋) */}
             <div className="av-gender">
               {CATALOG.gender.map((g) => (
                 <button
@@ -81,7 +73,6 @@ export default function AvatarEditPage() {
               ))}
             </div>
 
-            {/* 카테고리 탭 */}
             <div className="av-tabs">
               {TABS.map((t) => (
                 <button
@@ -95,7 +86,6 @@ export default function AvatarEditPage() {
               ))}
             </div>
 
-            {/* 선택지 (미니 미리보기로 표시) */}
             <div className="av-options">
               {CATALOG[tab].map((opt) => {
                 const preview: AvatarParts = { ...parts, [tab]: opt.id };
@@ -108,7 +98,7 @@ export default function AvatarEditPage() {
                     onClick={() => setPart(tab, opt.id)}
                     title={opt.label}
                   >
-                    <AvatarView parts={preview} size={48} />
+                    <AvatarView parts={preview} size={56} />
                     <span className="av-option-label">{opt.label}</span>
                   </button>
                 );
@@ -127,8 +117,8 @@ export default function AvatarEditPage() {
         </div>
 
         <p className="av-note">
-          도트 예시 프로토타입이에요. 파트를 실제 도트 이미지로 교체하고, 저장·프로필/광장 연동은
-          다음 단계에서 붙입니다.
+          실제 픽셀아트(LPC) 에셋으로 만든 프로토타입이에요. 상의·신발·눈·악세사리 등 파트는
+          정렬 포맷을 맞춰 계속 추가하고, 저장·프로필/광장 연동도 다음 단계에서 붙입니다.
         </p>
       </div>
     </>
