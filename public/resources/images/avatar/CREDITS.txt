@@ -1,4 +1,0 @@
-아바타 파트 스프라이트 출처: Universal LPC Spritesheet (Liberated Pixel Cup)
-- 라이선스: CC-BY-SA 3.0 / GPL 3.0
-- 원본: https://github.com/sanderfrenken/Universal-LPC-Spritesheet-Character-Generator
-- 각 시트에서 정면 서있는 프레임(64x64)만 추출해 파트로 사용.

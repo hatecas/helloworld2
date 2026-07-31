@@ -1,43 +1,39 @@
 /**
- * 아바타 파트 카탈로그 — 실제 픽셀아트(LPC) 이미지 레이어.
+ * 아바타 파트 카탈로그 — 실제 도트 이미지 레이어 (SPEC.md 규격).
  *
- * 각 파트는 64×64 투명 PNG(정면 서있는 프레임)이고, 같은 좌표계라 그냥 겹치면 맞는다.
- * 출처: Universal LPC Spritesheet (CC-BY-SA 3.0 / GPL 3.0) — public/resources/images/avatar/ 에 저장.
+ * 모든 파트는 같은 2:3 캔버스(원본 1024×1536, 여기선 512×768로 저장)에 정위치로 그려진
+ * 투명 PNG. 그냥 겹치면 정렬이 맞는다. 브라우저에서 <img> 를 CSS 로 겹쳐 렌더(AvatarView).
  *
- * 렌더는 브라우저에서 <img> 를 CSS 로 겹쳐서 한다(AvatarView). z-순서: base → bottom → hair.
- * (상의/신발 등은 시트 포맷이 달라 다음 단계에서 정렬 맞춰 추가 예정)
+ * 겹치는 순서(아래→위): base → hair → outfit → eyes
+ *  (곰후드가 outfit 에 포함돼 hair 위를 덮고, 눈은 얼굴 위에 올라온다)
+ * base(민머리·맨몸) 에셋은 아직 없어 없이도 렌더된다(후드 속 얼굴은 base 나오면 채워짐).
  */
 
-export type Gender = 'm' | 'f';
+export type Category = 'hair' | 'outfit' | 'eyes';
 
 export interface AvatarParts {
-  gender: Gender;
   hair: string; // 'none' 가능
-  bottom: string; // 'none' 가능
+  outfit: string;
+  eyes: string;
 }
 
 export const DEFAULT_PARTS: AvatarParts = {
-  gender: 'm',
-  hair: 'bob_blonde',
-  bottom: 'pants_black',
+  hair: 'twintail_brown',
+  outfit: 'bear_hoodie',
+  eyes: 'round_brown',
 };
 
 const DIR = '/resources/images/avatar';
 
-/** 파트 id → 이미지 경로 (none 이면 null) */
-export function partSrc(cat: 'base' | 'hair' | 'bottom', id: string): string | null {
-  if (!id || id === 'none') return null;
-  if (cat === 'base') return `${DIR}/base/${id === 'f' ? 'female_light' : 'male_light'}.png`;
-  return `${DIR}/${cat}/${id}.png`;
+/** 아래→위 레이어 순서 */
+const LAYER_ORDER: Category[] = ['hair', 'outfit', 'eyes'];
+
+export function partSrc(cat: Category, id: string): string | null {
+  return !id || id === 'none' ? null : `${DIR}/${cat}/${id}.png`;
 }
 
-/** z-순서대로 그릴 레이어 이미지 경로들 */
 export function avatarLayerSrcs(parts: AvatarParts): string[] {
-  return [
-    partSrc('base', parts.gender),
-    partSrc('bottom', parts.bottom),
-    partSrc('hair', parts.hair),
-  ].filter((s): s is string => Boolean(s));
+  return LAYER_ORDER.map((c) => partSrc(c, parts[c])).filter((s): s is string => Boolean(s));
 }
 
 export interface Option {
@@ -45,24 +41,24 @@ export interface Option {
   label: string;
 }
 
-export const CATALOG: {
-  gender: Array<{ id: Gender; label: string }>;
-  hair: Option[];
-  bottom: Option[];
-} = {
-  gender: [
-    { id: 'm', label: '남자' },
-    { id: 'f', label: '여자' },
-  ],
+/** 카테고리별 선택지. 파일을 추가하면 여기에 한 줄씩 등록. */
+export const CATALOG: Record<Category, Option[]> = {
   hair: [
-    { id: 'none', label: '민머리' },
-    { id: 'bob_black', label: '검정 단발' },
-    { id: 'bob_blonde', label: '금발 단발' },
-    { id: 'bob_red', label: '빨강 단발' },
-  ],
-  bottom: [
     { id: 'none', label: '없음' },
-    { id: 'pants_black', label: '검정 바지' },
-    { id: 'pants_blue', label: '파랑 바지' },
+    { id: 'twintail_brown', label: '갈색 트윈테일' },
+  ],
+  outfit: [
+    { id: 'none', label: '없음' },
+    { id: 'bear_hoodie', label: '곰돌이 후드' },
+  ],
+  eyes: [
+    { id: 'none', label: '없음' },
+    { id: 'round_brown', label: '동그란 갈색' },
   ],
 };
+
+export const TABS: Array<{ key: Category; label: string }> = [
+  { key: 'hair', label: '헤어' },
+  { key: 'eyes', label: '눈' },
+  { key: 'outfit', label: '의상' },
+];

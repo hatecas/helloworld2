@@ -4,19 +4,15 @@ import { useEffect, useState } from 'react';
 
 import Stylesheets from '@/components/Stylesheets';
 import AvatarView from '@/components/minihome/avatar/AvatarView';
-import { CATALOG, DEFAULT_PARTS, type AvatarParts, type Gender } from '@/lib/avatar/parts';
+import { CATALOG, DEFAULT_PARTS, TABS, type AvatarParts, type Category } from '@/lib/avatar/parts';
 import { showAlert } from '@/lib/ui/dialog';
 
 const STORAGE_KEY = 'helloworld_avatar';
-const TABS: Array<{ key: 'hair' | 'bottom'; label: string }> = [
-  { key: 'hair', label: '헤어' },
-  { key: 'bottom', label: '하의' },
-];
 
-/** 아바타 꾸미기 (실제 LPC 도트 에셋). 저장은 우선 브라우저(localStorage). */
+/** 아바타 꾸미기 — 실제 도트 파트 레이어(SPEC.md 규격). 저장은 우선 브라우저(localStorage). */
 export default function AvatarEditPage() {
   const [parts, setParts] = useState<AvatarParts>(DEFAULT_PARTS);
-  const [tab, setTab] = useState<'hair' | 'bottom'>('hair');
+  const [tab, setTab] = useState<Category>('hair');
 
   useEffect(() => {
     try {
@@ -27,15 +23,14 @@ export default function AvatarEditPage() {
     }
   }, []);
 
-  const setPart = <K extends keyof AvatarParts>(key: K, value: AvatarParts[K]) =>
-    setParts((p) => ({ ...p, [key]: value }));
+  const setPart = (key: Category, value: string) => setParts((p) => ({ ...p, [key]: value }));
 
   const randomize = () => {
     const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
     setParts({
-      gender: pick(CATALOG.gender).id,
       hair: pick(CATALOG.hair).id,
-      bottom: pick(CATALOG.bottom).id,
+      outfit: pick(CATALOG.outfit).id,
+      eyes: pick(CATALOG.eyes).id,
     });
   };
 
@@ -56,23 +51,10 @@ export default function AvatarEditPage() {
 
         <div className="av-stage">
           <div className="av-preview">
-            <AvatarView parts={parts} size={200} />
+            <AvatarView parts={parts} width={200} />
           </div>
 
           <div className="av-controls">
-            <div className="av-gender">
-              {CATALOG.gender.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  className={parts.gender === g.id ? 'av-gender-btn is-on' : 'av-gender-btn'}
-                  onClick={() => setPart('gender', g.id as Gender)}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-
             <div className="av-tabs">
               {TABS.map((t) => (
                 <button
@@ -98,7 +80,7 @@ export default function AvatarEditPage() {
                     onClick={() => setPart(tab, opt.id)}
                     title={opt.label}
                   >
-                    <AvatarView parts={preview} size={56} />
+                    <AvatarView parts={preview} width={56} />
                     <span className="av-option-label">{opt.label}</span>
                   </button>
                 );
@@ -117,8 +99,9 @@ export default function AvatarEditPage() {
         </div>
 
         <p className="av-note">
-          실제 픽셀아트(LPC) 에셋으로 만든 프로토타입이에요. 상의·신발·눈·악세사리 등 파트는
-          정렬 포맷을 맞춰 계속 추가하고, 저장·프로필/광장 연동도 다음 단계에서 붙입니다.
+          실제 도트 파트를 레이어로 겹쳐 조합해요. 지금은 헤어·눈·의상 각 1종이고, 파트 이미지를
+          폴더에 추가하면 계속 늘어납니다. 후드 속 얼굴 피부는 base(민머리·맨몸) 에셋이 들어오면
+          채워집니다.
         </p>
       </div>
     </>
