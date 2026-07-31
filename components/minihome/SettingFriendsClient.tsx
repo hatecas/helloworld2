@@ -133,6 +133,10 @@ export default function SettingFriendsClient({
 
   const goVisit = (nickname: string) => router.push(`/mnHome/mainView/${nickname}`);
 
+  /** 탭 이름 옆 빨간 건수 배지 (0 건이면 안 보인다) */
+  const badge = (count: number) =>
+    count > 0 ? <span className="set-frd-tab-badge">{count}</span> : null;
+
   return (
     <div className="set-frd-frame">
       <div className="set-frd-search-frame">
@@ -191,6 +195,7 @@ export default function SettingFriendsClient({
             onClick={() => setTab('request')}
           >
             받은신청
+            {badge(fRes.length)}
           </button>
           <button
             type="button"
@@ -198,6 +203,7 @@ export default function SettingFriendsClient({
             onClick={() => setTab('accept')}
           >
             보낸신청
+            {badge(fReq.length)}
           </button>
           <div className="set-frd-namefilter">
             <input

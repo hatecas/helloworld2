@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 
 import RichTextEditor, { type RichTextEditorHandle } from '@/components/minihome/RichTextEditor';
 import { showAlert } from '@/lib/ui/dialog';
+import { todayYmd } from '@/lib/db/format';
 
 /**
  * views/miniHome/boardWrite.jsp + boardModify.jsp
@@ -29,8 +30,8 @@ export default function BoardEditorClient({
   const editorRef = useRef<RichTextEditorHandle>(null);
   const [title, setTitle] = useState(initialTitle);
 
-  const today = new Date();
-  const formattedToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  // 작성일 표시도 한국 시간 기준 (서버 UTC 로컬시간과 어긋나지 않게)
+  const formattedToday = todayYmd();
 
   const submit = async () => {
     if (!title.trim()) {

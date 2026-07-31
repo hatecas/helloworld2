@@ -14,6 +14,7 @@
 
 begin;
 
+drop table if exists "notiRead"            cascade;
 drop table if exists "loginLog"            cascade;
 drop table if exists "loginStatus"         cascade;
 drop table if exists "friendCMT"           cascade;
@@ -220,7 +221,9 @@ create table "diaryCMT" (
                  references "user"("userNickname") on update cascade on delete cascade,
   "content"      text        not null,
   "create_date"  timestamptz not null default now(),
-  "openScope"    smallint    not null default 1
+  "openScope"    smallint    not null default 1,
+  -- 답글(대댓글)이면 부모 댓글의 seq
+  "parentSeq"    integer     references "diaryCMT"("seq") on delete cascade
 );
 create index on "diaryCMT" ("diarySeq");
 
@@ -317,6 +320,20 @@ create table "loginLog" (
   "logDate"      timestamptz not null default now()
 );
 
+-- 읽은 알림.
+-- 알림 자체는 기존 테이블(댓글·방명록·일촌신청…)에서 그때그때 파생하므로
+-- 이벤트 테이블이 없다. "읽었다"는 사실만 여기에 남긴다.
+-- 쿠키에 두던 것을 옮긴 것 — 쿠키는 브라우저마다 따로라 다른 PC 에서 다시 안 읽음으로 떴다.
+create table "notiRead" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "notiId"       varchar(60)  not null,   -- getNotifications 가 만드는 id (예: 'board-12')
+  "read_date"    timestamptz  not null default now(),
+  unique ("userNickname", "notiId")
+);
+create index on "notiRead" ("userNickname");
+
 -- ------------------------------------------------------------------ RLS
 -- 정책을 하나도 만들지 않으므로 service_role 을 제외한 모든 접근이 막힌다.
 -- 이 앱은 서버에서 service_role 키로만 붙으므로 그대로 동작한다.
@@ -348,6 +365,7 @@ alter table "friends"            enable row level security;
 alter table "friendCMT"          enable row level security;
 alter table "loginStatus"        enable row level security;
 alter table "loginLog"           enable row level security;
+alter table "notiRead"           enable row level security;
 
 commit;
 

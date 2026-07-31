@@ -27,6 +27,11 @@ export interface Store {
     values: ReadonlyArray<string | number>,
   ): Promise<Row<K>[]>;
   insert<K extends Table>(table: K, row: Omit<Row<K>, 'seq'> & { seq?: number }): Promise<Row<K>>;
+  /** 여러 행을 한 번에. Supabase 왕복을 아끼려고 쓴다(알림 '모두 읽음' 등). */
+  insertMany<K extends Table>(
+    table: K,
+    rows: Array<Omit<Row<K>, 'seq'> & { seq?: number }>,
+  ): Promise<Row<K>[]>;
   update<K extends Table>(table: K, match: Match<K>, patch: Match<K>): Promise<number>;
   remove<K extends Table>(table: K, match: Match<K>): Promise<number>;
   /** seq 컬럼이 있는 테이블용 자동 증가값 */
@@ -49,6 +54,9 @@ function matches<K extends Table>(row: Row<K>, match?: Match<K>): boolean {
  * globalThis 에 붙여 둔다.
  */
 const globalForDb = globalThis as unknown as { __helloworldDb?: Database };
+
+/** seq(자동증가 PK)가 없는 테이블. 나머지는 insert 때 seq 를 채워 준다. */
+const TABLES_WITHOUT_SEQ = new Set<Table>(['user', 'dotori', 'miniroomBackground']);
 
 function memoryDb(): Database {
   if (!globalForDb.__helloworldDb) {
@@ -86,11 +94,26 @@ export class MemoryStore implements Store {
   ): Promise<Row<K>> {
     const rows = memoryDb()[table] as Row<K>[];
     const record = { ...row } as Row<K>;
-    if ('seq' in record && (record as { seq?: number }).seq == null) {
+    /*
+     * 예전엔 `'seq' in record` 로 봤는데, 부르는 쪽이 seq 키를 아예 안 넘기면
+     * (댓글 insert 들이 그렇다) 조건이 false 라 seq 없는 행이 그대로 들어갔다.
+     * → 그 댓글은 seq 로 다시 못 찾아서 삭제가 되지 않았다.
+     *   (Supabase 는 serial PK 가 채워 주므로 인메모리 모드만의 문제였다)
+     */
+    if (!TABLES_WITHOUT_SEQ.has(table) && (record as { seq?: number }).seq == null) {
       (record as { seq: number }).seq = await this.nextSeq(table);
     }
     rows.push(record);
     return record;
+  }
+
+  async insertMany<K extends Table>(
+    table: K,
+    rows: Array<Omit<Row<K>, 'seq'> & { seq?: number }>,
+  ): Promise<Row<K>[]> {
+    const out: Row<K>[] = [];
+    for (const row of rows) out.push(await this.insert(table, row));
+    return out;
   }
 
   async update<K extends Table>(table: K, match: Match<K>, patch: Match<K>): Promise<number> {
@@ -199,6 +222,22 @@ export class SupabaseStore implements Store {
     const { data, error } = await client.from(table).insert(payload).select().single();
     if (error) throw new Error(`[supabase] insert ${table}: ${error.message}`);
     return data as Row<K>;
+  }
+
+  async insertMany<K extends Table>(
+    table: K,
+    rows: Array<Omit<Row<K>, 'seq'> & { seq?: number }>,
+  ): Promise<Row<K>[]> {
+    if (rows.length === 0) return [];
+    const client = await this.getClient();
+    const payload = rows.map((row) => {
+      const p = { ...row } as Record<string, unknown>;
+      if (p.seq == null) delete p.seq;
+      return p;
+    });
+    const { data, error } = await client.from(table).insert(payload).select();
+    if (error) throw new Error(`[supabase] insertMany ${table}: ${error.message}`);
+    return (data ?? []) as Row<K>[];
   }
 
   async update<K extends Table>(table: K, match: Match<K>, patch: Match<K>): Promise<number> {

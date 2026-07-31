@@ -53,12 +53,7 @@ export default async function DiaryViewPage({
                 }
               : null
           }
-          initialComments={visible ? comments.map((c) => ({
-            seq: c.seq,
-            userNickname: c.userNickname,
-            content: c.content,
-            cmtDate: c.cmtDate,
-          })) : []}
+          initialComments={visible ? comments : []}
         />
       </MiniHomeShell>
     </>

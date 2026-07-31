@@ -149,6 +149,8 @@
 }
 
 .set-frd-frame .set-frd-tab {
+	display: inline-flex;
+	align-items: center;
 	padding: 7px 15px;
 	font-size: 13px;
 	font-weight: 600;
@@ -169,6 +171,30 @@
 .set-frd-frame .set-frd-tab.active {
 	background: var(--mh-blue);
 	color: #ffffff;
+}
+
+/* 받은신청 / 보낸신청 건수 배지 — 0 건이면 아예 안 그린다 */
+.set-frd-tab-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 17px;
+	height: 17px;
+	margin-left: 5px;
+	padding: 0 5px;
+	box-sizing: border-box;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1;
+	color: #ffffff;
+	background: #ff3b30;
+	border-radius: 999px;
+	vertical-align: middle;
+}
+
+/* 선택된 탭(파란 배경) 위에서도 빨간 배지가 묻히지 않게 흰 테두리를 준다 */
+.set-frd-frame .set-frd-tab.active .set-frd-tab-badge {
+	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
 }
 
 .set-frd-namefilter {

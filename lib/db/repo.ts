@@ -2,7 +2,7 @@ import { getStore, type Table } from './store';
 import { nowIso, todayYmd, withinHours, ymd, ymdDot, ymdhm, ymdhmDot } from './format';
 import type {
   Album, AlbumComment, Board, BoardComment, Diary, DiaryComment, Friend, FriendStatus,
-  Notice, StorageCategory, StoreItem, User, Visit,
+  Notice, NotiRead, StorageCategory, StoreItem, User, Visit,
 } from './types';
 
 /**
@@ -1132,21 +1132,40 @@ export async function deleteDiary(seq: number) {
   return db().update('diary', { seq }, { del_yn: 'y' } as Partial<Diary>);
 }
 
+/**
+ * 다이어리 댓글 — 게시판·사진첩과 같은 모양(ThreadComment)으로 돌려준다.
+ * 원댓글은 오래된→최신 순, 답글은 화면에서 parentSeq 로 부모 밑에 묶는다.
+ */
 export async function getDiaryComments(diarySeq: number) {
   const rows = await db().select('diaryCMT', { diarySeq });
   return [...rows]
-    .sort((a, b) => b.seq - a.seq)
-    .map((c) => ({ ...c, cmtDate: ymdhm(c.create_date) }));
+    .sort((a, b) => a.seq - b.seq)
+    .map((c) => ({
+      seq: c.seq,
+      userNickname: c.userNickname,
+      content: c.content,
+      update_date_format: ymdhmDot(c.create_date),
+      parentSeq: c.parentSeq ?? null,
+    }));
 }
 
 export async function insertDiaryComment(
   diarySeq: number,
   userNickname: string,
   content: string,
+  parentSeq: number | null = null,
 ) {
   await db().insert('diaryCMT', {
     diarySeq, userNickname, content, create_date: nowIso(), openScope: 1,
+    parentSeq,
   } as Omit<DiaryComment, 'seq'>);
+}
+
+export async function deleteDiaryComment(seq: number) {
+  // 원댓글을 지우면 딸린 답글도 함께 (Supabase 는 FK cascade 로도 처리됨)
+  const children = await db().select('diaryCMT', { parentSeq: seq } as Partial<DiaryComment>);
+  for (const child of children) await db().remove('diaryCMT', { seq: child.seq });
+  return db().remove('diaryCMT', { seq });
 }
 
 /** selectDiaryCMT: 이 유저의 모든 다이어리에 달린 댓글 (diarySeq 별로 묶어 쓴다) */
@@ -1327,20 +1346,58 @@ export interface NotiItem {
 }
 
 const NOTI_LIMIT = 30;
+/** 계정별로 남겨 두는 "읽음" 기록 수 (알림 목록보다 넉넉하게) */
+const NOTI_READ_KEEP = 300;
+
+/** 이 사용자가 읽은 알림 id 들 */
+export async function getReadNotiIds(viewer: string): Promise<string[]> {
+  const rows = await db().select('notiRead', { userNickname: viewer });
+  return rows.map((r) => r.notiId);
+}
+
+/**
+ * 알림을 읽음으로 표시한다. 이미 읽은 것은 건너뛴다.
+ * 읽음 기록은 계정에 남으므로 다른 PC 에서 접속해도 그대로다.
+ */
+export async function markNotiRead(viewer: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const already = new Set(await getReadNotiIds(viewer));
+  const fresh = [...new Set(ids)].filter((id) => id && !already.has(id));
+  if (fresh.length === 0) return;
+
+  const now = nowIso();
+  await db().insertMany(
+    'notiRead',
+    fresh.map((notiId) => ({
+      userNickname: viewer, notiId, read_date: now,
+    })) as Array<Omit<NotiRead, 'seq'>>,
+  );
+
+  // 오래된 기록은 정리한다. 알림 목록 자체가 최신 NOTI_LIMIT 개만 보므로
+  // 그보다 넉넉한 만큼만 남겨도 "이미 읽은 게 다시 뜨는" 일은 없다.
+  const rows = await db().select('notiRead', { userNickname: viewer });
+  if (rows.length > NOTI_READ_KEEP) {
+    const stale = [...rows]
+      .sort((a, b) => (a.read_date < b.read_date ? 1 : a.read_date > b.read_date ? -1 : 0))
+      .slice(NOTI_READ_KEEP);
+    for (const row of stale) await db().remove('notiRead', { seq: row.seq });
+  }
+}
 
 /**
  * 로그인한 사용자(viewer)를 대상으로 한 알림 목록.
  * 내 게시판/사진첩/다이어리 댓글, 일촌평, 방명록, 받은 일촌신청을 모아
  * 최신순으로 돌려준다.
- *  - readAtIso 이후(더 최신)면 안 읽음. ("모두 읽음" 기준 시각)
- *  - seenIds 에 들어 있으면 개별로 읽은 것이라 읽음 처리. (알림 클릭 시)
+ *
+ * 이미 읽은 알림(readIds)은 목록에서 아예 빼고 돌려준다.
+ * — 읽고 나면 내용까지 사라지는 게 맞다. 예전엔 읽음 표시만 하고 계속 남아 있었다.
  */
 export async function getNotifications(
   viewer: string,
-  readAtIso: string,
-  seenIds: string[] = [],
+  readIds: string[] = [],
 ): Promise<{ items: NotiItem[]; unread: number }> {
-  const seen = new Set(seenIds);
+  const seen = new Set(readIds);
   const [myBoards, myAlbums, myDiaries] = await Promise.all([
     db().select('board', { userNickname: viewer }),
     db().select('album', { userNickname: viewer }),
@@ -1452,13 +1509,11 @@ export async function getNotifications(
   }
 
   const sorted = items
+    .filter((it) => !seen.has(it.id))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, NOTI_LIMIT)
-    .map((it) => ({
-      ...it,
-      dateLabel: ymdhmDot(it.date),
-      unread: it.date > readAtIso && !seen.has(it.id),
-    }));
+    .map((it) => ({ ...it, dateLabel: ymdhmDot(it.date), unread: true }));
 
-  return { items: sorted, unread: sorted.filter((it) => it.unread).length };
+  // 읽은 건 위에서 걸러냈으니 남은 게 전부 안 읽은 알림이다.
+  return { items: sorted, unread: sorted.length };
 }

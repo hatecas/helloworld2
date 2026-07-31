@@ -175,6 +175,8 @@ export interface DiaryComment {
   content: string;
   create_date: string;
   openScope: 0 | 1;
+  /** 답글이면 부모 댓글의 seq, 원댓글이면 null */
+  parentSeq?: number | null;
 }
 
 export interface Album {
@@ -252,6 +254,18 @@ export interface LoginLog {
   logDate: string;
 }
 
+/**
+ * 읽은 알림. 알림 자체는 기존 테이블에서 파생하므로 "읽었다"는 사실만 남긴다.
+ * (예전엔 httpOnly 쿠키에 뒀는데 브라우저마다 따로라 다른 PC 에서 다시 안 읽음으로 떴다)
+ */
+export interface NotiRead {
+  seq: number;
+  userNickname: string;
+  /** getNotifications 가 만드는 알림 id (예: 'board-12') */
+  notiId: string;
+  read_date: string;
+}
+
 /** 인메모리/Supabase 어댑터가 공유하는 전체 데이터 형태 */
 export interface Database {
   user: User[];
@@ -279,4 +293,5 @@ export interface Database {
   friendCMT: FriendComment[];
   loginStatus: LoginStatus[];
   loginLog: LoginLog[];
+  notiRead: NotiRead[];
 }

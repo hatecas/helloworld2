@@ -62,31 +62,32 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
+  // 읽은 알림은 목록에서 사라진다 (읽음 기록은 서버에 남아 다른 PC 에서도 그대로)
   const markAllRead = async () => {
+    setItems([]);
+    setUnread(0);
     try {
       await fetch('/api/mnHome/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ all: true }),
       });
-      setUnread(0);
-      setItems((prev) => prev.map((it) => ({ ...it, unread: false })));
     } catch {
-      // 무시
+      // 실패하면 다음 폴링에서 원래 목록이 다시 돌아온다
+      void load();
     }
   };
 
-  // 알림을 누르면 그 항목만 읽음 처리하고 이동한다
+  // 알림을 누르면 그 항목을 읽음 처리해 목록에서 빼고 이동한다
   const go = (item: NotiItem) => {
-    if (item.unread) {
-      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, unread: false } : it)));
-      setUnread((u) => Math.max(0, u - 1));
-      void fetch('/api/mnHome/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id }),
-      }).catch(() => undefined);
-    }
+    setItems((prev) => prev.filter((it) => it.id !== item.id));
+    setUnread((u) => Math.max(0, u - 1));
+    void fetch('/api/mnHome/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: item.id }),
+    }).catch(() => undefined);
+
     setOpen(false);
     router.push(item.link);
   };

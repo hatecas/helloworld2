@@ -153,7 +153,7 @@ export function buildSeed(): Database {
     bgm: [], userBgm: [], profile: [], miniHomeTitle: [], miniroomBackground: [],
     miniroomMinimi: [], notice: [], board: [], boardCMT: [], diary: [], diaryCMT: [],
     album: [], albumCMT: [], visit: [], visitCnt: [], friends: [], friendCMT: [], loginStatus: [],
-    loginLog: [],
+    loginLog: [], notiRead: [],
   };
 
   let seq = 1;

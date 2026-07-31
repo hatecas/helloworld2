@@ -4,19 +4,14 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
 
+import CommentThread, { type ThreadComment } from '@/components/minihome/CommentThread';
+
 interface DiaryData {
   seq: number;
   title: string;
   content: string;
   openScope: 0 | 1;
   formatted_update_date: string;
-}
-
-interface DiaryComment {
-  seq: number;
-  userNickname: string;
-  content: string;
-  cmtDate: string;
 }
 
 /** views/miniHome/diary.jsp + resources/js/datePicker.js + diaryComment.js */
@@ -33,12 +28,11 @@ export default function DiaryClient({
   isOwner: boolean;
   initialDate: string;
   initialDiary: DiaryData | null;
-  initialComments: DiaryComment[];
+  initialComments: ThreadComment[];
 }) {
   const router = useRouter();
   const [diary, setDiary] = useState<DiaryData | null>(initialDiary);
-  const [comments, setComments] = useState<DiaryComment[]>(initialComments);
-  const [draft, setDraft] = useState('');
+  const [comments, setComments] = useState<ThreadComment[]>(initialComments);
   const [, setSelectedDate] = useState(initialDate);
 
   const loadComments = useCallback(async (seq: number) => {
@@ -48,7 +42,7 @@ export default function DiaryClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seq }),
       });
-      const json = (await res.json()) as { cmt?: DiaryComment[] };
+      const json = (await res.json()) as { cmt?: ThreadComment[] };
       setComments(json.cmt ?? []);
     } catch {
       setComments([]);
@@ -92,28 +86,40 @@ export default function DiaryClient({
     return () => window.removeEventListener('diary:selectDate', handler);
   }, [loadDiary]);
 
-  const addComment = async () => {
-    if (!diary || !draft.trim()) return;
+  // 게시판·사진첩과 동일한 CommentThread 계약: 성공하면 갱신된 목록, 실패하면 null
+  const addComment = async (content: string, parentSeq: number | null) => {
+    if (!diary) return null;
     if (!viewerNickname) {
       void showAlert('로그인이 필요합니다.');
-      return;
+      return null;
     }
     try {
       const res = await fetch('/mnHome/diaryAddCMT', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ diarySeq: diary.seq, userNickname: viewerNickname, content: draft }),
+        body: JSON.stringify({ diarySeq: diary.seq, content, parentSeq }),
       });
-      const json = (await res.json()) as { resultCode: string };
-      if (json.resultCode === '1') {
-        void showAlert('작성 완료');
-        setDraft('');
-        await loadComments(diary.seq);
-      } else {
-        void showAlert('작성 실패');
-      }
+      const json = (await res.json()) as ThreadComment[];
+      if (json.length === 0) return null;
+      setComments(json);
+      return json;
     } catch {
-      void showAlert('잠시 후 다시 시도해주세요.');
+      return null;
+    }
+  };
+
+  const deleteComment = async (commentSeq: number) => {
+    try {
+      const res = await fetch('/mnHome/diaryCommentDelete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seq: commentSeq }),
+      });
+      const ok = ((await res.json()) as number) === 1;
+      if (ok && diary) await loadComments(diary.seq);
+      return ok;
+    } catch {
+      return false;
     }
   };
 
@@ -206,31 +212,16 @@ export default function DiaryClient({
               )}
 
               {diary && (
-                <div className="board-comment-write" id="cmtInputContainer">
-                  <span>댓글</span>
-                  <input
-                    type="text"
-                    className="comment-content-write"
-                    id={`cmtContent${diary.seq}`}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void addComment();
-                    }}
+                <div className="album-comment-section" id="diaryCmtContainer">
+                  <CommentThread
+                    viewerNickname={viewerNickname}
+                    canComment={!!viewerNickname}
+                    comments={comments}
+                    onAdd={addComment}
+                    onDelete={deleteComment}
                   />
-                  <input type="button" value="확인" onClick={() => void addComment()} />
                 </div>
               )}
-
-              <div className="board-comment-container" id="diaryCmtContainer">
-                {comments.map((comment) => (
-                  <div className="board-comment" key={comment.seq}>
-                    <span className="board-comment-writer">{comment.userNickname}</span>
-                    <span className="board-comment-content">{comment.content}</span>
-                    <span className="board-comment-date">{comment.cmtDate}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>

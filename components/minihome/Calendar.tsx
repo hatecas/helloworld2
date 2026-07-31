@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { kstTodayParts } from '@/lib/db/format';
+
 /**
  * 미니홈피 달력.
  *
@@ -32,8 +34,9 @@ export default function Calendar({
   inline: boolean;
   onSelect: (isoDate: string) => void;
 }) {
-  const today = new Date();
-  const [view, setView] = useState({ year: today.getFullYear(), month: today.getMonth() });
+  // '오늘' 은 한국 시간 기준. (서버는 UTC 라 로컬 Date 로 잡으면 SSR/CSR 이 어긋난다)
+  const today = kstTodayParts();
+  const [view, setView] = useState({ year: today.year, month: today.month });
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -67,7 +70,7 @@ export default function Calendar({
   };
 
   const isToday = (day: number) =>
-    year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+    year === today.year && month === today.month && day === today.day;
 
   const cells: Array<number | null> = [
     ...Array.from({ length: firstWeekday }, () => null),

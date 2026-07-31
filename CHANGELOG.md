@@ -16,6 +16,21 @@ alter table "visit"
 alter table "boardCMT"
   add column if not exists "parentSeq" integer references "boardCMT"("seq") on delete cascade;
 
+-- 다이어리 댓글 답글(대댓글)
+alter table "diaryCMT"
+  add column if not exists "parentSeq" integer references "diaryCMT"("seq") on delete cascade;
+
+-- 알림 읽음 기록 (쿠키 → DB). 이게 있어야 다른 PC 에서도 읽음이 유지된다.
+create table if not exists "notiRead" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null references "user"("userNickname") on update cascade on delete cascade,
+  "notiId"       varchar(60) not null,
+  "read_date"    timestamptz not null default now(),
+  unique ("userNickname", "notiId")
+);
+create index if not exists "notiRead_userNickname_idx" on "notiRead" ("userNickname");
+alter table "notiRead" enable row level security;
+
 -- 사진첩 댓글 테이블
 create table if not exists "albumCMT" (
   "seq"          serial primary key,
@@ -37,26 +52,33 @@ update "userBgm" set "title" = '벌써 1년', "artist" = '브라운아이드소�
   where "contentPath" = '/resources/sounds/Already1Year.mp3';
 ```
 
-> 알림 기능은 추가 SQL이 필요 없습니다(기존 테이블에서 파생 + 읽음 상태는 쿠키).
+> 알림 목록 자체는 여전히 기존 테이블에서 파생합니다(이벤트 테이블 없음).
+> 위 `notiRead` 는 "읽었다"는 사실만 저장합니다. 표를 새로 만드는 것이라
+> 적용 직후 한 번은 기존 알림이 전부 안 읽음으로 뜹니다 — **모두 읽음** 한 번 누르면 정리됩니다.
 
 ---
 
 ## 기능 추가
 
 ### 알림 (우측 상단 🔔)
-- 안 읽은 알림이 있으면 빨간 배지, **모두 읽음** 버튼, 알림 클릭 시 개별 읽음 처리(누르면 사라짐).
+- 안 읽은 알림이 있으면 빨간 배지, **모두 읽음** 버튼, 알림을 누르면 **목록에서 사라진다**.
 - 대상:
   - 내 게시판/사진첩/다이어리 **댓글**, **일촌평**, **방명록**, 받은 **일촌 신청**
   - **일촌(수락된 친구)이 올린 새 콘텐츠** — 게시글 🆕 / 사진 🖼️ / 다이어리 ✨
-- 이벤트 테이블 없이 기존 데이터에서 파생, 읽음 시각/개별 읽음은 httpOnly 쿠키.
+- 알림은 이벤트 테이블 없이 기존 데이터에서 파생, **읽음 기록은 `notiRead` 테이블**(계정 단위).
 
 ### 방명록
 - 미니홈피 주인이 방문글에 **답글**(방문글과 동일한 미니미+날짜 레이아웃), "비밀로하기" 제거.
 
-### 게시판 / 사진첩 댓글
+### 게시판 / 사진첩 / 다이어리 댓글
 - 댓글에 **답글(대댓글)** — 부모 댓글 아래 └> 세로 들여쓰기(공용 `CommentThread`).
+- **다이어리 댓글에도 답글**과 **본인 댓글 삭제** 추가(`/mnHome/diaryCommentDelete`).
+  원댓글을 지우면 딸린 답글도 함께 사라진다.
 - 사진첩에 댓글 기능 신규 추가.
 - 게시판 목록에 글별 **댓글 수** 컬럼.
+
+### 일촌 현황
+- **받은신청 / 보낸신청** 탭에 건수 **빨간 배지**(0건이면 표시 안 함).
 
 ### BGM
 - 내 미니홈피 진입 시 **자동 재생**, 다른 홈 방문 시 정지.
@@ -73,11 +95,27 @@ update "userBgm" set "title" = '벌써 1년', "artist" = '브라운아이드소�
 - 다이어리/게시판 본문 에디터를 **자체 경량 RichTextEditor**로 교체(SmartEditor 제거).
 - 사진첩 업로드: 파일 선택 버튼·정사각 썸네일 그리드.
 - 공통 액션 버튼 통일(`.mh-act` / `.mh-btn`).
+- **댓글 UI 통일**: 게시판·사진첩·다이어리가 모두 `CommentThread` + `frame.css` 한 벌만 쓴다.
+  (board.css / diary.css 가 `.board-comment*` 를 각자 다시 정의해서 탭마다 여백·정렬·글자 크기가
+  달랐던 것을 걷어냄)
+- **프로필 칸**: 사진 영역이 남는 세로 공간을 전부 가져가 크게, 프로필 멘트는 두 줄로 줄이고
+  길면 그 안에서 스크롤. 사진은 `absolute` 로 띄워 **칸 높이를 밀어내지 못하게** 했다
+  (`.profile-box { min-height:0; overflow:hidden }`) — 오른쪽 Updated News 칸과 세로가 맞는다.
+- **미니홈피 제목**: 제목이 글자 길이만큼만 차지하게 해서 `[수정]` 버튼이 제목 바로 옆에 붙는다.
+  버튼/입력창의 흰 배경을 걷어내 페이지 배경 톤에 맞춤.
 
 ## 버그 수정
+- **날짜 표기를 전부 한국 시간(KST) 기준으로** — 서버(UTC)에서 오전 9시 이전 글이 '어제'로 찍히던 문제.
+  `lib/db/format.ts` 한 곳에서 UTC+9 로 변환(달력·글쓰기 작성일 포함).
 - 다이어리 작성 직후 안 보이던 문제(서버 UTC vs KST) → 오늘 글 없으면 최신 글 폴백.
 - 접속 지연 개선(mainView DB 왕복 병렬화 + 방문수 증가 `after()`).
 - **BGM 관리 중복**: 재생목록에 넣은 곡이 '보유 BGM'에도 떠서 두 개로 보이던 문제 수정.
+- 인메모리 저장소(DB 미연결 dev 모드)에서 `seq` 없이 들어간 행이 생겨 댓글 삭제가 안 되던 문제
+  (`MemoryStore.insert` 의 `'seq' in record` 검사). Supabase 모드는 serial PK 라 영향 없음.
+- **알림 읽음이 브라우저마다 따로 놀던 문제** — httpOnly 쿠키에 저장하던 것을 `notiRead` 테이블로
+  옮겼다. 다른 PC 에서 접속해도 읽은 알림은 그대로 읽음.
+- **읽은 알림이 목록에 계속 남던 문제** — 읽은 알림은 목록에서 아예 빠진다(읽음 표시만 하던 것 수정).
+- 프로필 칸이 회색 페이지 밖으로 삐져나가던 문제(사진 확대 후) — 위 UI 개선 항목 참고.
 
 ## 모바일 (반응형)
 - 1080×660 고정 "책"을 좁은 화면에서 **세로 1단**으로 리플로우, 모바일은 팝업 대신 전체화면 진입.
