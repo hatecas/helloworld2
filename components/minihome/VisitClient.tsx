@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
 
 interface VisitRow {
+  seq: number;
   number: number;
   userNickname: string;
   userName: string;
@@ -12,6 +13,8 @@ interface VisitRow {
   contentHtml: string;
   update_date: string;
   contentPath: string;
+  reply: string | null;
+  replyDate: string | null;
 }
 
 /** 글자수를 바이트로 세던 구 visit.js countBytes */
@@ -29,12 +32,16 @@ export default function VisitClient({
   userNickname,
   viewerNickname,
   viewerMinimi,
+  ownerName,
+  ownerMinimi,
   visits: initialVisits,
   totalPage,
 }: {
   userNickname: string;
   viewerNickname: string;
   viewerMinimi: string;
+  ownerName: string;
+  ownerMinimi: string;
   visits: VisitRow[];
   totalPage: number;
 }) {
@@ -48,8 +55,36 @@ export default function VisitClient({
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  // 주인장 답글 (열려 있는 방문글 seq / 입력 중인 답글 내용)
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
 
+  const isOwner = viewerNickname === userNickname;
   const byteCount = countBytes(draft);
+
+  const saveReply = async (visit: VisitRow) => {
+    try {
+      const res = await fetch('/mnHome/visitReply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seq: visit.seq, reply: replyDraft }),
+      });
+      const json = (await res.json()) as { result: string };
+      if (json.result === 'Success') {
+        const trimmed = replyDraft.trim();
+        setVisits((prev) =>
+          prev.map((v) => (v.seq === visit.seq ? { ...v, reply: trimmed || null } : v)),
+        );
+        setReplyingTo(null);
+        setReplyDraft('');
+        router.refresh(); // 답글 시간까지 정확히 반영
+      } else {
+        void showAlert('답글 저장에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch {
+      void showAlert('답글 저장에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
 
   const insertComment = async () => {
     if (viewerNickname === userNickname) {
@@ -182,7 +217,6 @@ export default function VisitClient({
                     </a>
                   </td>
                   <td>{visit.update_date}</td>
-                  <td>비밀로하기</td>
                   {viewerNickname === visit.userNickname && (
                     <>
                       <td
@@ -221,6 +255,85 @@ export default function VisitClient({
               )}
             </div>
           </div>
+
+          {(visit.reply || isOwner) && (
+            <div className="visit-reply-area">
+              {/* 주인장 답글 — 방문글과 동일한 미니미 + 이름 + 날짜 레이아웃 */}
+              {visit.reply && replyingTo !== visit.seq && (
+                <div className="visit-reply-entry">
+                  <div className="visit-line visit-reply-line">
+                    <table>
+                      <tbody>
+                        <tr>
+                          <td className="visit-reply-tag">답글</td>
+                          <td>
+                            {ownerName}
+                            <a href={`/mnHome/mainView/${userNickname}`}>
+                              <img
+                                src="/resources/images/minihome/homeIcon.png"
+                                className="visit-line-tbImg"
+                                alt="홈"
+                              />
+                            </a>
+                          </td>
+                          <td>{visit.replyDate}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="visit-frame-write view-margin">
+                    <img className="visit-minimi" src={ownerMinimi} alt="주인 미니미" />
+                    <div className="visit-view">
+                      <div className="visit-view-inner-list visit-reply-text">{visit.reply}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isOwner && replyingTo === visit.seq && (
+                <div className="visit-reply-edit">
+                  <textarea
+                    className="visit-reply-input"
+                    value={replyDraft}
+                    placeholder="답글을 입력하세요"
+                    onChange={(e) => setReplyDraft(e.target.value)}
+                  />
+                  <div className="visit-reply-btns">
+                    <button
+                      type="button"
+                      className="visit-reply-save"
+                      onClick={() => void saveReply(visit)}
+                    >
+                      등록
+                    </button>
+                    <button
+                      type="button"
+                      className="visit-reply-cancel"
+                      onClick={() => {
+                        setReplyingTo(null);
+                        setReplyDraft('');
+                      }}
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isOwner && replyingTo !== visit.seq && (
+                <button
+                  type="button"
+                  className="visit-reply-toggle"
+                  onClick={() => {
+                    setReplyingTo(visit.seq);
+                    setReplyDraft(visit.reply ?? '');
+                  }}
+                >
+                  {visit.reply ? '답글 수정' : '답글 달기'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
 

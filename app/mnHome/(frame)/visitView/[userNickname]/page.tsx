@@ -30,10 +30,11 @@ export default async function VisitViewPage({
   if (!common) notFound();
 
   const viewer = await getSessionUser();
-  const [totalCnt, visits, viewerMinimi] = await Promise.all([
+  const [totalCnt, visits, viewerMinimi, ownerMinimi] = await Promise.all([
     selectVisitCount(userNickname),
     selectVisitComments(userNickname, currentPage),
     viewer ? selectUserMinimi(viewer.userNickname) : Promise.resolve(null),
+    selectUserMinimi(userNickname),
   ]);
 
   return (
@@ -44,6 +45,8 @@ export default async function VisitViewPage({
           userNickname={userNickname}
           viewerNickname={viewer?.userNickname ?? ''}
           viewerMinimi={viewerMinimi ?? DEFAULT_MINIMI_PATH}
+          ownerName={common.userName}
+          ownerMinimi={ownerMinimi ?? DEFAULT_MINIMI_PATH}
           visits={visits.map((v) => ({
             ...v,
             // 구 컨트롤러가 하던 개행 → <br> 치환

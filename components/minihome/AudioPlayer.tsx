@@ -18,12 +18,21 @@ const IMG = '/resources/images/audioPlayer';
  * 예전에는 재생/일시정지 버튼이 따로 있었는데 하나의 토글로 합쳤다.
  * 브라우저 자동재생 정책 때문에 첫 재생은 사용자가 한 번 눌러야 시작될 수 있다.
  */
-export default function AudioPlayer({ playlist }: { playlist: Track[] }) {
+export default function AudioPlayer({
+  playlist,
+  autoPlay = false,
+}: {
+  playlist: Track[];
+  /** 내 미니홈피에 들어왔을 때 첫 곡을 자동 재생 (브라우저가 막으면 조용히 정지 상태) */
+  autoPlay?: boolean;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(50);
+  // autoPlay 를 홈피당 한 번만 시도하기 위한 플래그
+  const autoTried = useRef(false);
 
   const track = playlist[current];
   const empty = playlist.length === 0;
@@ -41,6 +50,18 @@ export default function AudioPlayer({ playlist }: { playlist: Track[] }) {
       () => setPlaying(false), // 자동재생이 막히면 조용히 정지 상태로 둔다
     );
   }, [track]);
+
+  // 내 미니홈피면 첫 곡을 자동으로 튼다. 다른 홈피로 갔다 오면 (autoPlay=false)
+  // 플래그가 풀려서 내 홈피로 돌아왔을 때 다시 시도한다.
+  useEffect(() => {
+    if (!autoPlay) {
+      autoTried.current = false;
+      return;
+    }
+    if (autoTried.current || empty || !track) return;
+    autoTried.current = true;
+    play();
+  }, [autoPlay, empty, track, play]);
 
   const toggle = () => {
     if (empty) return;

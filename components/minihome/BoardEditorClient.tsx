@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
-import SmartEditor, { type SmartEditorHandle } from '@/components/SmartEditor';
+import RichTextEditor, { type RichTextEditorHandle } from '@/components/minihome/RichTextEditor';
 import { showAlert } from '@/lib/ui/dialog';
 
 /**
@@ -26,7 +26,7 @@ export default function BoardEditorClient({
   content?: string;
 }) {
   const router = useRouter();
-  const editorRef = useRef<SmartEditorHandle>(null);
+  const editorRef = useRef<RichTextEditorHandle>(null);
   const [title, setTitle] = useState(initialTitle);
 
   const today = new Date();
@@ -64,31 +64,25 @@ export default function BoardEditorClient({
 
   return (
     <div className="board-overflow">
-      <div className="board-title-container">
+      <div className="write-card">
         <input
           type="text"
-          placeholder=" 제목을 입력하세요"
-          className="board-title"
+          placeholder="제목을 입력하세요"
+          className="write-title"
           maxLength={30}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-      </div>
-      <div className="board-write-container">
-        <span className="board-writer"> {userName}(작성자)</span>
-        <span className="board-write-date">{formattedToday}</span>
+        <div className="write-meta">
+          <span className="write-writer">{userName}</span>
+          <span className="write-date">
+            <span className="write-date-label">작성일</span>
+            <span className="write-date-input">{formattedToday}</span>
+          </span>
+        </div>
       </div>
 
-      <SmartEditor
-        ref={editorRef}
-        id="txtContent"
-        name="content"
-        rows={10}
-        cols={100}
-        defaultValue={initialContent}
-      />
-      <br />
-      <br />
+      <RichTextEditor ref={editorRef} id="txtContent" defaultValue={initialContent} />
 
       <div className="btn-container">
         <div className="btn-left" />
@@ -109,7 +103,6 @@ export default function BoardEditorClient({
           />
         </div>
       </div>
-      <div id="preview-container" />
     </div>
   );
 }

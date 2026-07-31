@@ -244,7 +244,10 @@ create table "visit" (
                     references "user"("userNickname") on update cascade on delete cascade,
   "content"         text        not null,
   "create_date"     timestamptz not null default now(),
-  "update_date"     timestamptz not null default now()
+  "update_date"     timestamptz not null default now(),
+  -- 미니홈피 주인이 방문글에 다는 답글
+  "reply"           text,
+  "reply_date"      timestamptz
 );
 create index on "visit" ("targetNickname", "update_date" desc);
 

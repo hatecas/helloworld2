@@ -315,9 +315,14 @@ export async function getHomeOwnerInfo(userNickname: string): Promise<{
   userGender: string;
   userName: string;
 } | null> {
-  const user = (await db().select('user', { userNickname }))[0];
+  // user / title 는 서로 독립이라 한 번에 병렬로 가져온다 (왕복 2 → 1)
+  const [users, titleRows] = await Promise.all([
+    db().select('user', { userNickname }),
+    db().select('miniHomeTitle', { userNickname }),
+  ]);
+  const user = users[0];
   if (!user) return null;
-  const titleRow = (await db().select('miniHomeTitle', { userNickname }))[0];
+  const titleRow = titleRows[0];
   return {
     seq: titleRow?.seq ?? null,
     title: titleRow?.title ?? `${user.userName}의 미니홈피입니다.`,
@@ -1010,6 +1015,21 @@ export async function selectTodayDiary(userNickname: string) {
   return selectDiaryByDate(userNickname, todayYmd());
 }
 
+/**
+ * 가장 최근(작성일 기준) 다이어리 한 건.
+ *
+ * 서버 시간대(UTC)와 작성자 시간대(KST)가 달라 "오늘"이 어긋나면 방금 쓴 일기가
+ * 오늘 글 조회에서 빠질 수 있다. 그때 이 함수로 최신 글을 대신 보여 주면
+ * 작성 직후 바로 화면에 반영된다.
+ */
+export async function selectLatestDiary(userNickname: string, includePrivate: boolean) {
+  const rows = (await db().select('diary', { userNickname })).filter(
+    (d) => d.del_yn.toLowerCase() === 'n' && (includePrivate || d.openScope === 1),
+  );
+  const found = desc(rows, (d) => d.diary_date)[0];
+  return found ? { ...found, formatted_update_date: ymd(found.diary_date) } : null;
+}
+
 export async function selectDiaryOne(seq: number) {
   const rows = await db().select('diary', { seq });
   const found = rows[0];
@@ -1147,6 +1167,7 @@ export async function selectVisitComments(targetNickname: string, page = 1) {
 
   return pageRows
     .map((v, i) => ({
+      seq: v.seq,
       number: offset + i + 1,
       userNickname: v.userNickname,
       targetNickname: v.targetNickname,
@@ -1155,7 +1176,23 @@ export async function selectVisitComments(targetNickname: string, page = 1) {
       update_date: ymdhmDot(v.update_date),
       contentPath: minimiOf.get(v.userNickname) ?? DEFAULT_MINIMI_PATH,
       userName: nameOf.get(v.userNickname) ?? v.userNickname,
+      reply: v.reply ?? null,
+      replyDate: v.reply_date ? ymdhmDot(v.reply_date) : null,
     }));
+}
+
+/** 미니홈피 주인이 방문글(seq)에 답글을 달거나 수정한다. 빈 문자열이면 답글을 지운다. */
+export async function replyVisitComment(params: {
+  seq: number;
+  targetNickname: string;
+  reply: string;
+}): Promise<number> {
+  const reply = params.reply.trim();
+  return db().update(
+    'visit',
+    { seq: params.seq, targetNickname: params.targetNickname },
+    { reply: reply || null, reply_date: reply ? nowIso() : null } as Partial<Visit>,
+  );
 }
 
 export async function insertVisitComment(

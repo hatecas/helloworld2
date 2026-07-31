@@ -107,7 +107,10 @@ export default function MiniHomeChrome({ children }: { children: ReactNode }) {
     <div className="main-frame-skin" style={{ backgroundColor: data?.skinColor }}>
       <div className="main-frame">
         {children}
-        <AudioPlayer playlist={data?.playList ?? []} />
+        <AudioPlayer
+          playlist={data?.playList ?? []}
+          autoPlay={Boolean(userNickname) && data?.viewerNickname === userNickname}
+        />
       </div>
 
       <div className="main-under-bar font-neo">

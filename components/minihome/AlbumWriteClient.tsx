@@ -70,69 +70,86 @@ export default function AlbumWriteClient({ userNickname }: { userNickname: strin
   return (
     <div className="album-overflow">
       <div className="album-container3">
-        <div className="album-container2">
-          <div className="album-container1">
-            <div className="album-title albumWrite-title">
-              <input
-                type="text"
-                placeholder="제목을 입력하세요"
-                id="albumTitle"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
+        <div className="album-write">
+          <div className="write-card">
+            <input
+              type="text"
+              className="write-title"
+              placeholder="제목을 입력하세요"
+              id="albumTitle"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
 
-            <div className="album-content albumWrite-content">
+          <div className="album-file-row">
+            <label className="album-file-btn">
               <input
                 type="file"
                 name="albumFile"
                 ref={fileInputRef}
-                className="albumWirte-file fileupload"
                 multiple
                 accept="image/*"
+                hidden
                 onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               />
-              <div id="preview-container">
-                {files.map((file, index) => (
-                  <div
-                    className="image-container"
-                    key={`${file.name}-${index}`}
-                    style={{ position: 'relative' }}
-                  >
-                    <div className="name-container">{file.name}</div>
-                    <button
-                      className="removeBtn"
-                      style={{ position: 'absolute', top: 0, right: 0 }}
-                      onClick={() => removeFile(index)}
-                    />
-                    <img
-                      src={previews[index]}
-                      alt={file.name}
-                      style={{ width: '50%', height: 'auto', marginBottom: 20 }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <textarea
-                placeholder="내용을 입력하세요"
-                id="albumContent"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
-            </div>
+              사진 선택
+            </label>
+            <span className="album-file-hint">
+              {files.length > 0 ? `${files.length}장 선택됨` : '여러 장 선택할 수 있어요'}
+            </span>
           </div>
 
-          <div className="album-public">
-            <div className="album-dropDown">
-              <span>공개설정 :</span>
-              <select
-                id="visibilitySelect"
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value)}
+          {previews.length > 0 && (
+            <div className="album-thumbs">
+              {files.map((file, index) => (
+                <div className="album-thumb" key={`${file.name}-${index}`}>
+                  <img src={previews[index]} alt={file.name} />
+                  <button
+                    type="button"
+                    className="album-thumb-remove"
+                    aria-label="사진 삭제"
+                    onClick={() => void removeFile(index)}
+                  >
+                    ×
+                  </button>
+                  <span className="album-thumb-name" title={file.name}>
+                    {file.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <textarea
+            className="album-content-input"
+            placeholder="내용을 입력하세요"
+            id="albumContent"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+
+          <div className="write-scope">
+            <span className="write-scope-label">공개설정</span>
+            <div className="scope-toggle" role="radiogroup" aria-label="공개설정">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={visibility === '1'}
+                className={visibility === '1' ? 'scope-opt is-on' : 'scope-opt'}
+                onClick={() => setVisibility('1')}
               >
-                <option value="0">비공개</option>
-                <option value="1">전체공개</option>
-              </select>
+                전체공개
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={visibility === '0'}
+                className={visibility === '0' ? 'scope-opt is-on' : 'scope-opt'}
+                onClick={() => setVisibility('0')}
+              >
+                비공개
+              </button>
             </div>
           </div>
         </div>

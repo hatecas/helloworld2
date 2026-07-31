@@ -195,6 +195,9 @@ export interface Visit {
   content: string;
   create_date: string;
   update_date: string;
+  /** 미니홈피 주인이 다는 답글 (없으면 null) */
+  reply?: string | null;
+  reply_date?: string | null;
 }
 
 export interface VisitCount {

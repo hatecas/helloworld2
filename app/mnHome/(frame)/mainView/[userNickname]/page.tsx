@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
+import { after } from 'next/server';
 
 import Stylesheets from '@/components/Stylesheets';
 import MiniHomeShell from '@/components/minihome/MiniHomeShell';
@@ -32,25 +33,29 @@ export default async function MainViewPage({
     redirect(`/?msg=${encodeURIComponent('로그인이 필요합니다.')}`);
   }
 
-  // 방문자 수 증가 (구 MainServiceImpl.updateVisitCnt)
-  const visit = await updateVisitCnt(userNickname);
+  const isSelf = userNickname === viewer.userNickname;
 
-  const common = await loadMiniHomeCommon(userNickname);
+  // 예전에는 방문자수 증가(select+update) → 공통 조회 → 콘텐츠 조회 → 일촌확인 을
+  // 순차적으로 기다려 왕복이 여러 겹 쌓였다. 서로 독립인 조회들을 한 번에 병렬로 돌린다.
+  const [common, tabCounts, current, minimiList, background, friendCmtList, check] =
+    await Promise.all([
+      loadMiniHomeCommon(userNickname),
+      tabs(userNickname),
+      selectCurrentContent(userNickname),
+      selectMiniroomMinimi(userNickname),
+      selectMiniroomBackground(userNickname),
+      selectFriendCmt(userNickname),
+      // 0 = 일촌 아님, 1 = 일촌, 2 = 본인
+      isSelf ? Promise.resolve(2) : friendCheck(userNickname, viewer.userNickname),
+    ]);
+
   if (!common) notFound();
 
-  const [tabCounts, current, minimiList, background, friendCmtList] = await Promise.all([
-    tabs(userNickname),
-    selectCurrentContent(userNickname),
-    selectMiniroomMinimi(userNickname),
-    selectMiniroomBackground(userNickname),
-    selectFriendCmt(userNickname),
-  ]);
-
-  // 0 = 일촌 아님, 1 = 일촌, 2 = 본인
-  const check =
-    userNickname === viewer.userNickname
-      ? 2
-      : await friendCheck(userNickname, viewer.userNickname);
+  // 방문자 수 증가는 화면 렌더를 막지 않도록 응답 이후로 미룬다 (구 updateVisitCnt).
+  // 화면에는 이미 조회한 값에 +1 한 낙관적 수치를 보여 준다.
+  const todayCnt = common.todayCnt + 1;
+  const totalCnt = common.totalCnt + 1;
+  after(() => updateVisitCnt(userNickname));
 
   const news = current.map((row) => ({
     seq: row.seq,
@@ -66,7 +71,7 @@ export default async function MainViewPage({
   return (
     <>
       <Stylesheets hrefs={['/resources/css/minihome/miniroom.css']} />
-      <MiniHomeShell common={{ ...common, todayCnt: visit.todayCnt, totalCnt: visit.totalCnt }}>
+      <MiniHomeShell common={{ ...common, todayCnt, totalCnt }}>
         <MainContent
           common={common}
           tabs={tabCounts}

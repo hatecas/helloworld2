@@ -5,7 +5,7 @@ import MiniHomeShell from '@/components/minihome/MiniHomeShell';
 import DiaryProfileBox from '@/components/minihome/DiaryProfileBox';
 import DiaryClient from '@/components/minihome/DiaryClient';
 import { loadMiniHomeCommon } from '@/lib/minihome';
-import { getDiaryComments, selectTodayDiary } from '@/lib/db/repo';
+import { getDiaryComments, selectLatestDiary, selectTodayDiary } from '@/lib/db/repo';
 import { todayYmd } from '@/lib/db/format';
 
 /** 구 DiaryController.diaryView + views/miniHome/diary.jsp */
@@ -20,10 +20,16 @@ export default async function DiaryViewPage({
   const common = await loadMiniHomeCommon(userNickname);
   if (!common) notFound();
 
-  const diary = await selectTodayDiary(userNickname);
+  // 오늘 글이 있으면(그리고 볼 수 있으면) 그걸, 없으면 가장 최근 글을 보여 준다.
+  // → 작성 직후 서버/작성자 시간대 차이로 "오늘"이 어긋나도 방금 쓴 글이 바로 뜬다.
+  const today = await selectTodayDiary(userNickname);
+  const diary =
+    today && (today.openScope === 1 || common.isOwner)
+      ? today
+      : await selectLatestDiary(userNickname, common.isOwner);
   const comments = diary ? await getDiaryComments(diary.seq) : [];
 
-  const visible = diary != null && (diary.openScope === 1 || common.isOwner);
+  const visible = diary != null;
 
   return (
     <>

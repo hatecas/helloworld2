@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
-import SmartEditor, { type SmartEditorHandle } from '@/components/SmartEditor';
+import RichTextEditor, { type RichTextEditorHandle } from '@/components/minihome/RichTextEditor';
 import Calendar from '@/components/minihome/Calendar';
 import { showAlert } from '@/lib/ui/dialog';
 
@@ -28,7 +28,7 @@ export default function DiaryEditorClient({
   openScope?: 0 | 1;
 }) {
   const router = useRouter();
-  const editorRef = useRef<SmartEditorHandle>(null);
+  const editorRef = useRef<RichTextEditorHandle>(null);
 
   const [title, setTitle] = useState(initialTitle);
   const [diaryDate, setDiaryDate] = useState(initialDate);
@@ -84,49 +84,54 @@ export default function DiaryEditorClient({
 
   return (
     <div className="board-overflow">
-      <div className="board-title-container">
+      <div className="write-card">
         <input
           type="text"
           placeholder="제목을 입력하세요"
-          className="board-title"
+          className="write-title"
           maxLength={30}
           id="diaryTitle"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+
+        <div className="write-meta">
+          <span className="write-writer">{userName}</span>
+          <span className="write-date">
+            <span className="write-date-label">작성일</span>
+            {mode === 'write' ? (
+              <Calendar id="datepicker2" inline={false} onSelect={setDiaryDate} />
+            ) : (
+              <input className="write-date-input" type="text" id="datepicker2" value={diaryDate} readOnly />
+            )}
+          </span>
+        </div>
       </div>
 
-      <div className="board-write-container">
-        <span className="board-writer"> {userName}(작성자)</span>
-        <span>
-          작성일 :{' '}
-          {mode === 'write' ? (
-            <Calendar id="datepicker2" inline={false} onSelect={setDiaryDate} />
-          ) : (
-            <input type="text" id="datepicker2" value={diaryDate} readOnly />
-          )}
-        </span>
-      </div>
+      <RichTextEditor ref={editorRef} id="txtContent" defaultValue={initialContent} />
 
-      <SmartEditor
-        ref={editorRef}
-        id="txtContent"
-        name="content"
-        rows={10}
-        cols={100}
-        defaultValue={initialContent}
-      />
-
-      <div className="album-dropDown">
-        <span>공개설정 :</span>
-        <select
-          id="visibilitySelect"
-          value={visibility}
-          onChange={(e) => setVisibility(e.target.value)}
-        >
-          <option value="0">비공개</option>
-          <option value="1">전체공개</option>
-        </select>
+      <div className="write-scope">
+        <span className="write-scope-label">공개설정</span>
+        <div className="scope-toggle" role="radiogroup" aria-label="공개설정">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={visibility === '1'}
+            className={visibility === '1' ? 'scope-opt is-on' : 'scope-opt'}
+            onClick={() => setVisibility('1')}
+          >
+            전체공개
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={visibility === '0'}
+            className={visibility === '0' ? 'scope-opt is-on' : 'scope-opt'}
+            onClick={() => setVisibility('0')}
+          >
+            비공개
+          </button>
+        </div>
       </div>
 
       <div className="btn-container">
@@ -149,7 +154,6 @@ export default function DiaryEditorClient({
           />
         </div>
       </div>
-      <div id="preview-container" />
     </div>
   );
 }

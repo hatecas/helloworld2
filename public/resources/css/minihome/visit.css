@@ -160,3 +160,103 @@
 	display: flex;
 	justify-content: center;
 }
+
+/* ---- 주인장 답글 (방문글과 동일한 레이아웃, 살짝 들여쓰기) ---- */
+.visit-reply-area {
+	margin: 2px 0 14px 40px;
+}
+
+.visit-reply-entry {
+	position: relative;
+}
+
+.visit-reply-entry::before {
+	content: '↳';
+	position: absolute;
+	left: -22px;
+	top: 6px;
+	color: var(--mh-accent);
+	font-weight: 700;
+}
+
+/* 답글 헤더 줄: 방문글 헤더(.visit-line)와 동일한 톤, 강조만 살짝 */
+.visit-reply-line {
+	background-color: #fbe9d6;
+}
+
+.visit-reply-tag {
+	color: var(--mh-accent);
+	font-weight: 700;
+}
+
+.visit-reply-text {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.visit-reply-toggle {
+	margin-top: 4px;
+	border: 1px solid var(--mh-line);
+	background: #fff;
+	color: var(--mh-muted);
+	font-size: 0.75rem;
+	padding: 3px 12px;
+	border-radius: 999px;
+	cursor: pointer;
+	transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.visit-reply-toggle:hover {
+	color: var(--mh-accent);
+	border-color: var(--mh-accent);
+}
+
+.visit-reply-edit {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.visit-reply-input {
+	width: 100%;
+	min-height: 56px;
+	resize: vertical;
+	border: 1px solid var(--mh-line);
+	border-radius: 10px;
+	padding: 8px 10px;
+	font-size: 0.82rem;
+	font-family: inherit;
+	color: var(--mh-ink);
+}
+
+.visit-reply-input:focus {
+	border-color: var(--mh-accent);
+	outline: none;
+}
+
+.visit-reply-btns {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.visit-reply-save,
+.visit-reply-cancel {
+	border: none;
+	border-radius: 999px;
+	font-size: 0.76rem;
+	font-weight: 600;
+	padding: 4px 14px;
+	cursor: pointer;
+}
+
+.visit-reply-save {
+	background: var(--mh-accent);
+	color: #fff;
+}
+
+.visit-reply-cancel {
+	background: var(--mh-page);
+	color: var(--mh-muted);
+	border: 1px solid var(--mh-line);
+}

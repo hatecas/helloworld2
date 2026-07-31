@@ -307,3 +307,129 @@
 	font-family: "KyoboHand";
 	margin : auto;
 }
+
+/* ==================================================================== */
+/* 사진첩 업로드 화면 개편                                                */
+/* ==================================================================== */
+
+.album-write {
+	padding: 4px 6px 10px;
+}
+
+/* 사진 선택 버튼 (기본 input[type=file] 대신) */
+.album-file-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 12px 0 4px;
+}
+
+.album-file-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--mh-accent);
+	color: #fff;
+	font-size: 0.82rem;
+	font-weight: 600;
+	padding: 7px 16px;
+	border-radius: 999px;
+	cursor: pointer;
+	box-shadow: 0 1px 3px rgba(240, 138, 36, 0.4);
+	transition: filter 0.12s ease;
+}
+
+.album-file-btn::before {
+	content: '＋';
+	font-weight: 700;
+}
+
+.album-file-btn:hover {
+	filter: brightness(1.05);
+}
+
+.album-file-hint {
+	font-size: 0.76rem;
+	color: var(--mh-muted);
+}
+
+/* 미리보기 — 정사각 썸네일 그리드 (원본 비율로 자리 차지하지 않게 cover) */
+.album-thumbs {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+	gap: 10px;
+	margin: 8px 0 14px;
+}
+
+.album-thumb {
+	position: relative;
+	aspect-ratio: 1 / 1;
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid var(--mh-line);
+	background: var(--mh-page);
+}
+
+.album-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.album-thumb-remove {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 22px;
+	height: 22px;
+	border: none;
+	border-radius: 50%;
+	background: rgba(20, 30, 35, 0.6);
+	color: #fff;
+	font-size: 15px;
+	line-height: 1;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.album-thumb:hover .album-thumb-remove {
+	opacity: 1;
+}
+
+.album-thumb-name {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 3px 6px;
+	font-size: 0.62rem;
+	color: #fff;
+	background: linear-gradient(transparent, rgba(20, 30, 35, 0.72));
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.album-content-input {
+	width: 100%;
+	box-sizing: border-box;
+	min-height: 160px;
+	resize: vertical;
+	border: 1px solid var(--mh-line);
+	border-radius: 12px;
+	padding: 12px 14px;
+	font-size: 0.86rem;
+	font-family: inherit;
+	line-height: 1.6;
+	color: var(--mh-ink);
+}
+
+.album-content-input:focus {
+	border-color: var(--mh-accent);
+	outline: none;
+}

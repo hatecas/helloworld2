@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 
 import ContentTitle from '@/components/minihome/ContentTitle';
 import MenuTab from '@/components/minihome/MenuTab';
@@ -29,6 +30,15 @@ export default function MiniHomeShell({
         <div className="page">
           <div className="profile-container">
             <div className="header profile-title font-neo">
+              {common.viewerNickname ? (
+                <Link
+                  href={`/mnHome/mainView/${encodeURIComponent(common.viewerNickname)}`}
+                  className="profile-home-btn"
+                  title="내 미니홈피로 이동"
+                >
+                  <img src="/resources/images/minihome/homeIcon.png" alt="내 홈" />
+                </Link>
+              ) : null}
               TODAY&nbsp;<span className="today-span">{common.todayCnt}</span>&nbsp;| TOTAL{' '}
               {common.totalCnt}
             </div>
