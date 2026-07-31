@@ -1303,7 +1303,16 @@ export function visitPageCount(totalCnt: number): number {
 /* 알림 — 기존 데이터에서 파생 (별도 이벤트 테이블 없이)                  */
 /* ================================================================== */
 
-export type NotiType = 'board' | 'album' | 'diary' | 'guestbook' | 'friendcmt' | 'friend';
+export type NotiType =
+  | 'board'
+  | 'album'
+  | 'diary'
+  | 'guestbook'
+  | 'friendcmt'
+  | 'friend'
+  | 'fboard'
+  | 'falbum'
+  | 'fdiary';
 
 export interface NotiItem {
   id: string;
@@ -1401,6 +1410,45 @@ export async function getNotifications(
       text: `${f.userNickname}님이 일촌을 신청했어요`,
       link: `/mnHome/settingFriends/${viewer}`, dateLabel: '', unread: false,
     });
+  }
+
+  // 일촌(수락된)이 올린 새 콘텐츠 — 게시글 / 사진 / 다이어리
+  const friendNicks = [
+    ...new Set((await getMyFriends(viewer)).map((f) => f.Name).filter((n) => n && n !== viewer)),
+  ];
+  if (friendNicks.length > 0) {
+    const [fBoards, fAlbums, fDiaries] = await Promise.all([
+      db().selectIn('board', 'userNickname', friendNicks),
+      db().selectIn('album', 'userNickname', friendNicks),
+      db().selectIn('diary', 'userNickname', friendNicks),
+    ]);
+    const live = <T extends { del_yn: string; openScope: 0 | 1 }>(r: T) =>
+      r.del_yn.toLowerCase() === 'n' && r.openScope === 1;
+
+    for (const b of fBoards) {
+      if (!live(b)) continue;
+      items.push({
+        id: `fboard-${b.seq}`, type: 'fboard', actor: b.userNickname, date: b.create_date,
+        text: `${b.userNickname}님이 새 게시글 "${clip(b.title)}"을 올렸어요`,
+        link: `/mnHome/boardDetail/${b.userNickname}/${b.seq}`, dateLabel: '', unread: false,
+      });
+    }
+    for (const a of fAlbums) {
+      if (!live(a)) continue;
+      items.push({
+        id: `falbum-${a.seq}`, type: 'falbum', actor: a.userNickname, date: a.create_date,
+        text: `${a.userNickname}님이 새 사진 "${clip(a.title)}"을 올렸어요`,
+        link: `/mnHome/albumDetailView/${a.userNickname}/${a.seq}`, dateLabel: '', unread: false,
+      });
+    }
+    for (const d of fDiaries) {
+      if (!live(d)) continue;
+      items.push({
+        id: `fdiary-${d.seq}`, type: 'fdiary', actor: d.userNickname, date: d.create_date,
+        text: `${d.userNickname}님이 새 다이어리를 올렸어요`,
+        link: `/mnHome/diaryView/${d.userNickname}`, dateLabel: '', unread: false,
+      });
+    }
   }
 
   const sorted = items

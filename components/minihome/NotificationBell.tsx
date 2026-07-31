@@ -20,6 +20,10 @@ const ICON: Record<string, string> = {
   guestbook: '📖',
   friendcmt: '💬',
   friend: '🤝',
+  // 일촌이 올린 새 콘텐츠
+  fboard: '🆕',
+  falbum: '🖼️',
+  fdiary: '✨',
 };
 
 /** 미니홈피 우측 상단 알림 벨 — 안 읽은 알림이 있으면 빨간 점, 모두 읽으면 사라진다. */
