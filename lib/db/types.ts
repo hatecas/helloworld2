@@ -150,6 +150,8 @@ export interface BoardComment {
   create_date: string;
   update_date: string;
   openScope: 0 | 1;
+  /** 답글이면 부모 댓글의 seq, 원댓글이면 null */
+  parentSeq?: number | null;
 }
 
 export interface Diary {
@@ -186,6 +188,18 @@ export interface Album {
   update_date: string;
   del_yn: YN;
   openScope: 0 | 1;
+}
+
+export interface AlbumComment {
+  seq: number;
+  albumSeq: number;
+  userNickname: string;
+  content: string;
+  create_date: string;
+  update_date: string;
+  openScope: 0 | 1;
+  /** 답글이면 부모 댓글의 seq, 원댓글이면 null */
+  parentSeq?: number | null;
 }
 
 export interface Visit {
@@ -258,6 +272,7 @@ export interface Database {
   diary: Diary[];
   diaryCMT: DiaryComment[];
   album: Album[];
+  albumCMT: AlbumComment[];
   visit: Visit[];
   visitCnt: VisitCount[];
   friends: Friend[];

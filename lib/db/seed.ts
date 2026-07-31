@@ -152,7 +152,7 @@ export function buildSeed(): Database {
     user: [], dotori: [], dotoriC: [], dotoriU: [], userStorage: [], store: [],
     bgm: [], userBgm: [], profile: [], miniHomeTitle: [], miniroomBackground: [],
     miniroomMinimi: [], notice: [], board: [], boardCMT: [], diary: [], diaryCMT: [],
-    album: [], visit: [], visitCnt: [], friends: [], friendCMT: [], loginStatus: [],
+    album: [], albumCMT: [], visit: [], visitCnt: [], friends: [], friendCMT: [], loginStatus: [],
     loginLog: [],
   };
 

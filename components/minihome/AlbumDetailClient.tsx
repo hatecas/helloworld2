@@ -3,9 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
 
+import CommentThread, { type ThreadComment } from '@/components/minihome/CommentThread';
+
 /** views/miniHome/albumDetail.jsp + resources/js/album.js 의 deleteAlbum */
 export default function AlbumDetailClient({
   userNickname,
+  viewerNickname,
   isOwner,
   seq,
   title,
@@ -13,8 +16,11 @@ export default function AlbumDetailClient({
   writer,
   createDate,
   images,
+  canComment,
+  comments,
 }: {
   userNickname: string;
+  viewerNickname: string;
   isOwner: boolean;
   seq: number;
   title: string;
@@ -22,8 +28,37 @@ export default function AlbumDetailClient({
   writer: string;
   createDate: string;
   images: string[];
+  canComment: boolean;
+  comments: ThreadComment[];
 }) {
   const router = useRouter();
+
+  const addComment = async (text: string, parentSeq: number | null) => {
+    try {
+      const res = await fetch('/mnHome/albumComment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ albumSeq: String(seq), content: text, parentSeq }),
+      });
+      const json = (await res.json()) as ThreadComment[];
+      return json.length > 0 ? json : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const deleteComment = async (commentSeq: number) => {
+    try {
+      const res = await fetch('/mnHome/albumCommentDelete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seq: commentSeq }),
+      });
+      return ((await res.json()) as number) === 1;
+    } catch {
+      return false;
+    }
+  };
 
   const deleteAlbum = async () => {
     if (!await showConfirm('정말 삭제하시겠습니까?', { danger: true })) return;
@@ -76,6 +111,16 @@ export default function AlbumDetailClient({
                 </div>
               ))}
               <div className="album-content">{content}</div>
+
+              <div className="album-comment-section">
+                <CommentThread
+                  viewerNickname={viewerNickname}
+                  canComment={canComment}
+                  comments={comments}
+                  onAdd={addComment}
+                  onDelete={deleteComment}
+                />
+              </div>
             </div>
             <div className="album-public">
               <div className="album-dropDown" />

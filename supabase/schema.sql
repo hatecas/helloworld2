@@ -20,6 +20,7 @@ drop table if exists "friendCMT"           cascade;
 drop table if exists "friends"             cascade;
 drop table if exists "visitCnt"            cascade;
 drop table if exists "visit"               cascade;
+drop table if exists "albumCMT"            cascade;
 drop table if exists "album"               cascade;
 drop table if exists "diaryCMT"            cascade;
 drop table if exists "diary"               cascade;
@@ -191,7 +192,9 @@ create table "boardCMT" (
   "content"      text        not null,
   "create_date"  timestamptz not null default now(),
   "update_date"  timestamptz not null default now(),
-  "openScope"    smallint    not null default 1
+  "openScope"    smallint    not null default 1,
+  -- 답글이면 부모 댓글 seq
+  "parentSeq"    integer     references "boardCMT"("seq") on delete cascade
 );
 create index on "boardCMT" ("boardSeq");
 
@@ -234,6 +237,20 @@ create table "album" (
   "openScope"    smallint     not null default 1
 );
 create index on "album" ("userNickname", "seq" desc);
+
+create table "albumCMT" (
+  "seq"          serial primary key,
+  "albumSeq"     integer not null references "album"("seq") on delete cascade,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "content"      text        not null,
+  "create_date"  timestamptz not null default now(),
+  "update_date"  timestamptz not null default now(),
+  "openScope"    smallint    not null default 1,
+  -- 답글이면 부모 댓글 seq
+  "parentSeq"    integer     references "albumCMT"("seq") on delete cascade
+);
+create index on "albumCMT" ("albumSeq");
 
 -- ------------------------------------------------------------- 방명록
 create table "visit" (
@@ -324,6 +341,7 @@ alter table "boardCMT"           enable row level security;
 alter table "diary"              enable row level security;
 alter table "diaryCMT"           enable row level security;
 alter table "album"              enable row level security;
+alter table "albumCMT"           enable row level security;
 alter table "visit"              enable row level security;
 alter table "visitCnt"           enable row level security;
 alter table "friends"            enable row level security;

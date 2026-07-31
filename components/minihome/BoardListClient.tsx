@@ -10,6 +10,7 @@ interface BoardRow {
   title: string;
   hits: number;
   newcontent: 0 | 1;
+  commentCnt: number;
 }
 
 /** views/miniHome/board.jsp + resources/js/board.js 의 목록/삭제/페이징 */
@@ -99,6 +100,9 @@ export default function BoardListClient({
                   }
                 >
                   {board.title}
+                  {board.commentCnt > 0 && (
+                    <span className="comment-count">[{board.commentCnt}]</span>
+                  )}
                   {board.newcontent === 1 && (
                     <img src="/resources/images/minihome/newIcon.png" className="newIcon" alt="new" />
                   )}

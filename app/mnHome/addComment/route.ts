@@ -6,9 +6,10 @@ import { getBoardComments, insertBoardComment } from '@/lib/db/repo';
 /** 구 BoardController.addComment — 등록 후 최신 댓글 목록을 돌려준다 */
 export async function POST(request: Request) {
   try {
-    const { boardSeq, content } = (await request.json()) as {
+    const { boardSeq, content, parentSeq } = (await request.json()) as {
       boardSeq?: string | number;
       content?: string;
+      parentSeq?: number | null;
     };
 
     const seq = Number(boardSeq);
@@ -17,7 +18,8 @@ export async function POST(request: Request) {
       return NextResponse.json([]);
     }
 
-    await insertBoardComment(seq, user.userNickname, content);
+    const parent = typeof parentSeq === 'number' ? parentSeq : null;
+    await insertBoardComment(seq, user.userNickname, content, parent);
     return NextResponse.json(await getBoardComments(seq));
   } catch (error) {
     console.error('[addComment]', error);

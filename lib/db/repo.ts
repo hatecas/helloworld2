@@ -1,7 +1,7 @@
 import { getStore, type Table } from './store';
 import { nowIso, todayYmd, withinHours, ymd, ymdDot, ymdhm, ymdhmDot } from './format';
 import type {
-  Album, Board, BoardComment, Diary, DiaryComment, Friend, FriendStatus,
+  Album, AlbumComment, Board, BoardComment, Diary, DiaryComment, Friend, FriendStatus,
   Notice, StorageCategory, StoreItem, User, Visit,
 } from './types';
 
@@ -922,6 +922,7 @@ export async function deleteNotice(seqs: number[]) {
 
 export interface BoardListRow extends Board {
   newcontent: 0 | 1;
+  commentCnt: number;
 }
 
 export async function getBoardList(params: {
@@ -937,7 +938,20 @@ export async function getBoardList(params: {
   const page = params.page && params.page > 0 ? params.page : 1;
   const offset = PAGE_SIZE * (page - 1);
   const sliced = params.seq != null ? sorted : sorted.slice(offset, offset + PAGE_SIZE);
-  return sliced.map((b) => ({ ...b, newcontent: withinHours(b.update_date, 24) ? 1 : 0 }));
+
+  // 이 페이지에 보이는 글들의 댓글 수(답글 포함)를 한 번에 세어 붙인다
+  const seqs = sliced.map((b) => b.seq);
+  const cmts = await db().selectIn('boardCMT', 'boardSeq', seqs);
+  const cntOf = new Map<number, number>();
+  for (const c of cmts) {
+    if (c.openScope === 1) cntOf.set(c.boardSeq, (cntOf.get(c.boardSeq) ?? 0) + 1);
+  }
+
+  return sliced.map((b) => ({
+    ...b,
+    newcontent: withinHours(b.update_date, 24) ? 1 : 0,
+    commentCnt: cntOf.get(b.seq) ?? 0,
+  }));
 }
 
 export async function getBoardPageCount(userNickname: string): Promise<number> {
@@ -978,27 +992,71 @@ export async function deleteBoards(seqs: number[]) {
 
 export async function getBoardComments(boardSeq: number) {
   const rows = await db().select('boardCMT', { boardSeq, openScope: 1 });
-  return desc(rows, (c) => c.update_date).map((c) => ({
-    seq: c.seq,
-    userNickname: c.userNickname,
-    content: c.content,
-    update_date_format: ymdhmDot(c.update_date),
-  }));
+  // 원댓글은 오래된→최신 순, 답글도 오래된→최신 순으로 부모 밑에 붙는다.
+  // (여기서는 플랫하게 내려주고, 화면에서 parentSeq 로 묶는다)
+  return [...rows]
+    .sort((a, b) => a.seq - b.seq)
+    .map((c) => ({
+      seq: c.seq,
+      userNickname: c.userNickname,
+      content: c.content,
+      update_date_format: ymdhmDot(c.update_date),
+      parentSeq: c.parentSeq ?? null,
+    }));
 }
 
 export async function insertBoardComment(
   boardSeq: number,
   userNickname: string,
   content: string,
+  parentSeq: number | null = null,
 ) {
   const now = nowIso();
   await db().insert('boardCMT', {
     boardSeq, userNickname, content, create_date: now, update_date: now, openScope: 1,
+    parentSeq,
   } as Omit<BoardComment, 'seq'>);
 }
 
 export async function deleteBoardComment(seq: number) {
+  // 원댓글을 지우면 딸린 답글도 함께 지운다 (Supabase 는 FK cascade 로도 처리됨)
+  const children = await db().select('boardCMT', { parentSeq: seq } as Partial<BoardComment>);
+  for (const child of children) await db().remove('boardCMT', { seq: child.seq });
   return db().remove('boardCMT', { seq });
+}
+
+/* ---- 사진첩 댓글 (게시판 댓글과 동일 구조 + 답글) ---- */
+
+export async function getAlbumComments(albumSeq: number) {
+  const rows = await db().select('albumCMT', { albumSeq, openScope: 1 });
+  return [...rows]
+    .sort((a, b) => a.seq - b.seq)
+    .map((c) => ({
+      seq: c.seq,
+      userNickname: c.userNickname,
+      content: c.content,
+      update_date_format: ymdhmDot(c.update_date),
+      parentSeq: c.parentSeq ?? null,
+    }));
+}
+
+export async function insertAlbumComment(
+  albumSeq: number,
+  userNickname: string,
+  content: string,
+  parentSeq: number | null = null,
+) {
+  const now = nowIso();
+  await db().insert('albumCMT', {
+    albumSeq, userNickname, content, create_date: now, update_date: now, openScope: 1,
+    parentSeq,
+  } as Omit<AlbumComment, 'seq'>);
+}
+
+export async function deleteAlbumComment(seq: number) {
+  const children = await db().select('albumCMT', { parentSeq: seq } as Partial<AlbumComment>);
+  for (const child of children) await db().remove('albumCMT', { seq: child.seq });
+  return db().remove('albumCMT', { seq });
 }
 
 /* ================================================================== */

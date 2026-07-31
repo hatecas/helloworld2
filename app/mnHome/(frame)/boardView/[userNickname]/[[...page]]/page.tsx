@@ -42,6 +42,7 @@ export default async function BoardViewPage({
             title: b.title,
             hits: b.hits,
             newcontent: b.newcontent,
+            commentCnt: b.commentCnt,
           }))}
           totalPage={totalPage}
         />

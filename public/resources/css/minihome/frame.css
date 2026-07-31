@@ -1553,3 +1553,58 @@ input.content-title-name:focus {
 	color: var(--mh-blue);
 	text-decoration: underline;
 }
+
+/* ==================================================================== */
+/* 댓글 답글(대댓글) + 게시판 목록 댓글 수 + 사진첩 댓글 영역               */
+/* ==================================================================== */
+
+/* 게시판 목록 제목 옆 댓글 수 */
+.comment-count {
+	margin-left: 5px;
+	color: var(--mh-accent);
+	font-weight: 700;
+	font-size: 0.8em;
+}
+
+/* '답글' 버튼 */
+.board-comment-reply-btn {
+	cursor: pointer;
+	color: var(--mh-muted);
+	font-size: 0.75rem;
+	margin-right: 8px;
+}
+
+.board-comment-reply-btn:hover {
+	color: var(--mh-accent);
+}
+
+/* 답글(대댓글) 항목 — 부모 밑에 들여쓰기 */
+.board-comment-reply-item {
+	margin-left: 24px;
+	position: relative;
+	background: rgba(0, 0, 0, 0.015);
+	border-radius: 8px;
+}
+
+.board-comment-reply-item::before {
+	content: '↳';
+	position: absolute;
+	left: -16px;
+	top: 6px;
+	color: var(--mh-accent);
+	font-weight: 700;
+	font-size: 0.8rem;
+}
+
+/* 답글 입력창 */
+.board-reply-write {
+	margin-left: 24px;
+	margin-top: 4px;
+}
+
+/* 사진첩 댓글 영역 (게시판 댓글 스타일 재사용, 위 여백만) */
+.album-comment-section {
+	margin-top: 18px;
+	padding-top: 6px;
+	border-top: 1px dotted var(--mh-line);
+}

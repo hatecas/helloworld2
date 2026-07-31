@@ -4,7 +4,8 @@ import Stylesheets from '@/components/Stylesheets';
 import MiniHomeShell from '@/components/minihome/MiniHomeShell';
 import AlbumDetailClient from '@/components/minihome/AlbumDetailClient';
 import { loadMiniHomeCommon } from '@/lib/minihome';
-import { selectAlbums } from '@/lib/db/repo';
+import { getSessionUser } from '@/lib/session';
+import { friendCheck, getAlbumComments, selectAlbums } from '@/lib/db/repo';
 import { ymdhm } from '@/lib/db/format';
 
 /** 구 AlbumController.albumDetailView + views/miniHome/albumDetail.jsp */
@@ -25,12 +26,25 @@ export default async function AlbumDetailViewPage({
   if (!album) notFound();
   if (!common.isOwner && album.openScope !== 1) notFound();
 
+  const viewer = await getSessionUser();
+  const [comments, check] = await Promise.all([
+    getAlbumComments(album.seq),
+    viewer
+      ? viewer.userNickname === userNickname
+        ? Promise.resolve(1)
+        : friendCheck(viewer.userNickname, userNickname)
+      : Promise.resolve(0),
+  ]);
+
   return (
     <>
-      <Stylesheets hrefs={['/resources/css/minihome/album.css']} />
+      <Stylesheets
+        hrefs={['/resources/css/minihome/album.css', '/resources/css/minihome/board.css']}
+      />
       <MiniHomeShell common={common}>
         <AlbumDetailClient
           userNickname={userNickname}
+          viewerNickname={viewer?.userNickname ?? ''}
           isOwner={common.isOwner}
           seq={album.seq}
           title={album.title}
@@ -38,6 +52,8 @@ export default async function AlbumDetailViewPage({
           writer={album.userNickname}
           createDate={ymdhm(album.create_date)}
           images={album.imagePath.split(',').filter(Boolean)}
+          canComment={check === 1}
+          comments={comments}
         />
       </MiniHomeShell>
     </>
