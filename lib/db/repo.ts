@@ -1298,3 +1298,111 @@ export async function deleteVisitComment(params: {
 export function visitPageCount(totalCnt: number): number {
   return Math.max(1, Math.ceil(totalCnt / VISIT_PAGE_SIZE));
 }
+
+/* ================================================================== */
+/* 알림 — 기존 데이터에서 파생 (별도 이벤트 테이블 없이)                  */
+/* ================================================================== */
+
+export type NotiType = 'board' | 'album' | 'diary' | 'guestbook' | 'friendcmt' | 'friend';
+
+export interface NotiItem {
+  id: string;
+  type: NotiType;
+  actor: string;
+  text: string;
+  /** 정렬·읽음 판정용 ISO */
+  date: string;
+  dateLabel: string;
+  link: string;
+  unread: boolean;
+}
+
+const NOTI_LIMIT = 30;
+
+/**
+ * 로그인한 사용자(viewer)를 대상으로 한 알림 목록.
+ * 내 게시판/사진첩/다이어리 댓글, 일촌평, 방명록, 받은 일촌신청을 모아
+ * 최신순으로 돌려준다. readAtIso 이후(더 최신)면 안 읽음으로 본다.
+ */
+export async function getNotifications(
+  viewer: string,
+  readAtIso: string,
+): Promise<{ items: NotiItem[]; unread: number }> {
+  const [myBoards, myAlbums, myDiaries] = await Promise.all([
+    db().select('board', { userNickname: viewer }),
+    db().select('album', { userNickname: viewer }),
+    db().select('diary', { userNickname: viewer }),
+  ]);
+
+  const boardTitle = new Map(myBoards.map((b) => [b.seq, b.title]));
+  const albumTitle = new Map(myAlbums.map((a) => [a.seq, a.title]));
+  const diaryTitle = new Map(myDiaries.map((d) => [d.seq, d.title]));
+
+  const [boardCmts, albumCmts, diaryCmts, friendCmts, visits, friendReqs] = await Promise.all([
+    db().selectIn('boardCMT', 'boardSeq', [...boardTitle.keys()]),
+    db().selectIn('albumCMT', 'albumSeq', [...albumTitle.keys()]),
+    db().selectIn('diaryCMT', 'diarySeq', [...diaryTitle.keys()]),
+    db().select('friendCMT', { friendNickname: viewer }),
+    db().select('visit', { targetNickname: viewer }),
+    db().select('friends', { friendNickname: viewer, fStatus: 0 }),
+  ]);
+
+  const clip = (s: string) => (s.length > 20 ? `${s.slice(0, 20)}…` : s);
+  const items: NotiItem[] = [];
+
+  for (const c of boardCmts) {
+    if (c.userNickname === viewer) continue;
+    items.push({
+      id: `board-${c.seq}`, type: 'board', actor: c.userNickname, date: c.create_date,
+      text: `${c.userNickname}님이 게시글 "${clip(boardTitle.get(c.boardSeq) ?? '')}"에 댓글을 남겼어요`,
+      link: `/mnHome/boardDetail/${viewer}/${c.boardSeq}`, dateLabel: '', unread: false,
+    });
+  }
+  for (const c of albumCmts) {
+    if (c.userNickname === viewer) continue;
+    items.push({
+      id: `album-${c.seq}`, type: 'album', actor: c.userNickname, date: c.create_date,
+      text: `${c.userNickname}님이 사진 "${clip(albumTitle.get(c.albumSeq) ?? '')}"에 댓글을 남겼어요`,
+      link: `/mnHome/albumDetailView/${viewer}/${c.albumSeq}`, dateLabel: '', unread: false,
+    });
+  }
+  for (const c of diaryCmts) {
+    if (c.userNickname === viewer) continue;
+    items.push({
+      id: `diary-${c.seq}`, type: 'diary', actor: c.userNickname, date: c.create_date,
+      text: `${c.userNickname}님이 다이어리에 댓글을 남겼어요`,
+      link: `/mnHome/diaryView/${viewer}`, dateLabel: '', unread: false,
+    });
+  }
+  for (const c of friendCmts) {
+    if (c.userNickname === viewer || c.del_yn.toUpperCase() === 'Y') continue;
+    items.push({
+      id: `friendcmt-${c.seq}`, type: 'friendcmt', actor: c.userNickname, date: c.createDate,
+      text: `${c.userNickname}님이 일촌평을 남겼어요`,
+      link: `/mnHome/mainView/${viewer}`, dateLabel: '', unread: false,
+    });
+  }
+  for (const v of visits) {
+    if (v.userNickname === viewer) continue;
+    items.push({
+      id: `guestbook-${v.seq}`, type: 'guestbook', actor: v.userNickname, date: v.create_date,
+      text: `${v.userNickname}님이 방명록을 남겼어요`,
+      link: `/mnHome/visitView/${viewer}`, dateLabel: '', unread: false,
+    });
+  }
+  for (const f of friendReqs) {
+    if (f.del_yn.toUpperCase() === 'Y') continue;
+    items.push({
+      id: `friend-${f.seq}`, type: 'friend', actor: f.userNickname, date: f.createDate,
+      text: `${f.userNickname}님이 일촌을 신청했어요`,
+      link: `/mnHome/settingFriends/${viewer}`, dateLabel: '', unread: false,
+    });
+  }
+
+  const sorted = items
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, NOTI_LIMIT)
+    .map((it) => ({ ...it, dateLabel: ymdhmDot(it.date), unread: it.date > readAtIso }));
+
+  return { items: sorted, unread: sorted.filter((it) => it.unread).length };
+}

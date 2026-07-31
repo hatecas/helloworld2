@@ -190,12 +190,14 @@ export default function VisitClient({
         </div>
         <div className="visit-write-footer">
           <span id="char-count">{byteCount}/5000</span>
-          <input
+          <button
             type="button"
-            value="등록"
+            className="mh-btn"
             id="visit-comment-btn"
             onClick={() => void insertComment()}
-          />
+          >
+            등록
+          </button>
         </div>
       </div>
 
@@ -219,19 +221,31 @@ export default function VisitClient({
                   <td>{visit.update_date}</td>
                   {viewerNickname === visit.userNickname && (
                     <>
-                      <td
-                        onClick={() => {
-                          if (editing === visit.number) {
-                            void confirmEdit(visit);
-                          } else {
-                            setEditing(visit.number);
-                            setEditDraft(visit.content);
-                          }
-                        }}
-                      >
-                        {editing === visit.number ? '확인' : '수정'}
+                      <td>
+                        <button
+                          type="button"
+                          className="mh-act"
+                          onClick={() => {
+                            if (editing === visit.number) {
+                              void confirmEdit(visit);
+                            } else {
+                              setEditing(visit.number);
+                              setEditDraft(visit.content);
+                            }
+                          }}
+                        >
+                          {editing === visit.number ? '확인' : '수정'}
+                        </button>
                       </td>
-                      <td onClick={() => void remove(visit)}>삭제</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="mh-act mh-act--danger"
+                          onClick={() => void remove(visit)}
+                        >
+                          삭제
+                        </button>
+                      </td>
                     </>
                   )}
                 </tr>
@@ -301,14 +315,14 @@ export default function VisitClient({
                   <div className="visit-reply-btns">
                     <button
                       type="button"
-                      className="visit-reply-save"
+                      className="mh-btn"
                       onClick={() => void saveReply(visit)}
                     >
                       등록
                     </button>
                     <button
                       type="button"
-                      className="visit-reply-cancel"
+                      className="mh-btn mh-btn--ghost"
                       onClick={() => {
                         setReplyingTo(null);
                         setReplyDraft('');
@@ -323,7 +337,7 @@ export default function VisitClient({
               {isOwner && replyingTo !== visit.seq && (
                 <button
                   type="button"
-                  className="visit-reply-toggle"
+                  className="mh-act"
                   onClick={() => {
                     setReplyingTo(visit.seq);
                     setReplyDraft(visit.reply ?? '');

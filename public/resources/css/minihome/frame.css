@@ -1566,40 +1566,87 @@ input.content-title-name:focus {
 	font-size: 0.8em;
 }
 
-/* '답글' 버튼 */
-.board-comment-reply-btn {
-	cursor: pointer;
-	color: var(--mh-muted);
-	font-size: 0.75rem;
-	margin-right: 8px;
+/* 원댓글 + 답글 + 답글 입력을 세로로 쌓는 묶음 */
+.comment-group {
+	display: block;
+	margin-bottom: 6px;
 }
 
-.board-comment-reply-btn:hover {
-	color: var(--mh-accent);
-}
-
-/* 답글(대댓글) 항목 — 부모 밑에 들여쓰기 */
-.board-comment-reply-item {
-	margin-left: 24px;
+/* 답글(대댓글) 항목 — 부모 밑에 들여쓰기 + └> 표시 */
+.comment-group .board-comment-reply-item {
+	margin-left: 26px;
 	position: relative;
-	background: rgba(0, 0, 0, 0.015);
-	border-radius: 8px;
+	background: #eef2f4;
 }
 
 .board-comment-reply-item::before {
 	content: '↳';
 	position: absolute;
-	left: -16px;
-	top: 6px;
+	left: -18px;
+	top: 50%;
+	transform: translateY(-50%);
 	color: var(--mh-accent);
 	font-weight: 700;
-	font-size: 0.8rem;
+	font-size: 0.85rem;
 }
 
 /* 답글 입력창 */
 .board-reply-write {
-	margin-left: 24px;
+	margin-left: 26px;
 	margin-top: 4px;
+}
+
+/* ==================================================================== */
+/* 공통 액션 UI — 홈피 곳곳의 수정/삭제/답글/등록 버튼을 하나로 통일        */
+/* ==================================================================== */
+
+/* 작은 텍스트 액션 (수정 · 삭제 · 답글 · 확인 등) */
+.mh-act {
+	border: none;
+	background: none;
+	padding: 0;
+	margin-left: 8px;
+	font-size: 0.76rem;
+	font-family: inherit;
+	color: var(--mh-muted);
+	cursor: pointer;
+	transition: color 0.12s ease;
+}
+
+.mh-act:first-child {
+	margin-left: 0;
+}
+
+.mh-act:hover {
+	color: var(--mh-accent);
+}
+
+.mh-act--danger:hover {
+	color: #ff3b30;
+}
+
+/* 알약형 버튼 (등록 · 확인 등 주요 동작) */
+.mh-btn {
+	border: none;
+	border-radius: 999px;
+	background: var(--mh-accent);
+	color: #fff;
+	font-size: 0.78rem;
+	font-weight: 600;
+	font-family: inherit;
+	padding: 5px 15px;
+	cursor: pointer;
+	transition: filter 0.12s ease;
+}
+
+.mh-btn:hover {
+	filter: brightness(1.05);
+}
+
+.mh-btn--ghost {
+	background: var(--mh-page);
+	color: var(--mh-muted);
+	border: 1px solid var(--mh-line);
 }
 
 /* 사진첩 댓글 영역 (게시판 댓글 스타일 재사용, 위 여백만) */
@@ -1607,4 +1654,164 @@ input.content-title-name:focus {
 	margin-top: 18px;
 	padding-top: 6px;
 	border-top: 1px dotted var(--mh-line);
+}
+
+/* ==================================================================== */
+/* 알림 벨 (우측 상단)                                                    */
+/* ==================================================================== */
+
+.noti {
+	position: absolute;
+	top: 2px;
+	right: 4px;
+	z-index: 6;
+}
+
+.noti-bell {
+	position: relative;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.9);
+	background: rgba(255, 255, 255, 0.82);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 4px 14px rgba(20, 40, 50, 0.16);
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+	transition: transform 0.12s ease;
+}
+
+.noti-bell:hover {
+	transform: scale(1.06);
+}
+
+.noti-dot {
+	position: absolute;
+	top: -3px;
+	right: -3px;
+	min-width: 17px;
+	height: 17px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background: #ff3b30;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 17px;
+	text-align: center;
+	box-shadow: 0 0 0 2px #fff;
+}
+
+.noti-panel {
+	position: absolute;
+	top: 46px;
+	right: 0;
+	width: 300px;
+	max-height: 380px;
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+	border: 1px solid var(--mh-line);
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(20, 40, 50, 0.22);
+	overflow: hidden;
+}
+
+.noti-panel-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--mh-line);
+	background: #f6f8f9;
+}
+
+.noti-panel-title {
+	font-weight: 700;
+	font-size: 0.9rem;
+	color: var(--mh-ink);
+}
+
+.noti-readall {
+	border: none;
+	background: transparent;
+	color: var(--mh-accent);
+	font-size: 0.76rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.noti-readall:hover {
+	text-decoration: underline;
+}
+
+.noti-list {
+	overflow-y: auto;
+}
+
+.noti-empty {
+	padding: 28px 14px;
+	text-align: center;
+	color: var(--mh-muted);
+	font-size: 0.82rem;
+}
+
+.noti-item {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: 9px;
+	width: 100%;
+	padding: 11px 14px;
+	border: none;
+	border-bottom: 1px solid #eef2f4;
+	background: #fff;
+	text-align: left;
+	cursor: pointer;
+	transition: background 0.12s ease;
+}
+
+.noti-item:hover {
+	background: #f3f7f9;
+}
+
+.noti-item.is-unread {
+	background: #fff7ef;
+}
+
+.noti-item-icon {
+	font-size: 15px;
+	line-height: 1.3;
+	flex: none;
+}
+
+.noti-item-body {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.noti-item-text {
+	font-size: 0.8rem;
+	color: var(--mh-ink);
+	line-height: 1.4;
+	word-break: break-word;
+}
+
+.noti-item-date {
+	font-size: 0.68rem;
+	color: var(--mh-muted);
+}
+
+.noti-item-dot {
+	position: absolute;
+	top: 14px;
+	right: 12px;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #ff3b30;
+	flex: none;
 }

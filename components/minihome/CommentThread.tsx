@@ -99,31 +99,41 @@ export default function CommentThread({
               if (e.key === 'Enter') void submitNew();
             }}
           />
-          <input type="button" value="확인" onClick={() => void submitNew()} />
+          <button type="button" className="mh-btn" onClick={() => void submitNew()}>
+            확인
+          </button>
         </div>
       )}
 
       <div className="board-comment-container">
         {parents.map((c) => (
-          <div className="board-comment" key={c.seq}>
-            {writerLink(c.userNickname, c.content, c.update_date_format)}
-            <div className="board-comment-actions">
-              {canComment && (
-                <span
-                  className="board-comment-reply-btn"
-                  onClick={() => {
-                    setReplyTo((cur) => (cur === c.seq ? null : c.seq));
-                    setReplyDraft('');
-                  }}
-                >
-                  답글
-                </span>
-              )}
-              {viewerNickname === c.userNickname && (
-                <span className="board-comment-delete" onClick={() => void remove(c.seq)}>
-                  삭제
-                </span>
-              )}
+          // 원댓글 + 답글 + 답글 입력을 세로로 쌓는 묶음
+          <div className="comment-group" key={c.seq}>
+            <div className="board-comment">
+              {writerLink(c.userNickname, c.content, c.update_date_format)}
+              <div className="board-comment-actions">
+                {canComment && (
+                  <button
+                    type="button"
+                    className="mh-act"
+                    onClick={() => {
+                      setReplyTo((cur) => (cur === c.seq ? null : c.seq));
+                      setReplyDraft('');
+                    }}
+                  >
+                    답글
+                  </button>
+                )}
+                {viewerNickname === c.userNickname && (
+                  <button
+                    type="button"
+                    className="mh-act mh-act--danger"
+                    onClick={() => void remove(c.seq)}
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             </div>
 
             {repliesOf(c.seq).map((r) => (
@@ -131,9 +141,13 @@ export default function CommentThread({
                 {writerLink(r.userNickname, r.content, r.update_date_format)}
                 {viewerNickname === r.userNickname && (
                   <div className="board-comment-actions">
-                    <span className="board-comment-delete" onClick={() => void remove(r.seq)}>
+                    <button
+                      type="button"
+                      className="mh-act mh-act--danger"
+                      onClick={() => void remove(r.seq)}
+                    >
                       삭제
-                    </span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -152,7 +166,9 @@ export default function CommentThread({
                     if (e.key === 'Enter') void submitReply(c.seq);
                   }}
                 />
-                <input type="button" value="등록" onClick={() => void submitReply(c.seq)} />
+                <button type="button" className="mh-btn" onClick={() => void submitReply(c.seq)}>
+                  등록
+                </button>
               </div>
             )}
           </div>

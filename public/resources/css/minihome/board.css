@@ -58,6 +58,17 @@
 	width: 80px;
 }
 
+.th-comment{
+	width: 60px;
+}
+
+.td-comment{
+	text-align: center;
+	font-size: 13px;
+	color: var(--mh-accent);
+	font-weight: 700;
+}
+
 .td-checkbox{
 	text-align: center;
 }

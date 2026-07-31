@@ -68,12 +68,13 @@ export default function BoardListClient({
             <th className="th-title">제목</th>
             <th className="th-writer">작성자</th>
             <th className="th-view">조회수</th>
+            <th className="th-comment">댓글</th>
           </tr>
         </thead>
         <tbody>
           {list.length === 0 ? (
             <tr>
-              <td colSpan={4} className="noneMsg">
+              <td colSpan={5} className="noneMsg">
                 아직 게시물이 없습니다.
               </td>
             </tr>
@@ -111,6 +112,7 @@ export default function BoardListClient({
                   <a href={`/mnHome/mainView/${board.userNickname}`}>{board.userNickname}</a>
                 </td>
                 <td className="td-view">{board.hits}</td>
+                <td className="td-comment">{board.commentCnt}</td>
               </tr>
             ))
           )}

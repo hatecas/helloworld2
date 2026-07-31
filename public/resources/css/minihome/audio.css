@@ -10,7 +10,8 @@
 .audioPlayerContainer {
 	position: absolute;
 	top: 0;
-	right: 0;
+	/* 우측 상단 알림 벨 자리를 비워 둔다 */
+	right: 48px;
 	display: flex;
 	align-items: center;
 	gap: 14px;

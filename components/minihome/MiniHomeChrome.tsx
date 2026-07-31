@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import AudioPlayer, { type Track } from '@/components/minihome/AudioPlayer';
+import NotificationBell from '@/components/minihome/NotificationBell';
 import { showAlert } from '@/lib/ui/dialog';
 
 interface ChromeData {
@@ -106,6 +107,7 @@ export default function MiniHomeChrome({ children }: { children: ReactNode }) {
   return (
     <div className="main-frame-skin" style={{ backgroundColor: data?.skinColor }}>
       <div className="main-frame">
+        {data?.viewerNickname && <NotificationBell />}
         {children}
         <AudioPlayer
           playlist={data?.playList ?? []}
