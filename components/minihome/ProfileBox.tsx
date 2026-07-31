@@ -1,6 +1,7 @@
 'use client';
 
 import ProfileIdentity from '@/components/minihome/ProfileIdentity';
+import { openMiniPopup } from '@/lib/ui/popup';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
 
 /**
@@ -8,7 +9,7 @@ import type { MiniHomeCommon } from '@/lib/minihome-view';
  * main / board / diary / album / visit JSP 에 그대로 복붙돼 있던 부분이다.
  */
 export default function ProfileBox({ common }: { common: MiniHomeCommon }) {
-  const openNewWindow = (url: string, settings: string) => window.open(url, '_blank', settings);
+  const openNewWindow = (url: string, settings: string) => openMiniPopup(url, settings);
 
   return (
     <div className="box profile-box">

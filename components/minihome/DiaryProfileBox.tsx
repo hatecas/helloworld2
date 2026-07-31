@@ -2,6 +2,7 @@
 
 import ProfileIdentity from '@/components/minihome/ProfileIdentity';
 import Calendar from '@/components/minihome/Calendar';
+import { openMiniPopup } from '@/lib/ui/popup';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
 
 /**
@@ -10,7 +11,7 @@ import type { MiniHomeCommon } from '@/lib/minihome-view';
  * 달력에서 날짜를 고르면 DiaryClient 가 window 이벤트로 받아 처리한다.
  */
 export default function DiaryProfileBox({ common }: { common: MiniHomeCommon }) {
-  const openNewWindow = (url: string, settings: string) => window.open(url, '_blank', settings);
+  const openNewWindow = (url: string, settings: string) => openMiniPopup(url, settings);
 
   return (
     <div className="box profile-box diary-box">

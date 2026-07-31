@@ -7,6 +7,7 @@ import { useState } from 'react';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
 import type { Tabs } from '@/lib/db/repo';
 import { showAlert } from '@/lib/ui/dialog';
+import { openMiniPopup } from '@/lib/ui/popup';
 
 interface NewsRow {
   seq: number;
@@ -157,9 +158,8 @@ export default function MainContent({
               <a
                 className="mnh-Edit"
                 onClick={() =>
-                  window.open(
+                  openMiniPopup(
                     '/mnHome/miniroomEditView',
-                    '_blank',
                     'width=800, height=600, scrollbars=no, resizable=no, toolbars=no, menubar=no, left=100, top=50',
                   )
                 }

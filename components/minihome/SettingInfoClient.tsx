@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { showAlert } from '@/lib/ui/dialog';
+import { openMiniPopup } from '@/lib/ui/popup';
 
 /** views/miniHome/setting.jsp + resources/js/setting.js (이름/닉네임/연락처 인라인 수정) */
 export default function SettingInfoClient({
@@ -36,9 +37,8 @@ export default function SettingInfoClient({
   };
 
   const openMinimiChange = () =>
-    window.open(
+    openMiniPopup(
       '/mnHome/mnhMinimiChangeView',
-      '_blank',
       'width=460, height=570, scrollbars=no, resizable=no, toolbars=no, menubar=no, left=100, top=50',
     );
 
