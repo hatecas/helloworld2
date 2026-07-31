@@ -88,7 +88,7 @@ function prettyMinimiName(file: string): string {
 
 /** public/resources/sounds 에 실제로 들어있는 mp3 */
 const BGM_FILES: Array<[title: string, artist: string, runningTime: string, file: string]> = [
-  ['1年이 지나도', '거미', '04:12', 'Already1Year.mp3'],
+  ['벌써 1년', '브라운아이드소울', '04:12', 'Already1Year.mp3'],
   ['가시', 'Buzz', '04:05', 'buzz-gasi.mp3'],
   ['고백', '델리스파이스', '03:41', 'Confession.mp3'],
   ['Rising Sun', '동방신기', '05:02', 'dongbangsinki-risingSun.mp3'],

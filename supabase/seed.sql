@@ -155,7 +155,7 @@ insert into "userStorage" ("userNickname", "category", "productName", "contentPa
 
 -- bgm (14)
 insert into "bgm" ("seq", "title", "artist", "runningTime", "bgmPrice", "contentPath") values
-  (1, '1年이 지나도', '거미', '04:12', '15', '/resources/sounds/Already1Year.mp3'),
+  (1, '벌써 1년', '브라운아이드소울', '04:12', '15', '/resources/sounds/Already1Year.mp3'),
   (2, '가시', 'Buzz', '04:05', '15', '/resources/sounds/buzz-gasi.mp3'),
   (3, '고백', '델리스파이스', '03:41', '15', '/resources/sounds/Confession.mp3'),
   (4, 'Rising Sun', '동방신기', '05:02', '15', '/resources/sounds/dongbangsinki-risingSun.mp3'),
@@ -173,7 +173,7 @@ select setval(pg_get_serial_sequence('"bgm"', 'seq'), (select max("seq") from "b
 
 -- userBgm (5)
 insert into "userBgm" ("userNickname", "title", "artist", "runningTime", "contentPath", "allocation") values
-  ('제인', '1年이 지나도', '거미', '04:12', '/resources/sounds/Already1Year.mp3', 1),
+  ('제인', '벌써 1년', '브라운아이드소울', '04:12', '/resources/sounds/Already1Year.mp3', 1),
   ('제인', '가시', 'Buzz', '04:05', '/resources/sounds/buzz-gasi.mp3', 1),
   ('제인', '고백', '델리스파이스', '03:41', '/resources/sounds/Confession.mp3', 0),
   ('제인', 'Rising Sun', '동방신기', '05:02', '/resources/sounds/dongbangsinki-risingSun.mp3', 0),

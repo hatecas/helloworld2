@@ -37,10 +37,25 @@ export default function AudioPlayer({
   const track = playlist[current];
   const empty = playlist.length === 0;
 
-  // 플레이리스트가 바뀌면 첫 곡으로
+  // 홈(플레이리스트)이 바뀌면 첫 곡으로 돌린다. 남의 홈으로 이동한 거면 재생을 멈춘다.
+  // (autoPlay 는 홈이 바뀌는 시점에 이미 갱신돼 있어 playlist 만 의존한다)
   useEffect(() => {
     setCurrent(0);
+    autoTried.current = false;
+    if (!autoPlay) {
+      audioRef.current?.pause();
+      setPlaying(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlist]);
+
+  // 내 홈을 벗어나면(다른 홈 방문) 즉시 음악을 멈춘다
+  useEffect(() => {
+    if (!autoPlay) {
+      audioRef.current?.pause();
+      setPlaying(false);
+    }
+  }, [autoPlay]);
 
   const play = useCallback(() => {
     const audio = audioRef.current;
