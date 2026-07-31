@@ -1322,12 +1322,16 @@ const NOTI_LIMIT = 30;
 /**
  * 로그인한 사용자(viewer)를 대상으로 한 알림 목록.
  * 내 게시판/사진첩/다이어리 댓글, 일촌평, 방명록, 받은 일촌신청을 모아
- * 최신순으로 돌려준다. readAtIso 이후(더 최신)면 안 읽음으로 본다.
+ * 최신순으로 돌려준다.
+ *  - readAtIso 이후(더 최신)면 안 읽음. ("모두 읽음" 기준 시각)
+ *  - seenIds 에 들어 있으면 개별로 읽은 것이라 읽음 처리. (알림 클릭 시)
  */
 export async function getNotifications(
   viewer: string,
   readAtIso: string,
+  seenIds: string[] = [],
 ): Promise<{ items: NotiItem[]; unread: number }> {
+  const seen = new Set(seenIds);
   const [myBoards, myAlbums, myDiaries] = await Promise.all([
     db().select('board', { userNickname: viewer }),
     db().select('album', { userNickname: viewer }),
@@ -1402,7 +1406,11 @@ export async function getNotifications(
   const sorted = items
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, NOTI_LIMIT)
-    .map((it) => ({ ...it, dateLabel: ymdhmDot(it.date), unread: it.date > readAtIso }));
+    .map((it) => ({
+      ...it,
+      dateLabel: ymdhmDot(it.date),
+      unread: it.date > readAtIso && !seen.has(it.id),
+    }));
 
   return { items: sorted, unread: sorted.filter((it) => it.unread).length };
 }

@@ -60,7 +60,11 @@ export default function NotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await fetch('/api/mnHome/notifications', { method: 'POST' });
+      await fetch('/api/mnHome/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
       setUnread(0);
       setItems((prev) => prev.map((it) => ({ ...it, unread: false })));
     } catch {
@@ -68,9 +72,19 @@ export default function NotificationBell() {
     }
   };
 
-  const go = (link: string) => {
+  // 알림을 누르면 그 항목만 읽음 처리하고 이동한다
+  const go = (item: NotiItem) => {
+    if (item.unread) {
+      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, unread: false } : it)));
+      setUnread((u) => Math.max(0, u - 1));
+      void fetch('/api/mnHome/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id }),
+      }).catch(() => undefined);
+    }
     setOpen(false);
-    router.push(link);
+    router.push(item.link);
   };
 
   return (
@@ -105,7 +119,7 @@ export default function NotificationBell() {
                   type="button"
                   key={it.id}
                   className={it.unread ? 'noti-item is-unread' : 'noti-item'}
-                  onClick={() => go(it.link)}
+                  onClick={() => go(it)}
                 >
                   <span className="noti-item-icon" aria-hidden="true">
                     {ICON[it.type] ?? '🔔'}
