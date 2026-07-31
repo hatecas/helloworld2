@@ -29,7 +29,9 @@ export default async function SettingBgmPage({
         <SettingBgmClient
           userNickname={userNickname}
           playList={myBgm.filter((b) => b.allocation === 1)}
-          ownedList={myBgm}
+          // 보유 BGM 은 아직 재생목록에 없는 곡만 (allocation 0).
+          // 예전엔 전체를 넘겨, 재생목록에 넣은 곡이 양쪽 목록에 동시에 떠서 두 개로 보였다.
+          ownedList={myBgm.filter((b) => b.allocation === 0)}
         />
       </MiniHomeShell>
     </>
