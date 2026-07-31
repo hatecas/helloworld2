@@ -1815,3 +1815,130 @@ input.content-title-name:focus {
 	background: #ff3b30;
 	flex: none;
 }
+
+/* ==================================================================== */
+/* 모바일 (반응형 리플로우)                                               */
+/* 좁은 화면에서는 1080×660 고정 "책"을 화면 폭에 맞춰 세로 1단으로 편다.    */
+/* frame.css 맨 끝이라, 위쪽 데스크톱 고정값들을 그대로 덮어쓴다.          */
+/* ==================================================================== */
+@media (max-width: 768px) {
+	.main-frame-skin {
+		height: auto;
+		min-height: 100%;
+		overflow-x: hidden; /* 혹시 남는 넘침 요소가 가로 스크롤을 만들지 않게 */
+	}
+
+	.main-frame {
+		width: 100%;
+		height: auto;
+		top: auto;
+		left: auto;
+		transform: none;
+	}
+
+	/* 책 겉/속을 절대배치 → 일반 흐름으로 (상단 오디오·알림 밴드와 하단 바 자리 확보) */
+	.bookcover {
+		position: static;
+		width: auto;
+		height: auto;
+		top: auto;
+		left: auto;
+		transform: none;
+		margin: 52px 6px 52px;
+		border-radius: 12px;
+	}
+
+	.bookdot {
+		position: static;
+		inset: auto;
+		padding: 10px;
+	}
+
+	.page {
+		position: static;
+		inset: auto;
+		flex-direction: column;
+		padding: 10px;
+	}
+
+	/* 프로필 칸 → 위로, 고정폭 해제 */
+	.profile-container {
+		flex: none;
+		margin-right: 0;
+		margin-bottom: 14px;
+	}
+
+	.profile-box {
+		max-width: 100%;
+		min-width: 0;
+		width: 100%;
+	}
+
+	/* 콘텐츠 칸 → 고정폭(639.9px min-width) 해제: 가로 스크롤 주범 */
+	.content-container {
+		flex: none;
+	}
+
+	.content-box {
+		max-width: 100%;
+		min-width: 0;
+		width: 100%;
+		max-height: none;
+		overflow: visible;
+		padding: 0.5rem;
+	}
+
+	/* 우측 세로 메뉴 → 하단 가로 배치 */
+	.menu-container {
+		margin-top: 14px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		justify-content: center;
+	}
+
+	.menu-content,
+	.menu-content-clicked {
+		border-radius: 8px;
+	}
+
+	/* 오디오 플레이어: 제목 숨기고 컨트롤만 컴팩트하게(알림 벨 자리는 유지) */
+	.audioPlayerContainer {
+		right: 48px;
+		gap: 8px;
+		padding: 0 10px;
+	}
+
+	.audioPlayerContainer .nowPlaying {
+		display: none;
+	}
+
+	/* 댓글 입력창 고정폭(410px) 해제 — .page 로 특정도를 높여 board.css 를 이긴다 */
+	.page .comment-content-write {
+		width: auto;
+		flex: 1;
+		min-width: 0;
+	}
+
+	/* 하단 바 축소 */
+	.main-under-bar {
+		height: 40px;
+		padding: 0 8px;
+		font-size: 11px;
+	}
+
+	.udb-myhome-a,
+	.udb-logout-a {
+		font-size: 11px;
+		padding: 4px 6px;
+	}
+
+	.main-udb-past {
+		padding: 4px 6px;
+	}
+
+	/* 알림 패널이 화면 밖으로 나가지 않게 */
+	.noti-panel {
+		width: min(300px, 88vw);
+	}
+}

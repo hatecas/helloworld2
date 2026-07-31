@@ -140,12 +140,23 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
   }, []);
 
   const openMiniHomepage = (nickname: string = userNickname) => {
+    const url = `/mnHome/mainView/${encodeURIComponent(nickname)}`;
+
+    // 모바일/터치·좁은 화면에서는 팝업이 막히거나 화면을 넘치므로 같은 탭에서 전체화면으로 연다
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches);
+    if (isMobile) {
+      window.location.href = url;
+      return;
+    }
+
     const width = 1200;
     const height = 720;
     const left = (window.innerWidth - width) / 2;
     const top = (window.innerHeight - height) / 2;
     const newWindow = window.open(
-      `/mnHome/mainView/${encodeURIComponent(nickname)}`,
+      url,
       'MiniHomepage',
       `width=${width}, height=${height}, left=${left}, top=${top}`,
     );
