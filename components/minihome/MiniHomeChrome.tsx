@@ -123,6 +123,16 @@ export default function MiniHomeChrome({ children }: { children: ReactNode }) {
             value="내 미니홈피"
             onClick={goToMyHome}
           />
+          {data?.viewerNickname && (
+            <input
+              type="button"
+              className="udb-plaza-a font-neo"
+              value="🌳 광장"
+              onClick={() => {
+                window.location.href = '/plaza';
+              }}
+            />
+          )}
         </div>
         <div className="main-udb-notice">
           <div id="notice-container">

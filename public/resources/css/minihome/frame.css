@@ -852,11 +852,16 @@ input.content-title-name:focus {
 }
 
 .main-udb-myhome {
-	flex-basis: 15%;
+	/* '내 미니홈피' 옆에 광장 버튼이 하나 더 들어간다 */
+	flex-basis: 24%;
+	display: flex;
+	align-items: center;
+	gap: 2px;
 	text-align: left;
 }
 
 .udb-myhome-a,
+.udb-plaza-a,
 .udb-logout-a {
 	color: #e6edf0;
 	border: 0;
@@ -869,6 +874,7 @@ input.content-title-name:focus {
 }
 
 .udb-myhome-a:hover,
+.udb-plaza-a:hover,
 .udb-logout-a:hover {
 	cursor: pointer;
 	color: #ffffff;
@@ -876,7 +882,7 @@ input.content-title-name:focus {
 }
 
 .main-udb-notice {
-	flex-basis: 60%;
+	flex-basis: 51%;
 	text-align: left;
 	overflow: hidden;
 }
@@ -2090,6 +2096,7 @@ input.content-title-name:focus {
 	}
 
 	.udb-myhome-a,
+	.udb-plaza-a,
 	.udb-logout-a {
 		font-size: 11px;
 		padding: 4px 6px;

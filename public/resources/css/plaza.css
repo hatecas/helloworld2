@@ -1,0 +1,457 @@
+@charset "UTF-8";
+
+/* ==================================================================
+   광장 — 내 미니미로 걸어다니며 실시간으로 모이는 공간
+
+   배경은 별도 이미지 없이 CSS 로 그린다(하늘·잔디·분수·나무·벤치·가로등).
+   무대는 1000x620 논리 좌표계이고, 사람 위치는 % 로 찍어서
+   화면 크기가 달라져도 같은 자리에 서도록 했다.
+   ================================================================== */
+
+.pz {
+	width: min(1100px, 100%);
+	margin: 0 auto;
+	padding: 0 16px 28px;
+}
+
+.pz-head {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	margin: 6px 0 12px;
+}
+
+.pz-title {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 800;
+	letter-spacing: -0.3px;
+	color: var(--hw-text);
+}
+
+.pz-status {
+	font-size: 13px;
+	font-weight: 600;
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: var(--hw-accent-soft);
+	color: var(--hw-accent-strong);
+}
+
+.pz-status--offline,
+.pz-status--unconfigured {
+	background: #f1f3f5;
+	color: var(--hw-muted);
+}
+
+.pz-warn {
+	margin: 0 0 12px;
+	padding: 10px 14px;
+	font-size: 13px;
+	line-height: 1.6;
+	color: #8a5a1b;
+	background: #fff8ec;
+	border: 1px solid #f5dcb8;
+	border-radius: var(--hw-radius-sm);
+}
+
+.pz-warn code {
+	padding: 1px 5px;
+	background: #fdeed6;
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+/* ----------------------------------------------------------- 무대 */
+
+.pz-stage-wrap {
+	border-radius: var(--hw-radius);
+	overflow: hidden;
+	box-shadow: var(--hw-shadow);
+	background: #cfe9f5;
+}
+
+.pz-stage {
+	position: relative;
+	width: 100%;
+	/* 논리 좌표계(1000x620)와 같은 비율 */
+	aspect-ratio: 1000 / 620;
+	overflow: hidden;
+	/* 드래그로 이미지가 잡히지 않게 */
+	user-select: none;
+}
+
+.pz-sky {
+	position: absolute;
+	inset: 0 0 54% 0;
+	background: linear-gradient(#bfe6f7 0%, #ddf1fa 70%, #eaf6e6 100%);
+}
+
+/* 멀리 보이는 언덕 */
+.pz-far {
+	position: absolute;
+	left: -6%;
+	right: -6%;
+	top: 30%;
+	height: 22%;
+	background:
+		radial-gradient(60% 100% at 20% 100%, #a9d6a2 0 70%, transparent 71%),
+		radial-gradient(55% 100% at 55% 100%, #9ccf95 0 70%, transparent 71%),
+		radial-gradient(65% 100% at 85% 100%, #b2dbab 0 70%, transparent 71%);
+}
+
+.pz-ground {
+	position: absolute;
+	inset: 46% 0 0 0;
+	background: linear-gradient(#8fc98a 0%, #7cbd78 40%, #6fb46c 100%);
+}
+
+/* 광장 바닥(원형 포석) */
+.pz-plaza-ring {
+	position: absolute;
+	left: 50%;
+	top: 74%;
+	width: 74%;
+	height: 46%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	background: radial-gradient(closest-side, #efe6d2 0 78%, #e3d7bf 79% 100%);
+	box-shadow: inset 0 0 0 6px #d9caac;
+}
+
+/* 분수 */
+.pz-fountain {
+	position: absolute;
+	left: 50%;
+	top: 62%;
+	width: 17%;
+	height: 12%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	background: radial-gradient(closest-side, #bfe3f2 0 62%, #dcd0b4 63% 100%);
+	box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.pz-fountain-water {
+	position: absolute;
+	left: 50%;
+	bottom: 42%;
+	width: 8%;
+	height: 120%;
+	transform: translateX(-50%);
+	border-radius: 999px;
+	background: linear-gradient(#ffffff, rgba(255, 255, 255, 0));
+	opacity: 0.85;
+	animation: pz-spout 2.4s ease-in-out infinite;
+}
+
+@keyframes pz-spout {
+	0%, 100% { transform: translateX(-50%) scaleY(0.86); }
+	50%      { transform: translateX(-50%) scaleY(1.1); }
+}
+
+/* 나무 — 기둥 + 잎 덩어리 */
+.pz-tree {
+	position: absolute;
+	width: 9%;
+	height: 22%;
+	background:
+		radial-gradient(closest-side, #5aa356 0 72%, transparent 73%) center top / 100% 74% no-repeat,
+		linear-gradient(#8a6134, #6f4d29) center bottom / 16% 34% no-repeat;
+}
+
+.pz-tree--1 { left: 5%;  top: 40%; }
+.pz-tree--2 { left: 86%; top: 38%; width: 10%; height: 25%; }
+.pz-tree--3 { left: 74%; top: 47%; width: 7%;  height: 18%; }
+
+/* 벤치 */
+.pz-bench {
+	position: absolute;
+	width: 11%;
+	height: 5%;
+	background:
+		linear-gradient(#b4813f, #96682f) 0 0 / 100% 45% no-repeat,
+		linear-gradient(#a2742f, #8c6129) 0 60% / 100% 22% no-repeat;
+	border-radius: 3px;
+	box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
+}
+
+.pz-bench--l { left: 13%; top: 82%; }
+.pz-bench--r { left: 76%; top: 82%; }
+
+/* 가로등 */
+.pz-lamp {
+	position: absolute;
+	width: 2%;
+	height: 20%;
+	background: linear-gradient(#5c6672, #45505c);
+	border-radius: 2px;
+}
+
+.pz-lamp::before {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: -14%;
+	width: 260%;
+	height: 22%;
+	transform: translateX(-50%);
+	border-radius: 50%;
+	background: radial-gradient(closest-side, #fff4c8 0 60%, #f4d98a 61% 100%);
+	box-shadow: 0 0 14px rgba(255, 226, 140, 0.9);
+}
+
+.pz-lamp--l { left: 30%; top: 52%; }
+.pz-lamp--r { left: 68%; top: 52%; }
+
+.pz-sign {
+	position: absolute;
+	left: 50%;
+	top: 8%;
+	transform: translateX(-50%);
+	padding: 6px 18px;
+	font-size: 15px;
+	font-weight: 800;
+	letter-spacing: 1px;
+	color: #6b4a22;
+	background: linear-gradient(#f6e3bf, #e8cf9e);
+	border: 2px solid #c9a86e;
+	border-radius: 8px;
+	box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
+	white-space: nowrap;
+}
+
+/* ------------------------------------------------------- 사람(미니미) */
+
+.pz-actor {
+	position: absolute;
+	/* left/top 은 JS 가 % 로 넣는다. 발이 (x, y) 에 오도록 아래 가운데를 기준점으로. */
+	transform: translate(-50%, -100%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	pointer-events: none;
+}
+
+.pz-minimi {
+	width: 100%;
+	height: auto;
+	display: block;
+	image-rendering: pixelated;
+	filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.18));
+}
+
+.pz-name {
+	max-width: 160%;
+	margin-bottom: 2px;
+	padding: 1px 7px;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.5;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: #ffffff;
+	background: rgba(31, 35, 40, 0.62);
+	border-radius: 999px;
+}
+
+.pz-actor--me .pz-name {
+	background: var(--hw-accent-strong);
+}
+
+/* 발밑 그림자 — 바닥에 붙어 보이게 */
+.pz-shadow {
+	position: absolute;
+	bottom: 2px;
+	left: 50%;
+	width: 46%;
+	height: 7px;
+	transform: translateX(-50%);
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.18);
+	filter: blur(1px);
+	z-index: -1;
+}
+
+/*
+ * 말풍선은 배치를 계산하지 않고 그냥 미니미 위에 쌓는다(.pz-actor 가 세로 flex).
+ * 기준점이 발이라 위로만 자라므로, 말풍선이 떠도 서 있는 자리는 그대로다.
+ */
+.pz-bubble {
+	position: relative;
+	flex: 0 0 auto;
+	max-width: 230px;
+	width: max-content;
+	margin-bottom: 5px;
+	padding: 7px 11px;
+	font-size: 12.5px;
+	line-height: 1.45;
+	color: var(--hw-text);
+	background: #ffffff;
+	border: 1px solid var(--hw-line);
+	border-radius: 12px;
+	box-shadow: 0 4px 12px rgba(16, 24, 40, 0.14);
+	word-break: break-word;
+	animation: pz-pop 0.16s ease-out;
+}
+
+.pz-bubble::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: -6px;
+	width: 10px;
+	height: 10px;
+	transform: translateX(-50%) rotate(45deg);
+	background: #ffffff;
+	border-right: 1px solid var(--hw-line);
+	border-bottom: 1px solid var(--hw-line);
+}
+
+@keyframes pz-pop {
+	from { opacity: 0; transform: translateY(4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------- 아래쪽 조작 + 채팅 */
+
+.pz-bottom {
+	display: flex;
+	gap: 14px;
+	align-items: stretch;
+	margin-top: 14px;
+}
+
+.pz-chat {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	overflow: hidden;
+}
+
+.pz-log {
+	height: 132px;
+	overflow-y: auto;
+	padding: 10px 12px;
+	font-size: 13px;
+	line-height: 1.65;
+}
+
+.pz-log-empty {
+	color: var(--hw-muted);
+}
+
+.pz-log-line b {
+	color: var(--hw-navy);
+	margin-right: 4px;
+}
+
+.pz-log-line.is-mine b {
+	color: var(--hw-accent-strong);
+}
+
+.pz-chat-bar {
+	display: flex;
+	gap: 8px;
+	padding: 10px;
+	border-top: 1px solid var(--hw-line);
+	background: #fbfbfc;
+}
+
+.pz-chat-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 9px 12px;
+	font-family: inherit;
+	font-size: 14px;
+	color: var(--hw-text);
+	background: #ffffff;
+	border: 1px solid var(--hw-line);
+	border-radius: 999px;
+	outline: none;
+}
+
+.pz-chat-input:focus {
+	border-color: var(--hw-accent);
+}
+
+.pz-chat-send {
+	flex: 0 0 auto;
+	padding: 9px 18px;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	color: #ffffff;
+	background: var(--hw-accent);
+	border: none;
+	border-radius: 999px;
+	cursor: pointer;
+	transition: filter 0.15s ease;
+}
+
+.pz-chat-send:hover {
+	filter: brightness(1.05);
+}
+
+/* 방향 버튼 (모바일·마우스용. 키보드가 있으면 안 써도 된다) */
+.pz-dpad {
+	flex: 0 0 auto;
+	position: relative;
+	width: 132px;
+	height: 132px;
+}
+
+.pz-dpad-btn {
+	position: absolute;
+	width: 44px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	color: var(--hw-muted);
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: 10px;
+	cursor: pointer;
+	touch-action: none;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.pz-dpad-btn:active {
+	background: var(--hw-accent-soft);
+	color: var(--hw-accent-strong);
+}
+
+.pz-dpad-btn--u { left: 44px; top: 0; }
+.pz-dpad-btn--l { left: 0; top: 44px; }
+.pz-dpad-btn--r { left: 88px; top: 44px; }
+.pz-dpad-btn--d { left: 44px; top: 88px; }
+
+@media (max-width: 720px) {
+	.pz {
+		padding: 0 10px 22px;
+	}
+
+	.pz-bottom {
+		flex-direction: column-reverse;
+	}
+
+	.pz-dpad {
+		align-self: center;
+	}
+
+	.pz-log {
+		height: 108px;
+	}
+
+	.pz-sign {
+		font-size: 12px;
+		padding: 4px 12px;
+	}
+}

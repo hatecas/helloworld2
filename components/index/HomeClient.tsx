@@ -229,6 +229,11 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                 <span id="userDotoriCnt">{dotori ?? 0}</span>
               </h5>
             )}
+            {loggedIn && (
+              <a href="/plaza" className="index-a-plaza">
+                광장
+              </a>
+            )}
             <a href="/store/minimiView" className="index-a-store">
               상점
             </a>
@@ -380,6 +385,15 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                         id="btnGoMinihome"
                         value="내 미니홈피"
                         onClick={() => openMiniHomepage()}
+                      />
+                      <input
+                        type="button"
+                        className="mainBtnPlaza"
+                        id="btnGoPlaza"
+                        value="🌳 광장"
+                        onClick={() => {
+                          window.location.href = '/plaza';
+                        }}
                       />
                       <input
                         type="button"

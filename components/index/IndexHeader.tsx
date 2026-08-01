@@ -13,10 +13,10 @@ export default function IndexHeader({
 }: {
   loggedIn: boolean;
   dotori: number | null;
-  active?: 'store' | 'notice' | 'map';
+  active?: 'store' | 'notice' | 'map' | 'plaza';
   greeting?: string;
 }) {
-  const cls = (name: 'store' | 'notice' | 'map', base: string) =>
+  const cls = (name: 'store' | 'notice' | 'map' | 'plaza', base: string) =>
     active === name ? `${base} press-btn` : base;
 
   return (
@@ -42,6 +42,11 @@ export default function IndexHeader({
               />
               <span id="userDotoriCnt">{dotori ?? 0}</span>
             </h5>
+          )}
+          {loggedIn && (
+            <a href="/plaza" className={cls('plaza', 'index-a-plaza')}>
+              광장
+            </a>
           )}
           <a href="/store/minimiView" className={cls('store', 'index-a-store')}>
             상점

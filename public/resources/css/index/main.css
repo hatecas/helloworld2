@@ -112,6 +112,7 @@ a {
 	color: var(--hw-accent-strong);
 }
 
+.index-a-plaza,
 .index-a-store,
 .index-a-notice,
 .index-a-map,
@@ -482,15 +483,33 @@ a {
 }
 
 .mainBtn1,
+.mainBtnPlaza,
 .mainBtn2 {
 	flex: 1;
 	margin: 0;
 	padding: 10px 12px;
 	font-size: 14px;
 	font-weight: 700;
+	font-family: inherit;
 	border-radius: var(--hw-radius-sm);
 	cursor: pointer;
 	transition: all 0.15s ease;
+}
+
+/* 광장 — 미니홈피(주황)와 로그아웃(회색) 사이의 초록 계열 */
+.mainBtnPlaza {
+	flex: 0 0 auto;
+	padding: 10px 14px;
+	color: #2f6b40;
+	background-color: #eaf6ec;
+	border: 1px solid #c5e3cd;
+	white-space: nowrap;
+}
+
+.mainBtnPlaza:hover {
+	background-color: #dcefe1;
+	border-color: #a9d5b6;
+	color: #245532;
 }
 
 .mainBtn1 {
