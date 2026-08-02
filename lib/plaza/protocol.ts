@@ -95,6 +95,20 @@ export interface HelloMsg {
   id: string;
 }
 
+/**
+ * broadcast 'claim' — 한 계정은 광장에 한 번만.
+ *
+ * 같은 닉네임으로 새 창이 들어오면 이 신호를 쏘고, 먼저 있던 창은 스스로 물러난다.
+ * (나중에 들어온 쪽이 이긴다 — 죽은 탭이 자리를 영영 막는 일이 없도록)
+ */
+export interface ClaimMsg {
+  id: string;
+  nickname: string;
+}
+
+/** 같은 브라우저의 다른 탭끼리 즉시 주고받는 통로 (네트워크를 타지 않는다) */
+export const TAB_CHANNEL = 'helloworld_plaza_tab';
+
 export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 
 /**

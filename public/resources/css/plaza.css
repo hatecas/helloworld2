@@ -513,6 +513,59 @@
 	color: #0b57d0;
 }
 
+/* ------------------------------------------------- 다른 곳에서 접속함 */
+
+.pz-kicked {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 56px 20px;
+	background: var(--hw-surface);
+	border: 1px solid var(--hw-line);
+	border-radius: var(--hw-radius);
+	box-shadow: var(--hw-shadow-sm);
+}
+
+.pz-kicked-icon {
+	font-size: 44px;
+	line-height: 1;
+	margin-bottom: 16px;
+	opacity: 0.9;
+}
+
+.pz-kicked-title {
+	font-size: 17px;
+	font-weight: 800;
+	color: var(--hw-text);
+	margin-bottom: 10px;
+}
+
+.pz-kicked-desc {
+	margin: 0 0 20px;
+	font-size: 13.5px;
+	line-height: 1.75;
+	color: var(--hw-muted);
+}
+
+.pz-kicked-btn {
+	padding: 11px 26px;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	color: #ffffff;
+	background: var(--hw-accent);
+	border: none;
+	border-radius: 999px;
+	cursor: pointer;
+	transition: filter 0.15s ease;
+}
+
+.pz-kicked-btn:hover {
+	filter: brightness(1.05);
+}
+
 /* --------------------------------------------------------------- 채팅 */
 
 .pz-chat {

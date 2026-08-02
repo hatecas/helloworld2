@@ -229,6 +229,11 @@ export interface VisitCount {
   userNickname: string;
   todayCnt: number;
   totalCnt: number;
+  /**
+   * todayCnt 가 '어느 날' 의 숫자인지 (KST 기준 YYYY-MM-DD).
+   * 자정에 리셋해 주는 배치가 없으므로, 이 날짜가 오늘이 아니면 todayCnt 를 0 으로 본다.
+   */
+  cnt_date?: string;
 }
 
 export interface Friend {

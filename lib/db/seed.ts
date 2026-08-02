@@ -229,7 +229,7 @@ export function buildSeed(): Database {
     });
     db.visitCnt.push({
       seq: next(), userNickname: u.nickname,
-      todayCnt: 3 + idx * 2, totalCnt: 128 + idx * 37,
+      todayCnt: 3 + idx * 2, totalCnt: 128 + idx * 37, cnt_date: ymd(),
     });
     db.loginStatus.push({
       seq: next(), userNickname: u.nickname, status: u.online ? '1' : '0',

@@ -281,7 +281,10 @@ create table "visitCnt" (
   "userNickname" varchar(50) not null unique
                  references "user"("userNickname") on update cascade on delete cascade,
   "todayCnt"     integer not null default 0,
-  "totalCnt"     integer not null default 0
+  "totalCnt"     integer not null default 0,
+  -- todayCnt 가 어느 날의 숫자인지 (KST 기준).
+  -- 자정에 리셋해 주는 배치가 없으므로 날짜가 바뀌면 앱이 알아서 0 부터 다시 센다.
+  "cnt_date"     date
 );
 
 -- --------------------------------------------------------------- 일촌

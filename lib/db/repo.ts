@@ -218,7 +218,9 @@ export async function signUp(params: {
     buy_date: now, allocation: 1,
   });
   await s.insert('loginStatus', { userNickname: params.userNickname, status: '0' });
-  await s.insert('visitCnt', { userNickname: params.userNickname, todayCnt: 0, totalCnt: 0 });
+  await s.insert('visitCnt', {
+    userNickname: params.userNickname, todayCnt: 0, totalCnt: 0, cnt_date: todayYmd(),
+  });
 }
 
 /** 나와 얽힌 일촌 관계만 가져온다 (신청한 쪽 / 신청받은 쪽 둘 다) */
@@ -298,23 +300,39 @@ export async function getMyBgm(userNickname: string) {
   return db().select('userBgm', { userNickname, allocation: 1 });
 }
 
+/**
+ * 방문자 수.
+ *
+ * '오늘 방문자' 를 자정에 0 으로 되돌려 주는 배치가 없어서, 예전에는 한 번 올라간
+ * 숫자가 계속 쌓이기만 했다. 크론을 두는 대신 '이 숫자가 어느 날 것인지'(cnt_date)를
+ * 같이 저장해 두고, 날짜가 바뀌었으면 0 부터 다시 센다.
+ *
+ * 읽을 때도 같은 기준으로 걸러 주므로, 오늘 아직 아무도 안 왔으면
+ * 어제 숫자가 아니라 0 이 보인다. (읽기는 DB 를 건드리지 않는다)
+ */
 export async function selectVisitCnt(userNickname: string) {
-  const rows = await db().select('visitCnt', { userNickname });
-  return rows[0] ?? null;
+  const row = (await db().select('visitCnt', { userNickname }))[0];
+  if (!row) return null;
+  const stale = row.cnt_date !== todayYmd();
+  return stale ? { ...row, todayCnt: 0 } : row;
 }
 
 /** 방문할 때마다 today/total 을 1씩 올린다 (MainServiceImpl.updateVisitCnt) */
 export async function updateVisitCnt(
   userNickname: string,
 ): Promise<{ todayCnt: number; totalCnt: number }> {
-  const current = await selectVisitCnt(userNickname);
-  if (!current) {
-    await db().insert('visitCnt', { userNickname, todayCnt: 1, totalCnt: 1 });
+  const today = todayYmd();
+  const row = (await db().select('visitCnt', { userNickname }))[0];
+
+  if (!row) {
+    await db().insert('visitCnt', { userNickname, todayCnt: 1, totalCnt: 1, cnt_date: today });
     return { todayCnt: 1, totalCnt: 1 };
   }
-  const todayCnt = current.todayCnt + 1;
-  const totalCnt = current.totalCnt + 1;
-  await db().update('visitCnt', { userNickname }, { todayCnt, totalCnt });
+
+  // 날이 바뀌었으면 오늘 숫자는 0 부터 다시 (누적 방문수는 그대로 이어간다)
+  const todayCnt = (row.cnt_date === today ? row.todayCnt : 0) + 1;
+  const totalCnt = row.totalCnt + 1;
+  await db().update('visitCnt', { userNickname }, { todayCnt, totalCnt, cnt_date: today });
   return { todayCnt, totalCnt };
 }
 

@@ -18,6 +18,7 @@ import {
   clamp,
   depthScale,
   spawnPoint,
+  TAB_CHANNEL,
   type ChatMsg,
   type Facing,
   type PosMsg,
@@ -94,6 +95,18 @@ export default function PlazaClient({
   const [log, setLog] = useState<LogLine[]>([]);
   const [draft, setDraft] = useState('');
   const [soundOn, setSoundOn] = useState(true);
+  /** 같은 계정이 다른 창/기기에서 접속해 이 창이 물러난 상태 */
+  const [kicked, setKicked] = useState(false);
+  const kickedRef = useRef(false);
+
+  const leaveForOther = useCallback(() => {
+    if (kickedRef.current) return;
+    kickedRef.current = true;
+    setKicked(true);
+    keysRef.current.clear();
+    connRef.current?.leave();
+    connRef.current = null;
+  }, []);
 
   /* ---------------------------------------------------------------- 내 캐릭터 */
 
@@ -126,6 +139,22 @@ export default function PlazaClient({
       setSoundOn(false);
     }
   }, []);
+
+  /*
+   * 같은 브라우저의 다른 탭 — 네트워크를 타지 않고 즉시 알 수 있다.
+   * 새로 연 창이 'claim' 을 던지면 먼저 있던 창이 물러난다(나중이 이긴다).
+   * 죽은 탭이 자리를 영영 막지 않도록 이 방향으로 정했다.
+   */
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const bc = new BroadcastChannel(TAB_CHANNEL);
+    bc.onmessage = (e: MessageEvent) => {
+      const d = e.data as { type?: string; id?: string; nickname?: string } | null;
+      if (d?.type === 'claim' && d.nickname === nickname && d.id !== myId) leaveForOther();
+    };
+    bc.postMessage({ type: 'claim', id: myId, nickname });
+    return () => bc.close();
+  }, [myId, nickname, leaveForOther]);
 
   const syncIds = useCallback(() => {
     setIds((prev) => {
@@ -246,6 +275,10 @@ export default function PlazaClient({
         onPos: (msg) => live && upsertRemote(msg),
         onChat: (msg) => live && pushChat(msg, false),
         onHello: () => live && sendMyPos(false),
+        // 다른 기기/브라우저에서 같은 계정이 들어왔다
+        onClaim: (msg) => {
+          if (live && msg.nickname === nickname && msg.id !== myId) leaveForOther();
+        },
         onRoster: (roster) => {
           if (!live) return;
           let changed = false;
@@ -267,6 +300,8 @@ export default function PlazaClient({
       }
       conn = c;
       connRef.current = c;
+      // 이 계정의 자리는 이제 이 창이 갖는다 (다른 곳에 열려 있으면 그쪽이 물러난다)
+      c.sendClaim({ id: myId, nickname });
       c.sendHello({ id: myId });
       sendMyPos(false);
     });
@@ -286,12 +321,14 @@ export default function PlazaClient({
     pushChat,
     sendMyPos,
     syncIds,
+    leaveForOther,
   ]);
 
   /* --------------------------------------------------------------- 키보드 입력 */
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (kickedRef.current) return;
       /*
        * 입력칸에서 난 키는 여기서 절대 다루지 않는다.
        *
@@ -350,6 +387,11 @@ export default function PlazaClient({
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+
+      if (kickedRef.current) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
 
       const stageW = stageRef.current?.clientWidth ?? 0;
       const stageH = stageRef.current?.clientHeight ?? 0;
@@ -453,6 +495,7 @@ export default function PlazaClient({
   /* --------------------------------------------------------------------- 채팅 */
 
   const send = () => {
+    if (kickedRef.current) return;
     const text = cleanChat(draft);
     if (!text) return;
     const msg: ChatMsg = { id: myId, msgId: `${myId}-${Date.now()}`, nickname, text };
@@ -484,6 +527,35 @@ export default function PlazaClient({
   /* --------------------------------------------------------------------- 화면 */
 
   const bubbleOf = (id: string) => bubbles.find((b) => b.actorId === id);
+
+  // 다른 창/기기에서 같은 계정이 접속하면 이 창은 물러난다 (한 계정 = 한 자리)
+  if (kicked) {
+    return (
+      <div className="pz">
+        <div className="pz-head">
+          <h1 className="pz-title">광장</h1>
+        </div>
+        <div className="pz-kicked">
+          <div className="pz-kicked-icon" aria-hidden="true">
+            🚪
+          </div>
+          <div className="pz-kicked-title">다른 곳에서 광장에 접속했어요</div>
+          <p className="pz-kicked-desc">
+            한 계정은 광장에 한 번만 들어갈 수 있습니다.
+            <br />
+            방금 연 창에서 이어서 놀거나, 여기서 다시 접속할 수 있어요.
+          </p>
+          <button
+            type="button"
+            className="pz-kicked-btn"
+            onClick={() => window.location.reload()}
+          >
+            여기서 다시 접속
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pz">
