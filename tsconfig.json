@@ -9,6 +9,9 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // lib/db/seed.ts 처럼 scripts/*.mjs 가 node 로 직접 읽는 파일은 상대 import 에
+    // 확장자가 있어야 한다. noEmit 이라 번들러 쪽에는 영향이 없다.
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",

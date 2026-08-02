@@ -15,7 +15,9 @@
     "avatar:guide": "node scripts/make-avatar-guide.mjs",
     "avatar:preview": "node scripts/make-avatar-preview.mjs",
     "avatar:fit": "node scripts/fit-avatar-part.mjs",
-    "avatar:bg": "node scripts/strip-avatar-bg.mjs"
+    "avatar:bg": "node scripts/strip-avatar-bg.mjs",
+    "minimi:gif": "node scripts/sheet-to-gif.mjs",
+    "minimi:pack": "node scripts/build-minimi-pack.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

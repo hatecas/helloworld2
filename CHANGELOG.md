@@ -71,6 +71,38 @@ create table if not exists "albumCMT" (
 create index if not exists "albumCMT_albumSeq_idx" on "albumCMT" ("albumSeq");
 alter table "albumCMT" enable row level security;
 
+-- 도트 미니미 22종을 상점에 등록 (광장에서 숫자키로 특수 동작이 되는 미니미).
+-- 이미 들어 있는 건 건너뛰므로 여러 번 실행해도 중복되지 않는다.
+insert into "store" ("category", "productName", "contentPath", "productPrice")
+select v."category", v."productName", v."contentPath", v."productPrice"
+from (values
+  ('minimi', '아구몬', '/resources/images/minimi/agumonIcon.gif', '30'),
+  ('minimi', '에어드라몬', '/resources/images/minimi/airdramonIcon.gif', '30'),
+  ('minimi', '베르제브몬 블래스트', '/resources/images/minimi/beelzebumonBlastIcon.gif', '30'),
+  ('minimi', '치비몬', '/resources/images/minimi/chibimonIcon.gif', '30'),
+  ('minimi', '드리모게몬', '/resources/images/minimi/drimogemonIcon.gif', '30'),
+  ('minimi', '듀크몬', '/resources/images/minimi/dukemonIcon.gif', '30'),
+  ('minimi', '에테몬', '/resources/images/minimi/etemonIcon.gif', '30'),
+  ('minimi', '팬텀몬', '/resources/images/minimi/fantomonIcon.gif', '30'),
+  ('minimi', '갈고몬', '/resources/images/minimi/galgomonIcon.gif', '30'),
+  ('minimi', '게코몬', '/resources/images/minimi/gekomonIcon.gif', '30'),
+  ('minimi', '기기몬', '/resources/images/minimi/gigimonIcon.gif', '30'),
+  ('minimi', '그레이몬', '/resources/images/minimi/greymonIcon.gif', '30'),
+  ('minimi', '임프몬', '/resources/images/minimi/impmonIcon.gif', '30'),
+  ('minimi', '코로몬', '/resources/images/minimi/koromonIcon.gif', '30'),
+  ('minimi', '마린엔젤몬', '/resources/images/minimi/marinAngemonIcon.gif', '30'),
+  ('minimi', '오메가몬 X', '/resources/images/minimi/omegamonXIcon.gif', '30'),
+  ('minimi', '파닥몬', '/resources/images/minimi/patamonIcon.gif', '30'),
+  ('minimi', '테리어몬', '/resources/images/minimi/terriermonIcon.gif', '30'),
+  ('minimi', '토게몬', '/resources/images/minimi/togemonIcon.gif', '30'),
+  ('minimi', '츠노몬', '/resources/images/minimi/tsunomonIcon.gif', '30'),
+  ('minimi', '브이몬', '/resources/images/minimi/vmonIcon.gif', '30'),
+  ('minimi', '워그레이몬 X', '/resources/images/minimi/warGreymonXIcon.gif', '30')
+) as v("category", "productName", "contentPath", "productPrice")
+where not exists (
+  select 1 from "store" s where s."contentPath" = v."contentPath"
+);
+
 -- BGM 이름 교정 ('1年이 지나도/거미' → '벌써 1년/브라운아이드소울')
 update "bgm"     set "title" = '벌써 1년', "artist" = '브라운아이드소울'
   where "contentPath" = '/resources/sounds/Already1Year.mp3';
@@ -138,6 +170,8 @@ update "userBgm" set "title" = '벌써 1년', "artist" = '브라운아이드소�
 - `Enter` 로 채팅창 열기 → 보내면 계속 대화, **빈 칸에서 Enter 를 다시 누르면 빠져나와** WASD 로 돌아간다.
   (입력칸에서 난 키는 전역 핸들러가 아예 건드리지 않는다. 예전엔 blur 직후 같은 Enter 이벤트가
   window 까지 올라가 곧바로 다시 포커스돼, 빠져나온 것처럼 보이지 않았다)
+- **숫자키로 특수 동작** — 도트 미니미를 입고 있으면 `1` 웃음 · `2` 포효 · `3` 잠.
+  남들 화면에도 보인다. (아래 '미니미 — 도트 시트 팩' 참고)
 - 접속/이탈 자동 반영, 앞뒤 겹침은 y 좌표 순서로 정렬.
 - **한 계정은 한 자리** — 창을 여러 개 열어도 캐릭터가 하나만 선다.
   같은 브라우저의 다른 탭은 `BroadcastChannel` 로 즉시, 다른 기기는 realtime `claim` 으로 잡는다.
@@ -162,6 +196,30 @@ presence 로 접속자 명단을, broadcast 로 좌표(`pos`)·채팅(`chat`)·�
 
 - 알려진 한계: 좌표와 말풍선은 클라이언트끼리 직접 오가 서버가 검증하지 않는다(채팅 **기록**은 서버가 닉네임을 채운다).
   공개 광장 하나뿐이다. 화면 방향 버튼을 없앴으므로 **모바일에서는 키보드 없이 이동할 수 없다**.
+
+### 미니미 — 도트 시트 팩 22종
+- 상점에 **도트 미니미 22종** 추가. 광장에서 **숫자키로 특수 동작**이 된다.
+  `1` 웃음 · `2` 포효 · `3` 잠. 2.2초 재생하고 평소 모습으로 돌아온다.
+- **다른 사람 화면에도 보인다.** broadcast 로 그림 경로가 아니라 **동작 이름만** 보내고,
+  받는 쪽이 그 사람의 미니미 기준으로 그림을 찾는다. 그래야 같은 '웃음'이라도 미니미마다 다르게 나온다.
+- 이모트가 없는 기존 미니미(메이플 몹 73종)는 숫자키를 눌러도 아무 일이 없고 안내도 안 뜬다.
+
+**시트 → GIF 변환** — 도트 스프라이트는 배포처가 거의 다 낱장 GIF 가 아니라 '시트'다.
+외부 라이브러리 없이 **GIF89a 를 직접 쓴다**(LZW 포함). 기존 미니미 73개를 디코드해
+실측한 규격(320×240 캔버스 · 바닥 정렬 · 캐릭터 높이 192)에 맞춰 얹는다.
+```
+npm run minimi:pack              시트 전부 → 22종 × 4동작 = 88개 GIF
+npm run minimi:pack -- greymon   이름에 걸리는 것만
+npm run minimi:gif  <시트.png> --out <이름> --frames 0,1   한 장만
+```
+- 무엇을 어느 프레임으로 뽑을지는 **`lib/minimi/dot-pack.ts` 한 곳**에 있다.
+  상점 목록(seed)·광장 이모트·GIF 생성이 전부 여기를 보므로, 프레임 번호만 고치고
+  다시 돌리면 세 곳이 같이 따라온다.
+- 시트 22장은 전부 같은 팩이라 12프레임 배치가 같다. 22장을 펼쳐 눈으로 맞춘 값:
+  `0,1` 서 있기 · `2,3` 웃음 · `4,5` 잠 · `7,8` 포효.
+- **원본 시트는 `_sheets/` 에 남겨 둔다** — 프레임을 다시 고르려면 여기서 다시 뽑으면 된다.
+- 방향 주의: 광장은 **원본이 왼쪽을 본다**고 보고 뒤집는다(`e1f938e`). 이 팩은 전부 왼쪽이라
+  그대로 쓰지만, 오른쪽을 보는 시트를 넣을 땐 `--flip` 이 필요하다.
 
 ### 아바타 (작업 중, `/avatar`)
 - 레이어드 페이퍼돌 — 민머리·속옷 차림 **base** 위에 눈·헤어·상의·하의·신발·모자·악세를 겹친다.

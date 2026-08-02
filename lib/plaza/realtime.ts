@@ -2,7 +2,14 @@
 
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
-import { CHANNEL, type ChatMsg, type ClaimMsg, type HelloMsg, type PosMsg } from './protocol';
+import {
+  CHANNEL,
+  type ChatMsg,
+  type ClaimMsg,
+  type EmoteMsg,
+  type HelloMsg,
+  type PosMsg,
+} from './protocol';
 
 /**
  * 광장 실시간 전송 계층.
@@ -16,6 +23,8 @@ export interface PlazaHandlers {
   onRoster: (ids: Set<string>) => void;
   onPos: (msg: PosMsg) => void;
   onChat: (msg: ChatMsg) => void;
+  /** 누군가 특수 동작을 했다 */
+  onEmote: (msg: EmoteMsg) => void;
   /** 새로 들어온 사람이 인사하면 — 내 좌표를 한 번 쏴 주라는 신호 */
   onHello: (msg: HelloMsg) => void;
   /** 같은 닉네임이 다른 곳에서 접속했다 — 이 창은 물러나야 한다 */
@@ -28,6 +37,7 @@ export type PlazaStatus = 'connecting' | 'online' | 'offline' | 'unconfigured';
 export interface PlazaConnection {
   sendPos: (msg: PosMsg) => void;
   sendChat: (msg: ChatMsg) => void;
+  sendEmote: (msg: EmoteMsg) => void;
   sendHello: (msg: HelloMsg) => void;
   sendClaim: (msg: ClaimMsg) => void;
   leave: () => void;
@@ -46,6 +56,7 @@ export async function joinPlaza(
   const noop: PlazaConnection = {
     sendPos: () => {},
     sendChat: () => {},
+    sendEmote: () => {},
     sendHello: () => {},
     sendClaim: () => {},
     leave: () => {},
@@ -90,6 +101,7 @@ export async function joinPlaza(
     .on('presence', { event: 'leave' }, pushRoster)
     .on('broadcast', { event: 'pos' }, ({ payload }) => handlers.onPos(payload as PosMsg))
     .on('broadcast', { event: 'chat' }, ({ payload }) => handlers.onChat(payload as ChatMsg))
+    .on('broadcast', { event: 'emote' }, ({ payload }) => handlers.onEmote(payload as EmoteMsg))
     .on('broadcast', { event: 'hello' }, ({ payload }) => handlers.onHello(payload as HelloMsg))
     .on('broadcast', { event: 'claim' }, ({ payload }) => handlers.onClaim(payload as ClaimMsg));
 
@@ -109,6 +121,7 @@ export async function joinPlaza(
   return {
     sendPos: (msg) => send('pos', msg),
     sendChat: (msg) => send('chat', msg),
+    sendEmote: (msg) => send('emote', msg),
     sendHello: (msg) => send('hello', msg),
     sendClaim: (msg) => send('claim', msg),
     leave: () => {

@@ -1,3 +1,5 @@
+// 확장자를 붙여야 scripts/*.mjs 가 node 로 이 파일을 직접 읽을 수 있다 (generate-seed-sql)
+import { DOT_MINIMI, iconPath } from '../minimi/dot-pack.ts';
 import type { Database } from './types';
 
 /**
@@ -172,6 +174,16 @@ export function buildSeed(): Database {
   db.store.push({
     seq: next(), category: 'minimi', productName: '기본 미니미',
     contentPath: DEFAULT_MINIMI_PATH, productPrice: '0',
+  });
+  /*
+   * 도트 시트에서 뽑은 미니미 — 광장에서 숫자키로 특수 동작까지 된다.
+   * 기존 항목 뒤에 붙여야 앞의 seq 가 밀리지 않는다.
+   */
+  DOT_MINIMI.forEach((m) => {
+    db.store.push({
+      seq: next(), category: 'minimi', productName: m.name,
+      contentPath: iconPath(m.id), productPrice: '30',
+    });
   });
   SKIN_COLORS.forEach((c) => {
     db.store.push({

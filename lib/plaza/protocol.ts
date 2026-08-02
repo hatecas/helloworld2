@@ -48,6 +48,9 @@ export const POS_INTERVAL = 80;
 /** 말풍선이 머리 위에 떠 있는 시간(ms) */
 export const BUBBLE_MS = 8000;
 
+/** 특수 동작(이모트) 한 번의 재생 시간(ms) */
+export const EMOTE_MS = 2200;
+
 /** 채팅 한 줄 최대 길이 / 로그 보관 수 */
 export const CHAT_MAX = 120;
 export const CHAT_LOG_MAX = 60;
@@ -88,6 +91,17 @@ export interface ChatMsg {
   msgId: string;
   nickname: string;
   text: string;
+}
+
+/**
+ * broadcast 'emote' — 특수 동작.
+ *
+ * 그림 경로가 아니라 이름만 보낸다. 받는 쪽은 그 사람의 미니미(pos 로 이미 알고 있다)에
+ * 맞는 그림을 emotes.ts 에서 찾는다. 그래야 같은 '웃음' 이라도 미니미마다 다르게 나온다.
+ */
+export interface EmoteMsg {
+  id: string;
+  emote: string;
 }
 
 /** broadcast 'hello' — 새로 들어온 사람이 "나 왔어요" 하면 다들 좌표를 한 번 쏴 준다 */

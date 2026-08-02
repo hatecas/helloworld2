@@ -6,6 +6,7 @@ import {
   BUBBLE_MS,
   CHAT_LOG_MAX,
   CHAT_MAX,
+  EMOTE_MS,
   GRAVITY,
   JUMP_V0,
   MINIMI_W,
@@ -23,6 +24,7 @@ import {
   type Facing,
   type PosMsg,
 } from '@/lib/plaza/protocol';
+import { emoteByIndex, emoteSrc, emotesFor } from '@/lib/plaza/emotes';
 import { joinPlaza, type PlazaConnection, type PlazaStatus } from '@/lib/plaza/realtime';
 import { linkify } from '@/lib/plaza/linkify';
 import { playChime } from '@/lib/plaza/chime';
@@ -42,6 +44,10 @@ interface Actor {
   jump: number;
   tjump: number;
   jumpV: number;
+  /** 재생 중인 특수 동작 이름. null 이면 평소 모습 */
+  emote: string | null;
+  /** 이모트 재생 토큰 — 연타했을 때 앞선 타이머가 뒤 것을 지워 버리지 않게 */
+  emoteToken: number;
   el: HTMLDivElement | null;
   imgEl: HTMLImageElement | null;
   bubbleEl: HTMLDivElement | null;
@@ -79,6 +85,8 @@ export default function PlazaClient({
   supabaseAnonKey: string;
 }) {
   const [myId] = useState(() => `${nickname}#${Math.random().toString(36).slice(2, 8)}`);
+  /** 내 미니미가 할 수 있는 특수 동작. 없는 미니미면 빈 배열이라 안내도 안 뜬다. */
+  const myEmotes = emotesFor(minimi);
 
   const actorsRef = useRef<Map<string, Actor>>(new Map());
   const keysRef = useRef<Set<string>>(new Set());
@@ -124,6 +132,8 @@ export default function PlazaClient({
       jump: 0,
       tjump: 0,
       jumpV: 0,
+      emote: null,
+      emoteToken: 0,
       el: null,
       imgEl: null,
       bubbleEl: null,
@@ -217,6 +227,8 @@ export default function PlazaClient({
           jump: msg.jump ?? 0,
           tjump: msg.jump ?? 0,
           jumpV: 0,
+          emote: null,
+          emoteToken: 0,
           el: null,
           imgEl: null,
           bubbleEl: null,
@@ -242,6 +254,30 @@ export default function PlazaClient({
     window.setTimeout(() => {
       setBubbles((prev) => prev.filter((b) => b.msgId !== msg.msgId));
     }, BUBBLE_MS);
+  }, []);
+
+  /**
+   * 특수 동작 재생 — 잠깐 다른 그림으로 바꿨다가 되돌린다.
+   *
+   * 그림 경로가 아니라 이름으로 다루므로, 남이 보낸 것도 그 사람의 미니미 기준으로 찾는다.
+   * 할 줄 모르는 동작이면 아무 일도 하지 않는다.
+   */
+  const playEmote = useCallback((actorId: string, name: string) => {
+    const actor = actorsRef.current.get(actorId);
+    if (!actor || !emoteSrc(actor.minimi, name)) return;
+
+    const token = actor.emoteToken + 1;
+    actor.emote = name;
+    actor.emoteToken = token;
+    setRev((r) => r + 1);
+
+    window.setTimeout(() => {
+      const cur = actorsRef.current.get(actorId);
+      // 그 사이 다시 눌렀으면 그쪽 타이머에 맡긴다
+      if (!cur || cur.emoteToken !== token) return;
+      cur.emote = null;
+      setRev((r) => r + 1);
+    }, EMOTE_MS);
   }, []);
 
   const sendMyPos = useCallback(
@@ -274,6 +310,9 @@ export default function PlazaClient({
         onStatus: (s) => live && setStatus(s),
         onPos: (msg) => live && upsertRemote(msg),
         onChat: (msg) => live && pushChat(msg, false),
+        onEmote: (msg) => {
+          if (live && msg.id !== myId) playEmote(msg.id, msg.emote);
+        },
         onHello: () => live && sendMyPos(false),
         // 다른 기기/브라우저에서 같은 계정이 들어왔다
         onClaim: (msg) => {
@@ -319,6 +358,7 @@ export default function PlazaClient({
     minimi,
     upsertRemote,
     pushChat,
+    playEmote,
     sendMyPos,
     syncIds,
     leaveForOther,
@@ -361,6 +401,14 @@ export default function PlazaClient({
       } else if (k === 'Enter') {
         chatInputRef.current?.focus();
         e.preventDefault();
+      } else if (k >= '1' && k <= '9') {
+        // 숫자키 = 특수 동작. 그 미니미가 할 줄 아는 게 없으면 그냥 지나간다.
+        const me = actorsRef.current.get(myId);
+        const emote = me && emoteByIndex(me.minimi, Number(k) - 1);
+        if (!emote) return;
+        e.preventDefault();
+        playEmote(myId, emote.name);
+        connRef.current?.sendEmote({ id: myId, emote: emote.name });
       }
     };
     const up = (e: KeyboardEvent) => keysRef.current.delete(e.key);
@@ -374,7 +422,7 @@ export default function PlazaClient({
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
     };
-  }, [myId]);
+  }, [myId, playEmote]);
 
   /* ------------------------------------------------------------ 이동 + 그리기 루프 */
 
@@ -575,7 +623,12 @@ export default function PlazaClient({
                 ? '실시간 미설정 (혼자 걷는 중)'
                 : '연결 끊김'}
         </span>
-        <span className="pz-keyhint">방향키 · WASD 이동 &nbsp;/&nbsp; ALT 점프 &nbsp;/&nbsp; Enter 채팅</span>
+        <span className="pz-keyhint">
+          방향키 · WASD 이동 &nbsp;/&nbsp; ALT 점프 &nbsp;/&nbsp; Enter 채팅
+          {myEmotes.length > 0 && (
+            <> &nbsp;/&nbsp; {myEmotes.map((e, i) => `${i + 1} ${e.label}`).join(' · ')}</>
+          )}
+        </span>
       </div>
 
       {status === 'unconfigured' && (
@@ -674,7 +727,7 @@ export default function PlazaClient({
                 <span className="pz-name">{a.nickname}</span>
                 <img
                   className="pz-minimi"
-                  src={a.minimi}
+                  src={(a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi}
                   alt=""
                   draggable={false}
                   ref={(el) => {
@@ -699,6 +752,13 @@ export default function PlazaClient({
           {log.length === 0 ? (
             <div className="pz-log-empty">
               방향키(또는 WASD)로 움직이고, Enter 로 채팅해 보세요. ALT 로 점프합니다.
+              {myEmotes.length > 0 && (
+                <>
+                  <br />
+                  {myEmotes.map((e, i) => `${i + 1} 번은 ${e.label}`).join(', ')} — 숫자키로 특수
+                  동작을 할 수 있습니다.
+                </>
+              )}
             </div>
           ) : (
             log.map((l) => (
