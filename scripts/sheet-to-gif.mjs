@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPng } from './avatar-rig.mjs';
+import { writeGif } from './gif.mjs';
 
 /** 기존 미니미 GIF 73개 실측값 — 전부 이 캔버스에 바닥을 붙여 놓았다 */
 export const CANVAS = { w: 320, h: 240 };
@@ -82,135 +83,6 @@ function compose(sheet, cell, scale) {
   return out;
 }
 
-/* ------------------------------------------------------------------ GIF89a */
-
-/**
- * GIF 가변 길이 LZW.
- * 코드 길이를 늘리는 시점이 디코더와 어긋나면 그림 전체가 깨지므로 순서가 중요하다.
- */
-function lzwEncode(pixels, minCodeSize) {
-  const clear = 1 << minCodeSize;
-  const eoi = clear + 1;
-  let codeSize = minCodeSize + 1;
-  let next = eoi + 1;
-  let table = new Map();
-
-  const out = [];
-  let acc = 0;
-  let accBits = 0;
-  const emit = (code) => {
-    acc |= code << accBits;
-    accBits += codeSize;
-    while (accBits >= 8) { out.push(acc & 0xff); acc >>= 8; accBits -= 8; }
-  };
-
-  emit(clear);
-  let prefix = pixels[0];
-  for (let i = 1; i < pixels.length; i++) {
-    const k = pixels[i];
-    const key = prefix * 256 + k;
-    const found = table.get(key);
-    if (found !== undefined) { prefix = found; continue; }
-    emit(prefix);
-    if (next === 4096) {
-      emit(clear); // 반드시 늘어난 코드 길이 그대로 내보낸 뒤에 초기화한다
-      table = new Map();
-      next = eoi + 1;
-      codeSize = minCodeSize + 1;
-    } else {
-      if (next >= 1 << codeSize) codeSize++;
-      table.set(key, next++);
-    }
-    prefix = k;
-  }
-  emit(prefix);
-  emit(eoi);
-  if (accBits > 0) out.push(acc & 0xff);
-  return Buffer.from(out);
-}
-
-/** 255 바이트짜리 서브블록으로 쪼개고 0 으로 끝낸다 */
-function subBlocks(buf) {
-  const parts = [];
-  for (let i = 0; i < buf.length; i += 255) {
-    const chunk = buf.subarray(i, i + 255);
-    parts.push(Buffer.from([chunk.length]), chunk);
-  }
-  parts.push(Buffer.from([0]));
-  return Buffer.concat(parts);
-}
-
-/** 여러 장의 RGBA 를 팔레트로 모은다. 0번은 투명으로 예약. */
-function quantize(frames) {
-  const seen = new Map();
-  const palette = [[0, 0, 0]];
-  const indexed = frames.map((rgba) => {
-    const idx = Buffer.alloc(CANVAS.w * CANVAS.h);
-    for (let i = 0, p = 0; p < idx.length; i += 4, p++) {
-      if (rgba[i + 3] < 128) { idx[p] = 0; continue; }
-      const key = (rgba[i] << 16) | (rgba[i + 1] << 8) | rgba[i + 2];
-      let at = seen.get(key);
-      if (at === undefined) {
-        at = palette.length;
-        if (at > 255) throw new Error('색이 256개를 넘는다 — 도트 시트가 맞는지 확인');
-        palette.push([rgba[i], rgba[i + 1], rgba[i + 2]]);
-        seen.set(key, at);
-      }
-      idx[p] = at;
-    }
-    return idx;
-  });
-  return { palette, indexed };
-}
-
-function encodeGif(indexed, palette, delayCs) {
-  const bits = Math.max(2, Math.ceil(Math.log2(Math.max(2, palette.length))));
-  const parts = [];
-
-  const header = Buffer.alloc(13);
-  header.write('GIF89a', 0, 'ascii');
-  header.writeUInt16LE(CANVAS.w, 6);
-  header.writeUInt16LE(CANVAS.h, 8);
-  header[10] = 0x80 | ((bits - 1) << 4) | (bits - 1); // 전역 팔레트 있음
-  header[11] = 0; // 배경 = 투명
-  header[12] = 0;
-  parts.push(header);
-
-  const gct = Buffer.alloc((1 << bits) * 3);
-  palette.forEach((c, i) => { gct[i * 3] = c[0]; gct[i * 3 + 1] = c[1]; gct[i * 3 + 2] = c[2]; });
-  parts.push(gct);
-
-  // 무한 반복
-  parts.push(Buffer.concat([
-    Buffer.from([0x21, 0xff, 0x0b]),
-    Buffer.from('NETSCAPE2.0', 'ascii'),
-    Buffer.from([0x03, 0x01, 0x00, 0x00, 0x00]),
-  ]));
-
-  for (const idx of indexed) {
-    const gce = Buffer.alloc(8);
-    gce[0] = 0x21; gce[1] = 0xf9; gce[2] = 0x04;
-    gce[3] = (2 << 2) | 1; // 폐기 방법 2(배경으로 되돌림) + 투명색 사용
-    gce.writeUInt16LE(delayCs, 4);
-    gce[6] = 0; // 투명 색 번호
-    gce[7] = 0;
-    parts.push(gce);
-
-    const desc = Buffer.alloc(10);
-    desc[0] = 0x2c;
-    desc.writeUInt16LE(0, 1); desc.writeUInt16LE(0, 3);
-    desc.writeUInt16LE(CANVAS.w, 5); desc.writeUInt16LE(CANVAS.h, 7);
-    desc[9] = 0;
-    parts.push(desc);
-
-    parts.push(Buffer.from([bits]));
-    parts.push(subBlocks(lzwEncode(idx, bits)));
-  }
-
-  parts.push(Buffer.from([0x3b]));
-  return Buffer.concat(parts);
-}
-
 /* ------------------------------------------------------------------ 바깥에서 쓰는 것 */
 
 /**
@@ -223,8 +95,8 @@ export function sheetToGif(sheet, { frames, delay = 25, flip = false, scale = 'a
   }
   const s = scale === 'auto' ? Math.max(1, Math.floor(TARGET_H / sheet.cellH)) : Number(scale);
   const composed = frames.map((n) => compose(sheet, cellOf(sheet, n, flip), s));
-  const { palette, indexed } = quantize(composed);
-  return { gif: encodeGif(indexed, palette, delay), scale: s, colors: palette.length };
+  const { gif, colors } = writeGif(CANVAS.w, CANVAS.h, composed, delay);
+  return { gif, scale: s, colors };
 }
 
 /** 위와 같되 파일까지 쓴다 */

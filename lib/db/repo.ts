@@ -15,6 +15,12 @@ const db = () => getStore();
 
 const PAGE_SIZE = 10;
 const VISIT_PAGE_SIZE = 5;
+/*
+ * 상점은 목록이 아니라 격자다 (.productList 가 auto-fill).
+ * 10 개면 4 개씩 깔릴 때 마지막 줄에 2 개만 남아 허전하다.
+ * 12 는 한 줄에 2·3·4·6 개 어느 쪽으로 깔려도 줄이 딱 떨어진다.
+ */
+const STORE_PAGE_SIZE = 12;
 
 export const DEFAULT_MINIMI_PATH = '/resources/images/default/defaultMinimiIcon.gif';
 export const DEFAULT_BACKGROUND_PATH = '/resources/images/default/defaultBg.jpg';
@@ -621,8 +627,8 @@ export async function getStoreItems(category: StorageCategory, page = 1): Promis
   const rows = (await db().select('store', { category })).filter(
     (s) => s.productName !== '기본 미니미',
   );
-  const offset = PAGE_SIZE * (page - 1);
-  return rows.slice(offset, offset + PAGE_SIZE);
+  const offset = STORE_PAGE_SIZE * (page - 1);
+  return rows.slice(offset, offset + STORE_PAGE_SIZE);
 }
 
 /** selectStoreCnt: 전체 페이지 수 */
@@ -630,7 +636,7 @@ export async function getStorePageCount(category: StorageCategory): Promise<numb
   const rows = (await db().select('store', { category })).filter(
     (s) => s.productName !== '기본 미니미',
   );
-  return Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  return Math.max(1, Math.ceil(rows.length / STORE_PAGE_SIZE));
 }
 
 export async function getMyDotori(userNickname: string): Promise<number> {

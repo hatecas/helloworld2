@@ -1,5 +1,6 @@
 // 확장자를 붙여야 scripts/*.mjs 가 node 로 이 파일을 직접 읽을 수 있다 (generate-seed-sql)
 import { DOT_MINIMI, iconPath } from '../minimi/dot-pack.ts';
+import { GIF_MINIMI, gifMinimiPath } from '../minimi/gif-pack.ts';
 import type { Database } from './types';
 
 /**
@@ -183,6 +184,13 @@ export function buildSeed(): Database {
     db.store.push({
       seq: next(), category: 'minimi', productName: m.name,
       contentPath: iconPath(m.id), productPrice: '30',
+    });
+  });
+  // GIF 로 받아 규격만 맞춘 것들 — 특수 동작이 없어서 조금 싸다
+  GIF_MINIMI.forEach((m) => {
+    db.store.push({
+      seq: next(), category: 'minimi', productName: m.name,
+      contentPath: gifMinimiPath(m.id), productPrice: '20',
     });
   });
   SKIN_COLORS.forEach((c) => {

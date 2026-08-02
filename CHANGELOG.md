@@ -103,6 +103,21 @@ where not exists (
   select 1 from "store" s where s."contentPath" = v."contentPath"
 );
 
+-- GIF 로 받아 규격만 맞춘 미니미 (특수 동작 없음). 위와 같이 중복되지 않는다.
+insert into "store" ("category", "productName", "contentPath", "productPrice")
+select v."category", v."productName", v."contentPath", v."productPrice"
+from (values
+  ('minimi', '마리오', '/resources/images/minimi/marioIcon.gif', '20'),
+  ('minimi', '요시', '/resources/images/minimi/yoshiIcon.gif', '20'),
+  ('minimi', '피카츄', '/resources/images/minimi/pikachuIcon.gif', '20'),
+  ('minimi', '피카츄 (모자)', '/resources/images/minimi/pikachuDotIcon.gif', '20'),
+  ('minimi', '라프라스', '/resources/images/minimi/laprasIcon.gif', '20'),
+  ('minimi', '가브몬', '/resources/images/minimi/gabumonIcon.gif', '20')
+) as v("category", "productName", "contentPath", "productPrice")
+where not exists (
+  select 1 from "store" s where s."contentPath" = v."contentPath"
+);
+
 -- BGM 이름 교정 ('1年이 지나도/거미' → '벌써 1년/브라운아이드소울')
 update "bgm"     set "title" = '벌써 1년', "artist" = '브라운아이드소울'
   where "contentPath" = '/resources/sounds/Already1Year.mp3';
@@ -221,6 +236,31 @@ npm run minimi:gif  <시트.png> --out <이름> --frames 0,1   한 장만
 - 방향 주의: 광장은 **원본이 왼쪽을 본다**고 보고 뒤집는다(`e1f938e`). 이 팩은 전부 왼쪽이라
   그대로 쓰지만, 오른쪽을 보는 시트를 넣을 땐 `--flip` 이 필요하다.
 
+### 미니미 — GIF 로 받은 것들 (마리오 · 요시 · 피카츄 …)
+- 마리오, 요시, 피카츄, 피카츄(모자), 라프라스, 가브몬 추가. **특수 동작은 없다** —
+  원본이 idle 애니메이션 한 벌뿐이라 쓸 자세가 없다(숫자키를 눌러도 아무 일이 없다).
+
+**GIF → 미니미 변환** — 위 시트 팩과 달리 처음부터 애니메이션 GIF 로 배포되는 것들이다.
+```
+npm run minimi:from-gif -- <입력.gif> --out <이름> [--bg] [--flip] [--max 24]
+```
+받은 그대로는 못 쓴다. 캔버스가 48×44 부터 500×696 까지 제각각이라 규격에 맞춰 다시 얹는다.
+- **원본 도트 배율을 되찾는다.** 도트를 몇 배로 늘려 올린 게 많은데, 그걸 모르고 다시 줄이면
+  픽셀이 뭉개진다. 실제로 마리오 20배, 가브몬 10.8배, 요시 9.2배, 피카츄 6.7배였다.
+  정수배가 아닌 것도 있어(500px 같은 어중간한 크기로 늘려서) 소수 배율로 다룬다.
+  - 세 번 갈아엎었다: ① `s×s` 칸이 균일한지 → 정수배가 아니라 거의 안 걸림
+    ② 픽셀이 바뀌는 자리를 격자로 → 걷기 애니메이션은 프레임마다 내용이 달라 흔들림
+    ③ **반복 길이의 최빈값(넓이 가중)으로 배율 하나만** → 안정적.
+    개수로 세면 안 된다 — 마리오는 블록 사이에 1px 전환 줄이 끼어 `17,1,17,1…` 이라
+    1px 이 개수로 이겨 버린다.
+- **`--bg`** 투명 정보 없이 흰 배경째 구워진 GIF(mario.gif)용. 가장자리에서 번져 나가므로
+  눈·장갑 같은 안쪽 흰색은 남는다. 배경의 52% 를 걷어냈다.
+  배율은 **지우기 전에** 잰다 — 지우고 나면 가장자리 블록이 깨져 값이 틀린다.
+- **`--max`** 프레임 상한. 피카츄(모자)는 원본이 112프레임이라 16장으로 고르게 솎아냈다.
+- GIF 읽기/쓰기는 `scripts/gif.mjs` 로 합쳤다. 프레임 폐기 방법(disposal)과 인터레이스까지
+  처리해야 프레임이 겹치거나 조각만 나오지 않는다.
+- 원본은 `_src/` 에 남겨 둔다.
+
 ### 아바타 (작업 중, `/avatar`)
 - 레이어드 페이퍼돌 — 민머리·속옷 차림 **base** 위에 눈·헤어·상의·하의·신발·모자·악세를 겹친다.
 - 모든 파트는 같은 1024×1536 캔버스에 제자리로 그린 투명 PNG. 그냥 겹치면 정렬이 맞고
@@ -243,6 +283,9 @@ npm run avatar:check                  캔버스·위치가 규격에 맞는지 �
 - 저장은 아직 localStorage. 파트 양산과 프로필/광장 연동은 남아 있다.
 
 ## UI 개선
+- 상점 한 페이지를 **10개 → 12개**로. 상점은 목록이 아니라 격자(`auto-fill`)라
+  10개면 4개씩 깔릴 때 마지막 줄에 2개만 남아 허전했다. 12는 한 줄에 2·3·4·6개
+  어느 쪽으로 깔려도 줄이 딱 떨어진다. (게시판·공지 등 목록형 페이지는 10 그대로)
 - 헤더 Today/Total 왼쪽 **홈 아이콘**(내 홈 이동).
 - 글쓰기: 제목/작성일 **카드형** + 공개설정 **세그먼트 토글**.
 - 다이어리/게시판 본문 에디터를 **자체 경량 RichTextEditor**로 교체(SmartEditor 제거).
