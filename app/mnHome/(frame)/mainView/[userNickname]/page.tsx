@@ -34,6 +34,9 @@ export default async function MainViewPage({
   }
 
   const isSelf = userNickname === viewer.userNickname;
+  // 최신 글 4건도 공개범위를 타므로 자격을 먼저 구한다 (common 과 병렬로 돌리기 위해)
+  const isFriend = isSelf || (await friendCheck(viewer.userNickname, userNickname)) === 1;
+  const scopeViewer = { isOwner: isSelf, isFriend };
 
   // 예전에는 방문자수 증가(select+update) → 공통 조회 → 콘텐츠 조회 → 일촌확인 을
   // 순차적으로 기다려 왕복이 여러 겹 쌓였다. 서로 독립인 조회들을 한 번에 병렬로 돌린다.
@@ -41,7 +44,7 @@ export default async function MainViewPage({
     await Promise.all([
       loadMiniHomeCommon(userNickname),
       tabs(userNickname),
-      selectCurrentContent(userNickname),
+      selectCurrentContent(userNickname, scopeViewer),
       selectMiniroomMinimi(userNickname),
       selectMiniroomBackground(userNickname),
       selectFriendCmt(userNickname),

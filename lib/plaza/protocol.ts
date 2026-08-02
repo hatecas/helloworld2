@@ -11,13 +11,32 @@
 
 /** 광장 논리 크기(px). 화면에는 이 비율 그대로 축소/확대해 보여 준다. */
 export const WORLD_W = 1000;
-export const WORLD_H = 620;
+/** 세로는 조금 낮춰 아래 채팅 칸에 자리를 내준다 */
+export const WORLD_H = 500;
 
-/** 걸어 다닐 수 있는 영역 (위쪽은 배경, 좌우 여백) — 발 위치 기준 */
-export const WALK = { minX: 46, maxX: WORLD_W - 46, minY: 286, maxY: WORLD_H - 26 };
+/**
+ * 걸어 다닐 수 있는 영역 — 발 위치 기준.
+ * 예전엔 위쪽이 하늘이라 minY 를 크게 잡아 위로 못 올라갔다.
+ * 이제 바닥이 화면 전체를 덮으므로 위아래로 다 다닐 수 있다.
+ */
+export const WALK = { minX: 34, maxX: WORLD_W - 34, minY: 34, maxY: WORLD_H - 18 };
 
 /** 이동 속도 (px/초) */
 export const SPEED = 190;
+
+/** 점프 (ALT) — 화면상 높이만 바뀌고 좌표(y)는 그대로다 */
+export const JUMP_V0 = 420;
+export const GRAVITY = 1500;
+
+/**
+ * 멀리 있을수록(=y 가 작을수록) 조금 작게 그려 깊이를 준다.
+ * 히트박스는 그대로 두고 보이는 크기만 바꾼다.
+ */
+export const DEPTH_MIN_SCALE = 0.82;
+export function depthScale(y: number): number {
+  const t = (y - WALK.minY) / (WALK.maxY - WALK.minY);
+  return DEPTH_MIN_SCALE + (1 - DEPTH_MIN_SCALE) * Math.min(1, Math.max(0, t));
+}
 
 /** 미니미 렌더 폭(px). 원본 gif 가 320x240 이라 높이는 0.75배. */
 export const MINIMI_W = 108;
@@ -27,7 +46,7 @@ export const MINIMI_H = MINIMI_W * 0.75;
 export const POS_INTERVAL = 80;
 
 /** 말풍선이 머리 위에 떠 있는 시간(ms) */
-export const BUBBLE_MS = 5000;
+export const BUBBLE_MS = 8000;
 
 /** 채팅 한 줄 최대 길이 / 로그 보관 수 */
 export const CHAT_MAX = 120;
@@ -59,6 +78,8 @@ export interface PosMsg {
   y: number;
   facing: Facing;
   moving: boolean;
+  /** 점프로 떠 있는 높이(px). 0 이면 바닥. */
+  jump?: number;
 }
 
 /** broadcast 'chat' — 채팅 한 줄 */
@@ -94,9 +115,9 @@ export function spawnPoint(seed: string): { x: number; y: number } {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   const angle = (h % 360) * (Math.PI / 180);
-  const radius = 120 + (h % 70);
+  const radius = 150 + (h % 60);
   return {
     x: clamp(WORLD_W / 2 + Math.cos(angle) * radius, WALK.minX, WALK.maxX),
-    y: clamp(WALK.maxY - 40 + Math.sin(angle) * 50, WALK.minY, WALK.maxY),
+    y: clamp(WORLD_H * 0.68 + Math.sin(angle) * radius * 0.45, WALK.minY, WALK.maxY),
   };
 }

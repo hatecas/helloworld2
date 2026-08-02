@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
+import { SCOPE_OPTIONS, scopeLabel, type Scope } from '@/lib/db/visibility';
 
 import CommentThread, { type ThreadComment } from '@/components/minihome/CommentThread';
 
@@ -10,7 +11,7 @@ interface DiaryData {
   seq: number;
   title: string;
   content: string;
-  openScope: 0 | 1;
+  openScope: Scope;
   formatted_update_date: string;
 }
 

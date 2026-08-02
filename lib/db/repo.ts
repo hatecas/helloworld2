@@ -1,8 +1,9 @@
 import { getStore, type Table } from './store';
 import { nowIso, todayYmd, withinHours, ymd, ymdDot, ymdhm, ymdhmDot } from './format';
+import { canEnterHome, canView, visibleTo, type Scope, type Viewer } from './visibility';
 import type {
   Album, AlbumComment, Board, BoardComment, Diary, DiaryComment, Friend, FriendStatus,
-  Notice, NotiRead, StorageCategory, StoreItem, User, Visit,
+  Notice, NotiRead, PlazaChat, StorageCategory, StoreItem, User, Visit,
 } from './types';
 
 /**
@@ -99,17 +100,51 @@ export async function selectUserGender(userNickname: string): Promise<string | n
   return rows[0]?.userGender ?? null;
 }
 
+/**
+ * '일촌 ON' 으로 볼 수 있는 마지막 생존 신호 유효시간(분).
+ *
+ * status 만 보면 브라우저를 닫거나 PC 를 끈 사람이 영영 접속중으로 남는다
+ * (로그아웃 버튼을 눌러야만 '0' 이 되므로). 그래서 실제 판정은
+ * "status='1' 이면서 last_seen 이 이 시간 안" 으로 한다.
+ * 클라이언트는 HEARTBEAT_MS 마다 신호를 보내므로 그보다 넉넉히 잡는다.
+ */
+export const ONLINE_WINDOW_MINUTES = 5;
+
 export async function loginOnStatus(userNickname: string) {
   const existing = await db().select('loginStatus', { userNickname });
   if (existing.length === 0) {
-    await db().insert('loginStatus', { userNickname, status: '1' });
+    await db().insert('loginStatus', { userNickname, status: '1', last_seen: nowIso() });
   } else {
-    await db().update('loginStatus', { userNickname }, { status: '1' });
+    await db().update('loginStatus', { userNickname }, { status: '1', last_seen: nowIso() });
   }
 }
 
 export async function loginOffStatus(userNickname: string) {
   await db().update('loginStatus', { userNickname }, { status: '0' });
+}
+
+/**
+ * 살아있다는 신호. 열려 있는 탭이 주기적으로 부른다.
+ * 이 갱신이 멈추면 ONLINE_WINDOW_MINUTES 뒤에 자동으로 '일촌 ON' 에서 빠진다.
+ */
+export async function touchLoginStatus(userNickname: string) {
+  const changed = await db().update(
+    'loginStatus',
+    { userNickname },
+    { status: '1', last_seen: nowIso() },
+  );
+  // 예전 계정이라 행이 없을 수도 있다
+  if (changed === 0) {
+    await db().insert('loginStatus', { userNickname, status: '1', last_seen: nowIso() });
+  }
+}
+
+/** last_seen 이 유효시간 안인가 (값이 없는 옛 행은 접속중으로 보지 않는다) */
+function seenRecently(last?: string): boolean {
+  if (!last) return false;
+  const t = new Date(last).getTime();
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t <= ONLINE_WINDOW_MINUTES * 60 * 1000;
 }
 
 export async function insertLoginLog(userNickname: string) {
@@ -206,7 +241,12 @@ export async function selectOnFriends(userNickname: string): Promise<string[]> {
   if (nicknames.length === 0) return [];
 
   const statuses = await db().selectIn('loginStatus', 'userNickname', nicknames);
-  const online = new Set(statuses.filter((s) => s.status === '1').map((s) => s.userNickname));
+  // 로그아웃을 안 눌렀어도 신호가 끊긴 지 오래면 접속중이 아니다
+  const online = new Set(
+    statuses
+      .filter((s) => s.status === '1' && seenRecently(s.last_seen))
+      .map((s) => s.userNickname),
+  );
   return nicknames.filter((n) => online.has(n));
 }
 
@@ -314,6 +354,8 @@ export async function getHomeOwnerInfo(userNickname: string): Promise<{
   title: string;
   userGender: string;
   userName: string;
+  /** 0 = 비공개(일촌만 입장), 1 = 공개. 값이 없는 옛 계정은 공개로 본다. */
+  homeOpenScope: 0 | 1;
 } | null> {
   // user / title 는 서로 독립이라 한 번에 병렬로 가져온다 (왕복 2 → 1)
   const [users, titleRows] = await Promise.all([
@@ -328,7 +370,13 @@ export async function getHomeOwnerInfo(userNickname: string): Promise<{
     title: titleRow?.title ?? `${user.userName}의 미니홈피입니다.`,
     userGender: user.userGender,
     userName: user.userName,
+    homeOpenScope: user.homeOpenScope === 0 ? 0 : 1,
   };
+}
+
+/** 관리 화면에서 미니홈피 공개/비공개를 바꾼다 */
+export async function updateHomeOpenScope(userNickname: string, scope: 0 | 1): Promise<number> {
+  return db().update('user', { userNickname }, { homeOpenScope: scope });
 }
 
 /** getMyFriends: 승인된 일촌 목록 (파도타기 드롭다운용) */
@@ -358,6 +406,27 @@ export async function hasFriendRelation(a: string, b: string): Promise<boolean> 
     { userNickname: b, friendNickname: a },
   ]);
   return rows.some((f) => f.del_yn.toUpperCase() !== 'Y');
+}
+
+/**
+ * 어떤 홈피에서 이 사람이 어떤 자격인지 한 번에 구한다.
+ * 페이지·API 라우트가 제각기 계산하다 빠뜨리는 일이 없도록 여기로 모았다.
+ */
+export async function resolveViewer(
+  ownerNickname: string,
+  viewerNickname: string | undefined | null,
+): Promise<Viewer> {
+  const isOwner = Boolean(viewerNickname) && viewerNickname === ownerNickname;
+  if (isOwner) return { isOwner: true, isFriend: true };
+  if (!viewerNickname) return { isOwner: false, isFriend: false };
+  return { isOwner: false, isFriend: (await friendCheck(viewerNickname, ownerNickname)) === 1 };
+}
+
+/** 이 사람이 그 미니홈피 자체를 볼 수 있는가 (비공개 홈피 차단) */
+export async function canSeeHome(ownerNickname: string, viewer: Viewer): Promise<boolean> {
+  const owner = await getHomeOwnerInfo(ownerNickname);
+  if (!owner) return false;
+  return canEnterHome(owner.homeOpenScope, viewer);
 }
 
 /** friendCheck: 두 사람이 일촌인지 (1/0) */
@@ -406,17 +475,17 @@ export async function tabs(userNickname: string): Promise<Tabs> {
 }
 
 /** selectCurrentContent: 게시판/사진첩 최신 4건 */
-export async function selectCurrentContent(userNickname: string) {
+export async function selectCurrentContent(userNickname: string, viewer: Viewer) {
   const [boards, albums] = await Promise.all([
     db().select('board', { userNickname }),
     db().select('album', { userNickname }),
   ]);
   const rows = [
     ...boards
-      .filter((b) => b.del_yn.toUpperCase() === 'N' && b.openScope === 1)
+      .filter((b) => b.del_yn.toUpperCase() === 'N' && canView(b.openScope, viewer))
       .map((b) => ({ seq: b.seq, title: b.title, tableName: 'board', update_date: b.update_date })),
     ...albums
-      .filter((a) => a.del_yn.toUpperCase() === 'N' && a.openScope === 1)
+      .filter((a) => a.del_yn.toUpperCase() === 'N' && canView(a.openScope, viewer))
       .map((a) => ({ seq: a.seq, title: a.title, tableName: 'album', update_date: a.update_date })),
   ];
   return desc(rows, (r) => r.update_date).slice(0, 4);
@@ -929,9 +998,10 @@ export async function getBoardList(params: {
   userNickname: string;
   page?: number;
   seq?: number;
+  viewer: Viewer;
 }): Promise<BoardListRow[]> {
   const all = (await db().select('board', { userNickname: params.userNickname })).filter(
-    (b) => b.del_yn.toUpperCase() === 'N' && b.openScope === 1,
+    (b) => b.del_yn.toUpperCase() === 'N' && canView(b.openScope, params.viewer),
   );
   const filtered = params.seq != null ? all.filter((b) => b.seq === params.seq) : all;
   const sorted = [...filtered].sort((a, b) => b.seq - a.seq);
@@ -954,9 +1024,9 @@ export async function getBoardList(params: {
   }));
 }
 
-export async function getBoardPageCount(userNickname: string): Promise<number> {
+export async function getBoardPageCount(userNickname: string, viewer: Viewer): Promise<number> {
   const all = (await db().select('board', { userNickname })).filter(
-    (b) => b.del_yn.toUpperCase() === 'N' && b.openScope === 1,
+    (b) => b.del_yn.toUpperCase() === 'N' && canView(b.openScope, viewer),
   );
   return Math.max(1, Math.ceil(all.length / PAGE_SIZE));
 }
@@ -966,16 +1036,27 @@ export async function getBoardContent(seq: number): Promise<Board | null> {
   return rows[0] ?? null;
 }
 
-export async function insertBoard(userNickname: string, title: string, content: string) {
+export async function insertBoard(
+  userNickname: string,
+  title: string,
+  content: string,
+  openScope: Scope = 1,
+) {
   const now = nowIso();
   await db().insert('board', {
     userNickname, title, content, imagePath: '', hits: 0,
-    create_date: now, update_date: now, del_yn: 'N', openScope: 1,
+    create_date: now, update_date: now, del_yn: 'N', openScope,
   });
 }
 
-export async function modifyBoard(seq: number, title: string, content: string) {
-  return db().update('board', { seq }, { title, content, update_date: nowIso() });
+export async function modifyBoard(seq: number, title: string, content: string, openScope?: Scope) {
+  return db().update(
+    'board',
+    { seq },
+    openScope == null
+      ? { title, content, update_date: nowIso() }
+      : { title, content, openScope, update_date: nowIso() },
+  );
 }
 
 export async function updateBoardHit(seq: number, userNickname: string) {
@@ -1063,14 +1144,17 @@ export async function deleteAlbumComment(seq: number) {
 /* 다이어리 (DiaryMapper)                                              */
 /* ================================================================== */
 
-export async function selectDiaryByDate(userNickname: string, date: string) {
+export async function selectDiaryByDate(userNickname: string, date: string, viewer: Viewer) {
   const rows = await db().select('diary', { userNickname });
-  const found = rows.find((d) => d.diary_date === date && d.del_yn.toLowerCase() === 'n');
+  const found = rows.find(
+    (d) =>
+      d.diary_date === date && d.del_yn.toLowerCase() === 'n' && canView(d.openScope, viewer),
+  );
   return found ? { ...found, formatted_update_date: ymd(found.diary_date) } : null;
 }
 
-export async function selectTodayDiary(userNickname: string) {
-  return selectDiaryByDate(userNickname, todayYmd());
+export async function selectTodayDiary(userNickname: string, viewer: Viewer) {
+  return selectDiaryByDate(userNickname, todayYmd(), viewer);
 }
 
 /**
@@ -1080,9 +1164,9 @@ export async function selectTodayDiary(userNickname: string) {
  * 오늘 글 조회에서 빠질 수 있다. 그때 이 함수로 최신 글을 대신 보여 주면
  * 작성 직후 바로 화면에 반영된다.
  */
-export async function selectLatestDiary(userNickname: string, includePrivate: boolean) {
+export async function selectLatestDiary(userNickname: string, viewer: Viewer) {
   const rows = (await db().select('diary', { userNickname })).filter(
-    (d) => d.del_yn.toLowerCase() === 'n' && (includePrivate || d.openScope === 1),
+    (d) => d.del_yn.toLowerCase() === 'n' && canView(d.openScope, viewer),
   );
   const found = desc(rows, (d) => d.diary_date)[0];
   return found ? { ...found, formatted_update_date: ymd(found.diary_date) } : null;
@@ -1098,7 +1182,7 @@ export async function insertDiary(params: {
   userNickname: string;
   title: string;
   content: string;
-  visibility: 0 | 1;
+  visibility: Scope;
   diary_date: string;
 }) {
   const now = nowIso();
@@ -1119,7 +1203,7 @@ export async function modifyDiary(
   seq: number,
   title: string,
   content: string,
-  visibility: 0 | 1,
+  visibility: Scope,
 ) {
   return db().update(
     'diary',
@@ -1189,9 +1273,14 @@ export async function selectAllDiaryComments(userNickname: string) {
 /* 사진첩 (AlbumMapper)                                                */
 /* ================================================================== */
 
-export async function selectAlbums(userNickname: string, seq?: number): Promise<Album[]> {
-  const rows = (await db().select('album', { userNickname })).filter(
-    (a) => a.del_yn.toUpperCase() !== 'Y',
+export async function selectAlbums(
+  userNickname: string,
+  viewer: Viewer,
+  seq?: number,
+): Promise<Album[]> {
+  const rows = visibleTo(
+    (await db().select('album', { userNickname })).filter((a) => a.del_yn.toUpperCase() !== 'Y'),
+    viewer,
   );
   const filtered = seq != null ? rows.filter((a) => a.seq === seq) : rows;
   return [...filtered].sort((a, b) => b.seq - a.seq);
@@ -1202,7 +1291,7 @@ export async function insertAlbum(params: {
   title: string;
   content: string;
   imagePath: string;
-  openScope: 0 | 1;
+  openScope: Scope;
 }) {
   const now = nowIso();
   await db().insert('album', {
@@ -1218,12 +1307,32 @@ export async function deleteAlbum(seq: number) {
 /* 방명록 (VisitMapper)                                                */
 /* ================================================================== */
 
-export async function selectVisitCount(targetNickname: string): Promise<number> {
-  return (await db().select('visit', { targetNickname })).length;
+/**
+ * 방명록에서 이 사람이 볼 수 있는 글.
+ * 방명록은 남이 내 홈에 남기는 글이라, '나만보기(0)' 는 홈 주인과 작성자 본인만 본다.
+ */
+function visibleVisits(rows: Visit[], viewer: Viewer, viewerNickname: string): Visit[] {
+  return rows.filter(
+    (v) => canView(v.openScope, viewer) || v.userNickname === viewerNickname,
+  );
 }
 
-export async function selectVisitComments(targetNickname: string, page = 1) {
-  const visits = await db().select('visit', { targetNickname });
+export async function selectVisitCount(
+  targetNickname: string,
+  viewer: Viewer,
+  viewerNickname: string,
+): Promise<number> {
+  const rows = await db().select('visit', { targetNickname });
+  return visibleVisits(rows, viewer, viewerNickname).length;
+}
+
+export async function selectVisitComments(
+  targetNickname: string,
+  viewer: Viewer,
+  viewerNickname: string,
+  page = 1,
+) {
+  const visits = visibleVisits(await db().select('visit', { targetNickname }), viewer, viewerNickname);
 
   const offset = (page - 1) * VISIT_PAGE_SIZE;
   const pageRows = desc(visits, (v) => v.update_date).slice(offset, offset + VISIT_PAGE_SIZE);
@@ -1276,10 +1385,11 @@ export async function insertVisitComment(
   userNickname: string,
   targetNickname: string,
   content: string,
+  openScope: Scope = 1,
 ) {
   const now = nowIso();
   await db().insert('visit', {
-    userNickname, targetNickname, content, create_date: now, update_date: now,
+    userNickname, targetNickname, content, create_date: now, update_date: now, openScope,
   } as Omit<Visit, 'seq'>);
 }
 
@@ -1316,6 +1426,45 @@ export async function deleteVisitComment(params: {
 
 export function visitPageCount(totalCnt: number): number {
   return Math.max(1, Math.ceil(totalCnt / VISIT_PAGE_SIZE));
+}
+
+/* ================================================================== */
+/* 광장 채팅 기록                                                       */
+/* ================================================================== */
+
+/** 화면에 되살릴 지난 대화 수 */
+export const PLAZA_CHAT_LIMIT = 60;
+/** DB 에 남겨 두는 최대 줄 수 (넘으면 오래된 것부터 지운다) */
+const PLAZA_CHAT_KEEP = 400;
+
+export interface PlazaChatRow {
+  seq: number;
+  nickname: string;
+  text: string;
+  at: string;
+}
+
+/** 오래된 → 최신 순 (화면 로그와 같은 순서) */
+export async function getPlazaChat(limit = PLAZA_CHAT_LIMIT): Promise<PlazaChatRow[]> {
+  const rows = await db().select('plazaChat');
+  return [...rows]
+    .sort((a, b) => a.seq - b.seq)
+    .slice(-limit)
+    .map((c) => ({ seq: c.seq, nickname: c.userNickname, text: c.content, at: ymdhm(c.create_date) }));
+}
+
+export async function insertPlazaChat(userNickname: string, content: string) {
+  const row = await db().insert('plazaChat', {
+    userNickname, content, create_date: nowIso(),
+  } as Omit<PlazaChat, 'seq'>);
+
+  // 오래된 줄 정리 (자주 할 필요 없어 가끔만)
+  const all = await db().select('plazaChat');
+  if (all.length > PLAZA_CHAT_KEEP) {
+    const stale = [...all].sort((a, b) => a.seq - b.seq).slice(0, all.length - PLAZA_CHAT_KEEP);
+    for (const r of stale) await db().remove('plazaChat', { seq: r.seq });
+  }
+  return row;
 }
 
 /* ================================================================== */
@@ -1479,8 +1628,10 @@ export async function getNotifications(
       db().selectIn('album', 'userNickname', friendNicks),
       db().selectIn('diary', 'userNickname', friendNicks),
     ]);
-    const live = <T extends { del_yn: string; openScope: 0 | 1 }>(r: T) =>
-      r.del_yn.toLowerCase() === 'n' && r.openScope === 1;
+    // 받는 사람이 일촌이므로 전체공개 + 일촌공개까지 알린다 (나만보기는 제외)
+    const friendViewer: Viewer = { isOwner: false, isFriend: true };
+    const live = <T extends { del_yn: string; openScope: number }>(r: T) =>
+      r.del_yn.toLowerCase() === 'n' && canView(r.openScope, friendViewer);
 
     for (const b of fBoards) {
       if (!live(b)) continue;

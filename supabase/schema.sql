@@ -14,6 +14,7 @@
 
 begin;
 
+drop table if exists "plazaChat"           cascade;
 drop table if exists "notiRead"            cascade;
 drop table if exists "loginLog"            cascade;
 drop table if exists "loginStatus"         cascade;
@@ -51,7 +52,9 @@ create table "user" (
   "userBirth"     date         not null,
   "userPhone"     varchar(20)  not null unique,
   "createDate"    timestamptz  not null default now(),
-  "userAvailable" varchar(1)   not null default 'N'
+  "userAvailable" varchar(1)   not null default 'N',
+  -- 미니홈피 전체 공개 여부. 0 = 비공개(일촌만 입장), 1 = 공개
+  "homeOpenScope" smallint     not null default 1
 );
 
 create table "dotori" (
@@ -265,6 +268,8 @@ create table "visit" (
   "content"         text        not null,
   "create_date"     timestamptz not null default now(),
   "update_date"     timestamptz not null default now(),
+  -- 1 = 전체공개, 2 = 일촌공개, 0 = 비밀글(주인과 작성자만)
+  "openScope"       smallint    not null default 1,
   -- 미니홈피 주인이 방문글에 다는 답글
   "reply"           text,
   "reply_date"      timestamptz
@@ -310,7 +315,11 @@ create table "loginStatus" (
   "seq"          serial primary key,
   "userNickname" varchar(50) not null unique
                  references "user"("userNickname") on update cascade on delete cascade,
-  "status"       varchar(1) not null default '0'   -- '1' = 접속중
+  "status"       varchar(1) not null default '0',  -- '1' = 로그인함 (명시적 로그아웃 전까지)
+  -- 마지막으로 살아있는 신호를 보낸 시각.
+  -- status 만으로는 브라우저를 닫거나 PC 를 끈 사람이 영원히 '접속중'으로 남는다.
+  -- '일촌 ON' 은 status='1' 이면서 이 값이 최근인 사람만 센다.
+  "last_seen"    timestamptz not null default now()
 );
 
 create table "loginLog" (
@@ -333,6 +342,17 @@ create table "notiRead" (
   unique ("userNickname", "notiId")
 );
 create index on "notiRead" ("userNickname");
+
+-- 광장 채팅 기록.
+-- 실시간 전달은 Realtime broadcast 가 하고, 이 표는 '지난 대화' 를 위해 남긴다.
+create table "plazaChat" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "content"      text        not null,
+  "create_date"  timestamptz not null default now()
+);
+create index on "plazaChat" ("seq" desc);
 
 -- ------------------------------------------------------------------ RLS
 -- 정책을 하나도 만들지 않으므로 service_role 을 제외한 모든 접근이 막힌다.
@@ -366,6 +386,7 @@ alter table "friendCMT"          enable row level security;
 alter table "loginStatus"        enable row level security;
 alter table "loginLog"           enable row level security;
 alter table "notiRead"           enable row level security;
+alter table "plazaChat"          enable row level security;
 
 commit;
 

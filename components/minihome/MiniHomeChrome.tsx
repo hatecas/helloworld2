@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import Heartbeat from '@/components/Heartbeat';
 import AudioPlayer, { type Track } from '@/components/minihome/AudioPlayer';
 import NotificationBell from '@/components/minihome/NotificationBell';
 import { showAlert } from '@/lib/ui/dialog';
@@ -107,6 +108,7 @@ export default function MiniHomeChrome({ children }: { children: ReactNode }) {
   return (
     <div className="main-frame-skin" style={{ backgroundColor: data?.skinColor }}>
       <div className="main-frame">
+        {data?.viewerNickname && <Heartbeat />}
         {data?.viewerNickname && <NotificationBell />}
         {children}
         <AudioPlayer
@@ -123,16 +125,6 @@ export default function MiniHomeChrome({ children }: { children: ReactNode }) {
             value="내 미니홈피"
             onClick={goToMyHome}
           />
-          {data?.viewerNickname && (
-            <input
-              type="button"
-              className="udb-plaza-a font-neo"
-              value="🌳 광장"
-              onClick={() => {
-                window.location.href = '/plaza';
-              }}
-            />
-          )}
         </div>
         <div className="main-udb-notice">
           <div id="notice-container">

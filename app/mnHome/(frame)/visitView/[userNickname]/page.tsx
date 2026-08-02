@@ -31,8 +31,8 @@ export default async function VisitViewPage({
 
   const viewer = await getSessionUser();
   const [totalCnt, visits, viewerMinimi, ownerMinimi] = await Promise.all([
-    selectVisitCount(userNickname),
-    selectVisitComments(userNickname, currentPage),
+    selectVisitCount(userNickname, common.viewer, common.viewerNickname),
+    selectVisitComments(userNickname, common.viewer, common.viewerNickname, currentPage),
     viewer ? selectUserMinimi(viewer.userNickname) : Promise.resolve(null),
     selectUserMinimi(userNickname),
   ]);

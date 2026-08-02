@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { modifyDiary, selectDiaryOne } from '@/lib/db/repo';
 import { sanitizeRichText } from '@/lib/sanitize';
+import { toScope } from '@/lib/db/visibility';
 
 /** 구 DiaryController.diaryModify */
 export async function POST(request: Request) {
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ resultCode: '0' });
     }
 
-    await modifyDiary(seqNum, title ?? '', sanitizeRichText(content ?? ''), visibility === '0' ? 0 : 1);
+    await modifyDiary(seqNum, title ?? '', sanitizeRichText(content ?? ''), toScope(visibility));
     return NextResponse.json({ resultCode: '1' });
   } catch (error) {
     console.error('[diaryModify]', error);

@@ -1,3 +1,5 @@
+import Heartbeat from '@/components/Heartbeat';
+
 /**
  * 포털 화면(공지 / 상점 / 지도) 상단 헤더.
  *
@@ -21,6 +23,8 @@ export default function IndexHeader({
 
   return (
     <>
+      {/* 로그인 상태면 접속 신호를 보낸다 ('일촌 ON' 판정 + 세션 연장) */}
+      {loggedIn && <Heartbeat />}
       <div className="divIndexMenu index-header">
         <div className="index-header-left">
           <a className="logoATag" href="/">

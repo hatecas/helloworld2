@@ -7,6 +7,10 @@
  * 여기서는 매퍼 쿼리를 기준으로 재구성했다.
  */
 
+import type { Scope } from './visibility';
+
+export type { Scope };
+
 export type YN = 'Y' | 'N' | 'y' | 'n';
 
 /** 0 = 대기, 1 = 승인, -1 = 거절 */
@@ -22,6 +26,8 @@ export interface User {
   userPhone: string;
   createDate: string; // ISO
   userAvailable: YN;
+  /** 미니홈피 전체 공개 여부. 0 = 비공개(일촌만 입장), 1 = 공개 */
+  homeOpenScope?: 0 | 1;
 }
 
 export interface Dotori {
@@ -138,8 +144,8 @@ export interface Board {
   create_date: string;
   update_date: string;
   del_yn: YN;
-  /** 1 = 전체공개, 0 = 비공개 */
-  openScope: 0 | 1;
+  /** 1 = 전체공개, 2 = 일촌공개, 0 = 나만보기 */
+  openScope: Scope;
 }
 
 export interface BoardComment {
@@ -149,7 +155,7 @@ export interface BoardComment {
   content: string;
   create_date: string;
   update_date: string;
-  openScope: 0 | 1;
+  openScope: Scope;
   /** 답글이면 부모 댓글의 seq, 원댓글이면 null */
   parentSeq?: number | null;
 }
@@ -165,7 +171,7 @@ export interface Diary {
   /** 다이어리가 가리키는 날짜 (YYYY-MM-DD) */
   diary_date: string;
   del_yn: YN;
-  openScope: 0 | 1;
+  openScope: Scope;
 }
 
 export interface DiaryComment {
@@ -174,7 +180,7 @@ export interface DiaryComment {
   userNickname: string;
   content: string;
   create_date: string;
-  openScope: 0 | 1;
+  openScope: Scope;
   /** 답글이면 부모 댓글의 seq, 원댓글이면 null */
   parentSeq?: number | null;
 }
@@ -189,7 +195,7 @@ export interface Album {
   create_date: string;
   update_date: string;
   del_yn: YN;
-  openScope: 0 | 1;
+  openScope: Scope;
 }
 
 export interface AlbumComment {
@@ -199,7 +205,7 @@ export interface AlbumComment {
   content: string;
   create_date: string;
   update_date: string;
-  openScope: 0 | 1;
+  openScope: Scope;
   /** 답글이면 부모 댓글의 seq, 원댓글이면 null */
   parentSeq?: number | null;
 }
@@ -211,6 +217,8 @@ export interface Visit {
   content: string;
   create_date: string;
   update_date: string;
+  /** 1 = 전체공개, 2 = 일촌공개, 0 = 비밀글(주인과 작성자만) */
+  openScope: Scope;
   /** 미니홈피 주인이 다는 답글 (없으면 null) */
   reply?: string | null;
   reply_date?: string | null;
@@ -244,8 +252,14 @@ export interface FriendComment {
 export interface LoginStatus {
   seq: number;
   userNickname: string;
-  /** '1' = 접속중 */
+  /** '1' = 로그인한 상태 (명시적 로그아웃 전까지) */
   status: '0' | '1';
+  /**
+   * 마지막 생존 신호 시각(ISO).
+   * status 만 보면 브라우저를 닫거나 PC 를 끈 사람이 계속 '접속중'으로 남는다.
+   * 실제 '일촌 ON' 판정은 이 값이 최근인지로 한다.
+   */
+  last_seen?: string;
 }
 
 export interface LoginLog {
@@ -264,6 +278,18 @@ export interface NotiRead {
   /** getNotifications 가 만드는 알림 id (예: 'board-12') */
   notiId: string;
   read_date: string;
+}
+
+/**
+ * 광장 채팅 기록.
+ * 실시간 전달은 Supabase Realtime broadcast 가 하고, 이 표는 '지난 대화'를 위해 남긴다.
+ * (새로고침하거나 나중에 들어온 사람도 앞의 대화를 볼 수 있어야 한다)
+ */
+export interface PlazaChat {
+  seq: number;
+  userNickname: string;
+  content: string;
+  create_date: string;
 }
 
 /** 인메모리/Supabase 어댑터가 공유하는 전체 데이터 형태 */
@@ -294,4 +320,5 @@ export interface Database {
   loginStatus: LoginStatus[];
   loginLog: LoginLog[];
   notiRead: NotiRead[];
+  plazaChat: PlazaChat[];
 }

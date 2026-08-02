@@ -16,7 +16,21 @@ const CART_COOKIE = 'helloworld_cart';
 const FOUND_ID_COOKIE = 'helloworld_found_id';
 const PW_RESET_COOKIE = 'helloworld_pw_reset';
 
-const MAX_AGE = 60 * 60 * 24 * 7; // 구 userEmail 쿠키와 동일하게 7일
+/** 방문 이력 · 장바구니처럼 로그인과 무관한 쿠키의 수명 (구 userEmail 쿠키와 동일하게 7일) */
+const MAX_AGE = 60 * 60 * 24 * 7;
+
+/**
+ * 로그인 세션의 유휴 수명.
+ *
+ * 예전엔 7일 고정이라, 로그아웃을 안 누르고 브라우저를 닫으면 일주일 내내
+ * 세션이 살아 있었다. 이제 '마지막 활동 기준' 으로 바뀐다 —
+ * 탭이 열려 있으면 /api/heartbeat 가 이 시각을 계속 미루고,
+ * 아무 신호가 없으면 이 시간 뒤에 쿠키가 만료돼 자동 로그아웃된다.
+ *
+ * 더 짧게(예: 2시간) 하고 싶으면 이 값만 바꾸면 된다.
+ */
+const SESSION_IDLE_AGE = 60 * 60 * 12;
+
 /** 아이디 찾기 결과 · 비밀번호 재설정 티켓의 수명 */
 const RECOVERY_MAX_AGE = 60 * 5;
 
@@ -88,14 +102,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   };
 }
 
+/** 로그인 시, 그리고 heartbeat 마다 다시 불러 만료 시각을 뒤로 민다 */
 export async function setSessionUser(user: SessionUser): Promise<void> {
-  const token = await sign({ ...user });
+  const token = await sign({ ...user }, SESSION_IDLE_AGE);
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: MAX_AGE,
+    maxAge: SESSION_IDLE_AGE,
     secure: process.env.NODE_ENV === 'production',
   });
 }

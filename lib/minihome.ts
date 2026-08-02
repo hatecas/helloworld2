@@ -1,5 +1,6 @@
 import {
   DEFAULT_PROFILE_IMAGE,
+  friendCheck,
   getAppliedItem,
   getHomeOwnerInfo,
   getMyFriends,
@@ -7,6 +8,7 @@ import {
   hasFriendRelation,
   selectVisitCnt,
 } from '@/lib/db/repo';
+import { canEnterHome, type Viewer } from '@/lib/db/visibility';
 import { getSessionUser } from '@/lib/session';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
 
@@ -26,18 +28,27 @@ export async function loadMiniHomeCommon(userNickname: string): Promise<MiniHome
   const viewer = await getSessionUser();
   const isOwner = viewer?.userNickname === userNickname;
 
-  const [profile, friends, menuContentPath, visitCnt, alreadyRelated] = await Promise.all([
-    getProfile(userNickname),
-    getMyFriends(userNickname),
-    getAppliedItem(userNickname, 'menu'),
-    selectVisitCnt(userNickname),
-    viewer && !isOwner ? hasFriendRelation(viewer.userNickname, userNickname) : Promise.resolve(true),
-  ]);
+  const [profile, friends, menuContentPath, visitCnt, alreadyRelated, friendFlag] =
+    await Promise.all([
+      getProfile(userNickname),
+      getMyFriends(userNickname),
+      getAppliedItem(userNickname, 'menu'),
+      selectVisitCnt(userNickname),
+      viewer && !isOwner
+        ? hasFriendRelation(viewer.userNickname, userNickname)
+        : Promise.resolve(true),
+      // 수락된 일촌인지 (신청중은 아직 일촌이 아니다)
+      viewer && !isOwner ? friendCheck(viewer.userNickname, userNickname) : Promise.resolve(1),
+    ]);
+
+  const viewerScope: Viewer = { isOwner, isFriend: isOwner || friendFlag === 1 };
 
   return {
     userNickname,
     viewerNickname: viewer?.userNickname ?? '',
     isOwner,
+    viewer: viewerScope,
+    canEnter: canEnterHome(owner.homeOpenScope, viewerScope),
     canRequestFriend: Boolean(viewer) && !isOwner && !alreadyRelated,
     todayCnt: visitCnt?.todayCnt ?? 0,
     totalCnt: visitCnt?.totalCnt ?? 0,

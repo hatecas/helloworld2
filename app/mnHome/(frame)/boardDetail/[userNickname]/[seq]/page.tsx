@@ -6,6 +6,7 @@ import BoardDetailClient from '@/components/minihome/BoardDetailClient';
 import { loadMiniHomeCommon } from '@/lib/minihome';
 import { getSessionUser } from '@/lib/session';
 import { friendCheck, getBoardComments, getBoardContent, updateBoardHit } from '@/lib/db/repo';
+import { canView } from '@/lib/db/visibility';
 import { ymdhm } from '@/lib/db/format';
 
 // 조회수를 매 요청마다 올리므로 캐시하지 않는다
@@ -29,6 +30,8 @@ export default async function BoardDetailPage({
     getBoardContent(seqNum),
   ]);
   if (!common || !board || board.userNickname !== userNickname) notFound();
+  // 볼 수 없는 공개범위의 글은 없는 것처럼 다룬다 (존재 여부도 알려주지 않는다)
+  if (board.del_yn.toUpperCase() === 'Y' || !canView(board.openScope, common.viewer)) notFound();
 
   const viewer = await getSessionUser();
   const check = viewer

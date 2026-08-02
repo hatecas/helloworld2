@@ -18,9 +18,8 @@ export default async function AlbumViewPage({
   const common = await loadMiniHomeCommon(userNickname);
   if (!common) notFound();
 
-  const albums = await selectAlbums(userNickname);
-  // 주인이 아니면 전체공개만 보인다
-  const visible = common.isOwner ? albums : albums.filter((a) => a.openScope === 1);
+  // 공개범위(전체공개/일촌공개/나만보기)는 selectAlbums 안에서 걸러진다
+  const visible = await selectAlbums(userNickname, common.viewer);
 
   return (
     <>

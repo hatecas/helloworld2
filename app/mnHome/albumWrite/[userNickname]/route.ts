@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getSessionUser } from '@/lib/session';
 import { insertAlbum } from '@/lib/db/repo';
+import { toScope } from '@/lib/db/visibility';
 import { isAllowedImage, saveUploadedFile } from '@/lib/upload';
 
 /** 구 AlbumController.albumWrite (multipart: uploadFile[] + contents JSON) */
@@ -52,7 +53,7 @@ export async function POST(
       title: contents.title,
       content: contents.content ?? '',
       imagePath: filenames.join(','),
-      openScope: contents.visibility === '0' ? 0 : 1,
+      openScope: toScope(contents.visibility),
     });
 
     return NextResponse.json({ resultCode: '1' });

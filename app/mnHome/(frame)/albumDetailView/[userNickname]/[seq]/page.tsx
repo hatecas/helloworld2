@@ -22,9 +22,9 @@ export default async function AlbumDetailViewPage({
   const common = await loadMiniHomeCommon(userNickname);
   if (!common) notFound();
 
-  const [album] = await selectAlbums(userNickname, seqNum);
+  // 볼 수 없는 공개범위면 selectAlbums 가 아예 안 돌려준다
+  const [album] = await selectAlbums(userNickname, common.viewer, seqNum);
   if (!album) notFound();
-  if (!common.isOwner && album.openScope !== 1) notFound();
 
   const viewer = await getSessionUser();
   const [comments, check] = await Promise.all([

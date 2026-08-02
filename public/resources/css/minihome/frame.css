@@ -190,13 +190,15 @@ body a:hover {
 	 * 예전엔 높이를 450px 로 못박아, 파도타기 밑에 검색창을 넣자 칸 밖으로 넘쳤다.
 	 * 세로는 프로필 칸에 맞게 채우도록 flex 에 맡긴다. (.box 의 flex:3)
 	 *
-	 * min-height:0 + overflow:hidden 이 핵심이다.
-	 * 이게 없으면 flex 항목의 자동 최소 크기(min-height:auto)가 "내용만큼"이라
-	 * 안쪽 사진이 커질 때 칸이 같이 늘어나 회색 페이지(.page) 밖으로 삐져나갔다.
-	 * 오른쪽 Updated News 칸(.content-box 의 max-height:100%)과 같은 장치다.
+	 * min-height:0 이 핵심이다. 이게 없으면 flex 항목의 자동 최소 크기가
+	 * "내용만큼"이라 안쪽 사진이 커질 때 칸이 같이 늘어나 회색 페이지(.page)
+	 * 밖으로 삐져나갔다. 오른쪽 Updated News 칸과 같은 장치다.
+	 *
+	 * overflow 는 hidden 으로 두지 않는다. 사진은 .left-1 안에서 absolute 로
+	 * 띄워 두어 칸을 밀어낼 수 없고, 여기서 자르면 '미니홈피 찾기' 결과 같은
+	 * 떠 있는 목록까지 같이 잘려 버린다.
 	 */
 	min-height: 0;
-	overflow: hidden;
 	box-sizing: border-box;
 }
 
@@ -417,13 +419,17 @@ body a:hover {
 	cursor: default;
 }
 
+/*
+ * 검색창이 프로필 칸 맨 아래라 결과를 아래로 열면 칸 밖으로 나가 잘렸다.
+ * 위로 펼친다 — 칸 안쪽이라 어디서 잘릴 일이 없다.
+ */
 .profile-search-results {
 	position: absolute;
 	left: 0;
 	right: 0;
-	top: calc(100% + 4px);
+	bottom: calc(100% + 4px);
 	z-index: 6;
-	max-height: 160px;
+	max-height: 190px;
 	overflow-y: auto;
 	background: #ffffff;
 	border: 1px solid var(--mh-line);
@@ -852,16 +858,11 @@ input.content-title-name:focus {
 }
 
 .main-udb-myhome {
-	/* '내 미니홈피' 옆에 광장 버튼이 하나 더 들어간다 */
-	flex-basis: 24%;
-	display: flex;
-	align-items: center;
-	gap: 2px;
+	flex-basis: 15%;
 	text-align: left;
 }
 
 .udb-myhome-a,
-.udb-plaza-a,
 .udb-logout-a {
 	color: #e6edf0;
 	border: 0;
@@ -874,7 +875,6 @@ input.content-title-name:focus {
 }
 
 .udb-myhome-a:hover,
-.udb-plaza-a:hover,
 .udb-logout-a:hover {
 	cursor: pointer;
 	color: #ffffff;
@@ -882,7 +882,7 @@ input.content-title-name:focus {
 }
 
 .main-udb-notice {
-	flex-basis: 51%;
+	flex-basis: 60%;
 	text-align: left;
 	overflow: hidden;
 }
@@ -1485,6 +1485,100 @@ input.content-title-name:focus {
 	background: var(--mh-accent);
 	color: #fff;
 	box-shadow: 0 1px 3px rgba(240, 138, 36, 0.4);
+}
+
+/* 3단계(전체공개·일촌공개·나만보기)라 칸이 좁아져 여백을 줄인다 */
+.scope-toggle .scope-opt {
+	padding: 0.3rem 0.7rem;
+	white-space: nowrap;
+}
+
+/* 방명록처럼 좁은 자리에 들어갈 때 */
+.write-scope--compact {
+	gap: 6px;
+	margin: 0;
+}
+
+.write-scope--compact .write-scope-label {
+	font-size: 0.75rem;
+	color: var(--mh-muted);
+}
+
+.write-scope--compact .scope-opt {
+	font-size: 0.72rem;
+	padding: 0.22rem 0.6rem;
+}
+
+/* ==================================================================== */
+/* 비공개 미니홈피 안내                                                   */
+/* ==================================================================== */
+
+.private-home {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 2rem 1rem;
+	color: var(--mh-ink);
+}
+
+.private-home-lock {
+	font-size: 42px;
+	line-height: 1;
+	margin-bottom: 14px;
+	opacity: 0.85;
+}
+
+.private-home-title {
+	font-size: 1rem;
+	font-weight: 700;
+	margin-bottom: 10px;
+}
+
+.private-home-desc {
+	margin: 0;
+	font-size: 0.82rem;
+	line-height: 1.7;
+	color: var(--mh-muted);
+}
+
+.private-home-hint {
+	margin: 14px 0 0;
+	font-size: 0.75rem;
+	color: var(--mh-accent);
+}
+
+/* ==================================================================== */
+/* 관리 > 홈피 공개 설정                                                  */
+/* ==================================================================== */
+
+.set-info-scope {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 0;
+	border-top: 1px dashed var(--mh-line);
+	font-size: 13px;
+}
+
+.set-info-scope-left {
+	flex: 0 0 90px;
+	font-weight: 600;
+	color: var(--mh-ink);
+}
+
+.set-info-scope-right {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.set-info-scope-hint {
+	margin: 7px 0 0;
+	font-size: 11px;
+	line-height: 1.6;
+	color: var(--mh-muted);
 }
 
 /* ==================================================================== */
@@ -2096,7 +2190,6 @@ input.content-title-name:focus {
 	}
 
 	.udb-myhome-a,
-	.udb-plaza-a,
 	.udb-logout-a {
 		font-size: 11px;
 		padding: 4px 6px;

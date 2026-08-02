@@ -3,10 +3,19 @@
  * (lib/minihome.ts 는 세션·DB 를 건드리므로 클라이언트 컴포넌트에서 못 쓴다)
  */
 
+import type { Viewer } from '@/lib/db/visibility';
+
 export interface MiniHomeCommon {
   userNickname: string;
   viewerNickname: string;
   isOwner: boolean;
+  /**
+   * 이 홈피에서 보는 사람의 자격 (주인인가 / 일촌인가).
+   * 게시물 공개범위 판정에 쓰이며, 페이지마다 다시 계산하지 않도록 여기 담아 둔다.
+   */
+  viewer: Viewer;
+  /** 미니홈피 자체를 볼 수 있는가 (비공개 홈피는 주인·일촌만) */
+  canEnter: boolean;
   /** 방문자가 이 홈피 주인에게 일촌신청을 보낼 수 있는지 (이미 일촌/신청중이면 false) */
   canRequestFriend: boolean;
   todayCnt: number;

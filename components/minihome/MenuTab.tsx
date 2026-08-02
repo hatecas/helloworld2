@@ -13,28 +13,39 @@ import { menuBackgroundColor, menuTextColor } from '@/lib/minihome-view';
 export default function MenuTab({
   userNickname,
   isOwner,
+  loggedIn,
   menuContentPath,
 }: {
   userNickname: string;
   isOwner: boolean;
+  /** 광장은 로그인해야 들어갈 수 있어 비로그인 방문자에겐 감춘다 */
+  loggedIn: boolean;
   menuContentPath: string;
 }) {
   const background = menuBackgroundColor(menuContentPath);
   const color = menuTextColor(menuContentPath);
 
-  const tabs: Array<{ id: string; label: string; href: string; ownerOnly?: boolean }> = [
+  const tabs: Array<{
+    id: string;
+    label: string;
+    href: string;
+    ownerOnly?: boolean;
+    loginOnly?: boolean;
+  }> = [
     { id: 'tabHome', label: '홈', href: `/mnHome/mainView/${userNickname}` },
     { id: 'tabDiary', label: '다이어리', href: `/mnHome/diaryView/${userNickname}` },
     { id: 'tabAlbum', label: '사진첩', href: `/mnHome/albumView/${userNickname}` },
     { id: 'tabBoard', label: '게시판', href: `/mnHome/boardView/${userNickname}` },
     { id: 'tabVisit', label: '방명록', href: `/mnHome/visitView/${userNickname}` },
+    // 미니홈피 바깥(포털)이지만 여기가 사람들이 머무는 곳이라 메뉴에 같이 둔다
+    { id: 'tabPlaza', label: '광장', href: '/plaza', loginOnly: true },
     { id: 'tabSetting', label: '관리', href: `/mnHome/settingView/${userNickname}`, ownerOnly: true },
   ];
 
   return (
     <div className="menu-container">
       {tabs
-        .filter((tab) => !tab.ownerOnly || isOwner)
+        .filter((tab) => (!tab.ownerOnly || isOwner) && (!tab.loginOnly || loggedIn))
         .map((tab) => (
           // next/link 로 바꿔 뷰포트에 들어오는 즉시 자동 프리페치된다 → 탭 이동이 즉각적.
           <Link

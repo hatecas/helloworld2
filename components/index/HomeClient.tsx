@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import Heartbeat from '@/components/Heartbeat';
 import Stylesheets from '@/components/Stylesheets';
 import Footer from '@/components/index/Footer';
 import { showAlert } from '@/lib/ui/dialog';
@@ -206,6 +207,8 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
     <>
       <Stylesheets hrefs={['/resources/css/index/main.css']} />
 
+      {loggedIn && <Heartbeat />}
+
       <div className="index-frame">
         <div className="divIndexMenu index-header">
           <div className="index-header-left">
@@ -228,11 +231,6 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                 />
                 <span id="userDotoriCnt">{dotori ?? 0}</span>
               </h5>
-            )}
-            {loggedIn && (
-              <a href="/plaza" className="index-a-plaza">
-                광장
-              </a>
             )}
             <a href="/store/minimiView" className="index-a-store">
               상점
@@ -385,15 +383,6 @@ export default function HomeClient({ userNickname, userEmail, dotori, userMinimi
                         id="btnGoMinihome"
                         value="내 미니홈피"
                         onClick={() => openMiniHomepage()}
-                      />
-                      <input
-                        type="button"
-                        className="mainBtnPlaza"
-                        id="btnGoPlaza"
-                        value="🌳 광장"
-                        onClick={() => {
-                          window.location.href = '/plaza';
-                        }}
                       />
                       <input
                         type="button"

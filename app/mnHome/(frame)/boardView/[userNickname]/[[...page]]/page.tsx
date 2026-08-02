@@ -23,8 +23,8 @@ export default async function BoardViewPage({
   if (!common) notFound();
 
   const [list, totalPage] = await Promise.all([
-    getBoardList({ userNickname, page: currentPage }),
-    getBoardPageCount(userNickname),
+    getBoardList({ userNickname, page: currentPage, viewer: common.viewer }),
+    getBoardPageCount(userNickname, common.viewer),
   ]);
 
   return (

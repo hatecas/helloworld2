@@ -12,6 +12,7 @@ export default function SettingInfoClient({
   phoneNumber: initialPhone,
   createDate,
   minimi,
+  homeOpenScope: initialHomeScope,
 }: {
   userNickname: string;
   userEmail: string;
@@ -19,10 +20,35 @@ export default function SettingInfoClient({
   phoneNumber: string;
   createDate: string;
   minimi: string;
+  homeOpenScope: 0 | 1;
 }) {
   const [name, setName] = useState(initialName);
   const [nickname, setNickname] = useState(userNickname);
   const [phone, setPhone] = useState(initialPhone);
+  const [homeScope, setHomeScope] = useState<0 | 1>(initialHomeScope);
+  const [savingScope, setSavingScope] = useState(false);
+
+  /** 미니홈피 전체 공개 / 비공개 */
+  const changeHomeScope = async (next: 0 | 1) => {
+    if (next === homeScope || savingScope) return;
+    setSavingScope(true);
+    const prev = homeScope;
+    setHomeScope(next); // 먼저 반영하고, 실패하면 되돌린다
+    try {
+      const res = await fetch('/mnHome/homeScope', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: next }),
+      });
+      const json = (await res.json()) as { resultCode: string };
+      if (json.resultCode !== '1') throw new Error('fail');
+    } catch {
+      setHomeScope(prev);
+      void showAlert('잠시 후 다시 시도해주세요.');
+    } finally {
+      setSavingScope(false);
+    }
+  };
 
   const [editing, setEditing] = useState<'name' | 'nickname' | 'phone' | null>(null);
   const [original, setOriginal] = useState('');
@@ -200,6 +226,40 @@ export default function SettingInfoClient({
                 {createDate}
               </div>
               <div className="set-info-date-a" />
+            </div>
+
+            {/* 미니홈피 전체 공개 여부 — 비공개면 일촌이 아닌 사람은 아예 못 들어온다 */}
+            <div className="set-info-scope">
+              <div className="set-info-scope-left">
+                <span>🔒</span> 홈피 공개
+              </div>
+              <div className="set-info-scope-right">
+                <div className="scope-toggle" role="radiogroup" aria-label="미니홈피 공개 설정">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={homeScope === 1}
+                    className={homeScope === 1 ? 'scope-opt is-on' : 'scope-opt'}
+                    onClick={() => void changeHomeScope(1)}
+                  >
+                    공개
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={homeScope === 0}
+                    className={homeScope === 0 ? 'scope-opt is-on' : 'scope-opt'}
+                    onClick={() => void changeHomeScope(0)}
+                  >
+                    비공개
+                  </button>
+                </div>
+                <p className="set-info-scope-hint">
+                  {homeScope === 1
+                    ? '누구나 들어올 수 있고, 글은 각 글의 공개범위를 따릅니다.'
+                    : '일촌이 아니면 미니홈피 자체를 볼 수 없습니다.'}
+                </p>
+              </div>
             </div>
           </div>
         </div>

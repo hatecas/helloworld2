@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import RichTextEditor, { type RichTextEditorHandle } from '@/components/minihome/RichTextEditor';
+import ScopePicker from '@/components/minihome/ScopePicker';
+import type { Scope } from '@/lib/db/visibility';
 import Calendar from '@/components/minihome/Calendar';
 import { showAlert } from '@/lib/ui/dialog';
 
@@ -25,14 +27,14 @@ export default function DiaryEditorClient({
   title?: string;
   content?: string;
   diaryDate?: string;
-  openScope?: 0 | 1;
+  openScope?: Scope;
 }) {
   const router = useRouter();
   const editorRef = useRef<RichTextEditorHandle>(null);
 
   const [title, setTitle] = useState(initialTitle);
   const [diaryDate, setDiaryDate] = useState(initialDate);
-  const [visibility, setVisibility] = useState(String(initialScope));
+  const [visibility, setVisibility] = useState<Scope>(initialScope);
 
   const submit = async () => {
     if (!title.trim()) {
@@ -110,29 +112,7 @@ export default function DiaryEditorClient({
 
       <RichTextEditor ref={editorRef} id="txtContent" defaultValue={initialContent} />
 
-      <div className="write-scope">
-        <span className="write-scope-label">공개설정</span>
-        <div className="scope-toggle" role="radiogroup" aria-label="공개설정">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={visibility === '1'}
-            className={visibility === '1' ? 'scope-opt is-on' : 'scope-opt'}
-            onClick={() => setVisibility('1')}
-          >
-            전체공개
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={visibility === '0'}
-            className={visibility === '0' ? 'scope-opt is-on' : 'scope-opt'}
-            onClick={() => setVisibility('0')}
-          >
-            비공개
-          </button>
-        </div>
-      </div>
+      <ScopePicker value={visibility} onChange={setVisibility} />
 
       <div className="btn-container">
         <div className="btn-left">

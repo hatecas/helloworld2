@@ -153,7 +153,7 @@ export function buildSeed(): Database {
     bgm: [], userBgm: [], profile: [], miniHomeTitle: [], miniroomBackground: [],
     miniroomMinimi: [], notice: [], board: [], boardCMT: [], diary: [], diaryCMT: [],
     album: [], albumCMT: [], visit: [], visitCnt: [], friends: [], friendCMT: [], loginStatus: [],
-    loginLog: [], notiRead: [],
+    loginLog: [], notiRead: [], plazaChat: [],
   };
 
   let seq = 1;
@@ -233,6 +233,9 @@ export function buildSeed(): Database {
     });
     db.loginStatus.push({
       seq: next(), userNickname: u.nickname, status: u.online ? '1' : '0',
+      // 접속중인 시드 유저는 방금 신호를 보낸 것으로 둔다.
+      // (status 가 '1' 이어도 last_seen 이 오래되면 '일촌 ON' 에 안 잡힌다)
+      last_seen: u.online ? iso() : iso(3),
     });
 
     // 기본 보유 아이템
@@ -397,7 +400,7 @@ export function buildSeed(): Database {
   ];
   visits.forEach(([userNickname, targetNickname, content, days]) => {
     db.visit.push({
-      seq: next(), userNickname, targetNickname, content,
+      seq: next(), userNickname, targetNickname, content, openScope: 1,
       create_date: iso(days), update_date: iso(days),
     });
   });

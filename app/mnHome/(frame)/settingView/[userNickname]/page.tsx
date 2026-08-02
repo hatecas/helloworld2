@@ -6,7 +6,13 @@ import SettingSideBox from '@/components/minihome/SettingSideBox';
 import SettingInfoClient from '@/components/minihome/SettingInfoClient';
 import { loadMiniHomeCommon } from '@/lib/minihome';
 import { getSessionUser } from '@/lib/session';
-import { DEFAULT_MINIMI_PATH, selectPhone, selectUserInfo, selectUserMinimi } from '@/lib/db/repo';
+import {
+  DEFAULT_MINIMI_PATH,
+  getHomeOwnerInfo,
+  selectPhone,
+  selectUserInfo,
+  selectUserMinimi,
+} from '@/lib/db/repo';
 
 /** 구 SettingController.settingView + views/miniHome/setting.jsp */
 export default async function SettingViewPage({
@@ -22,10 +28,11 @@ export default async function SettingViewPage({
   if (!common.isOwner) redirect(`/mnHome/mainView/${userNickname}`);
 
   const viewer = await getSessionUser();
-  const [phoneNumber, minimi, info] = await Promise.all([
+  const [phoneNumber, minimi, info, owner] = await Promise.all([
     selectPhone(userNickname),
     selectUserMinimi(userNickname),
     selectUserInfo({ userNickname }),
+    getHomeOwnerInfo(userNickname),
   ]);
 
   return (
@@ -38,6 +45,7 @@ export default async function SettingViewPage({
           userName={common.userName}
           phoneNumber={phoneNumber}
           createDate={info?.createDate ?? ''}
+          homeOpenScope={owner?.homeOpenScope ?? 1}
           minimi={minimi ?? DEFAULT_MINIMI_PATH}
         />
       </MiniHomeShell>

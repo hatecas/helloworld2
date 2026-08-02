@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
+import ScopePicker from '@/components/minihome/ScopePicker';
+import type { Scope } from '@/lib/db/visibility';
 
 interface VisitRow {
   seq: number;
@@ -53,6 +55,7 @@ export default function VisitClient({
     setVisits(initialVisits);
   }, [initialVisits]);
   const [draft, setDraft] = useState('');
+  const [visibility, setVisibility] = useState<Scope>(1);
   const [editing, setEditing] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
   // 주인장 답글 (열려 있는 방문글 seq / 입력 중인 답글 내용)
@@ -101,7 +104,12 @@ export default function VisitClient({
       const res = await fetch('/mnHome/visitComment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: draft, userNickname: viewerNickname, targetNickname: userNickname }),
+        body: JSON.stringify({
+          content: draft,
+          userNickname: viewerNickname,
+          targetNickname: userNickname,
+          visibility,
+        }),
       });
       const json = (await res.json()) as { result: string };
       if (json.result === 'Success') {
@@ -190,6 +198,7 @@ export default function VisitClient({
         </div>
         <div className="visit-write-footer">
           <span id="char-count">{byteCount}/5000</span>
+          <ScopePicker value={visibility} onChange={setVisibility} label="공개" compact />
           <button
             type="button"
             className="mh-btn"

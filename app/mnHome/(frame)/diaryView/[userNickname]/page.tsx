@@ -22,11 +22,8 @@ export default async function DiaryViewPage({
 
   // 오늘 글이 있으면(그리고 볼 수 있으면) 그걸, 없으면 가장 최근 글을 보여 준다.
   // → 작성 직후 서버/작성자 시간대 차이로 "오늘"이 어긋나도 방금 쓴 글이 바로 뜬다.
-  const today = await selectTodayDiary(userNickname);
-  const diary =
-    today && (today.openScope === 1 || common.isOwner)
-      ? today
-      : await selectLatestDiary(userNickname, common.isOwner);
+  const today = await selectTodayDiary(userNickname, common.viewer);
+  const diary = today ?? (await selectLatestDiary(userNickname, common.viewer));
   const comments = diary ? await getDiaryComments(diary.seq) : [];
 
   const visible = diary != null;

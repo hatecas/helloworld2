@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
+import ScopePicker from '@/components/minihome/ScopePicker';
+import type { Scope } from '@/lib/db/visibility';
 
 /** views/miniHome/albumWrite.jsp + resources/js/album.js (multiFiles / writeAlbum) */
 export default function AlbumWriteClient({ userNickname }: { userNickname: string }) {
@@ -11,7 +13,7 @@ export default function AlbumWriteClient({ userNickname }: { userNickname: strin
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [visibility, setVisibility] = useState('1');
+  const [visibility, setVisibility] = useState<Scope>(1);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -129,29 +131,7 @@ export default function AlbumWriteClient({ userNickname }: { userNickname: strin
             onChange={(e) => setContent(e.target.value)}
           />
 
-          <div className="write-scope">
-            <span className="write-scope-label">공개설정</span>
-            <div className="scope-toggle" role="radiogroup" aria-label="공개설정">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={visibility === '1'}
-                className={visibility === '1' ? 'scope-opt is-on' : 'scope-opt'}
-                onClick={() => setVisibility('1')}
-              >
-                전체공개
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={visibility === '0'}
-                className={visibility === '0' ? 'scope-opt is-on' : 'scope-opt'}
-                onClick={() => setVisibility('0')}
-              >
-                비공개
-              </button>
-            </div>
-          </div>
+          <ScopePicker value={visibility} onChange={setVisibility} />
         </div>
 
         <div className="album-container-under">

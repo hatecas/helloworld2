@@ -6,6 +6,8 @@ import { useRef, useState } from 'react';
 import RichTextEditor, { type RichTextEditorHandle } from '@/components/minihome/RichTextEditor';
 import { showAlert } from '@/lib/ui/dialog';
 import { todayYmd } from '@/lib/db/format';
+import ScopePicker from '@/components/minihome/ScopePicker';
+import type { Scope } from '@/lib/db/visibility';
 
 /**
  * views/miniHome/boardWrite.jsp + boardModify.jsp
@@ -17,6 +19,7 @@ export default function BoardEditorClient({
   userName,
   seq,
   title: initialTitle = '',
+  openScope: initialScope = 1,
   content: initialContent = '',
 }: {
   mode: 'write' | 'modify';
@@ -24,11 +27,13 @@ export default function BoardEditorClient({
   userName: string;
   seq?: number;
   title?: string;
+  openScope?: Scope;
   content?: string;
 }) {
   const router = useRouter();
   const editorRef = useRef<RichTextEditorHandle>(null);
   const [title, setTitle] = useState(initialTitle);
+  const [visibility, setVisibility] = useState<Scope>(initialScope);
 
   // 작성일 표시도 한국 시간 기준 (서버 UTC 로컬시간과 어긋나지 않게)
   const formattedToday = todayYmd();
@@ -48,7 +53,7 @@ export default function BoardEditorClient({
       const res = await fetch(mode === 'write' ? '/mnHome/boardWrite' : '/mnHome/boardModify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, userNickname, title, seq }),
+        body: JSON.stringify({ content, userNickname, title, seq, visibility }),
       });
       const json = (await res.json()) as { resultCode: string };
       if (json.resultCode === '1') {
@@ -84,6 +89,8 @@ export default function BoardEditorClient({
       </div>
 
       <RichTextEditor ref={editorRef} id="txtContent" defaultValue={initialContent} />
+
+      <ScopePicker value={visibility} onChange={setVisibility} />
 
       <div className="btn-container">
         <div className="btn-left" />

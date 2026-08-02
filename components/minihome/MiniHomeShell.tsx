@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 
 import ContentTitle from '@/components/minihome/ContentTitle';
+import PrivateHomeNotice from '@/components/minihome/PrivateHomeNotice';
 import MenuTab from '@/components/minihome/MenuTab';
 import ProfileBox from '@/components/minihome/ProfileBox';
 import type { MiniHomeCommon } from '@/lib/minihome-view';
@@ -51,12 +52,20 @@ export default function MiniHomeShell({
               title={common.title}
               isOwner={common.isOwner}
             />
-            <div className="box content-box">{children}</div>
+            <div className="box content-box">
+              {/*
+                비공개 홈피 — 일촌이 아니면 어떤 탭으로 들어와도 내용 대신 안내만 보인다.
+                여기 한 곳에서 막으므로 탭이 늘어나도 빠뜨릴 일이 없다.
+                (프로필 사진·이름·일촌신청 버튼은 그대로 두어 신청은 할 수 있게 한다)
+              */}
+              {common.canEnter ? children : <PrivateHomeNotice common={common} />}
+            </div>
           </div>
 
           <MenuTab
             userNickname={common.userNickname}
             isOwner={common.isOwner}
+            loggedIn={Boolean(common.viewerNickname)}
             menuContentPath={common.menuContentPath}
           />
         </div>
