@@ -459,7 +459,12 @@ export default function PlazaClient({
           a.el.style.zIndex = String(Math.round(a.y));
         }
         if (a.imgEl) {
-          const flip = a.facing === 'left' ? 'scaleX(-1)' : 'scaleX(1)';
+          /*
+           * 미니미 원본 스프라이트는 '왼쪽' 을 보고 있다.
+           * 그래서 오른쪽으로 갈 때 뒤집어야 한다.
+           * (반대로 걸어 놨더니 왼쪽으로 가면 오른쪽을 보는 버그가 있었다)
+           */
+          const flip = a.facing === 'right' ? 'scaleX(-1)' : 'scaleX(1)';
           if (a.imgEl.style.transform !== flip) a.imgEl.style.transform = flip;
         }
 

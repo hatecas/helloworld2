@@ -27,11 +27,12 @@ export default function AvatarEditPage() {
 
   const randomize = () => {
     const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-    setParts({
-      hair: pick(CATALOG.hair).id,
-      outfit: pick(CATALOG.outfit).id,
-      eyes: pick(CATALOG.eyes).id,
-    });
+    // 카테고리가 늘어나도 여기를 고칠 필요가 없도록 카탈로그를 돌면서 뽑는다
+    const next = { ...DEFAULT_PARTS };
+    for (const key of Object.keys(CATALOG) as Category[]) {
+      next[key] = pick(CATALOG[key]).id;
+    }
+    setParts(next);
   };
 
   const save = () => {
@@ -99,9 +100,10 @@ export default function AvatarEditPage() {
         </div>
 
         <p className="av-note">
-          실제 도트 파트를 레이어로 겹쳐 조합해요. 지금은 헤어·눈·의상 각 1종이고, 파트 이미지를
-          폴더에 추가하면 계속 늘어납니다. 후드 속 얼굴 피부는 base(민머리·맨몸) 에셋이 들어오면
-          채워집니다.
+          민머리·속옷 차림의 <b>base</b> 위에 눈·헤어·상의·하의·신발·모자·악세를 겹쳐 조합해요.
+          모든 파트는 같은 512×768 캔버스에 제자리로 그린 투명 PNG 라 그냥 겹치면 정렬이 맞습니다.
+          규격은 <code>public/resources/images/avatar/SPEC.md</code>, 새 파일을 넣은 뒤에는{' '}
+          <code>node scripts/check-avatar-assets.mjs</code> 로 정렬을 확인하세요.
         </p>
       </div>
     </>

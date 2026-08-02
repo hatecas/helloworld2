@@ -39,6 +39,14 @@
 	-ms-interpolation-mode: nearest-neighbor;
 }
 
+/*
+ * 에셋 캔버스는 대부분이 빈 여백이라, 캐릭터가 그려진 부분만 잘라
+ * 칸을 채우도록 AvatarView 가 확대·이동시킨다. 크기는 인라인으로 들어온다.
+ */
+.avatar-frame {
+	pointer-events: none;
+}
+
 /* 미리보기 카드 (2:3 아바타) */
 .av-preview {
 	flex: 0 0 auto;
@@ -142,7 +150,7 @@
 }
 
 .av-option .avatar {
-	/* 크기는 AvatarView 가 인라인으로 2:3(56×84) 지정 */
+	/* 크기는 AvatarView 가 캐릭터 영역 비율로 인라인 지정 */
 	pointer-events: none;
 }
 
