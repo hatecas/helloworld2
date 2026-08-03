@@ -90,21 +90,53 @@ function prettyMinimiName(file: string): string {
 }
 
 /** public/resources/sounds 에 실제로 들어있는 mp3 */
+/**
+ * 상점 BGM.
+ *
+ * 파일명은 ASCII 로만 쓴다 — 한글·공백·[] 가 섞이면 주소로 다루기가 번거롭다.
+ * (유튜브에서 받은 파일은 scripts 로 정리해 넣는다)
+ *
+ * 재생시간은 **파일에서 실제로 재서** 넣은 값이다. 예전에는 눈대중으로 적어 둬서
+ * 14곡 중 11곡이 어긋나 있었고(최대 104초), 상점·재생목록에 그 숫자가 그대로 보였다.
+ */
 const BGM_FILES: Array<[title: string, artist: string, runningTime: string, file: string]> = [
-  ['벌써 1년', '브라운아이드소울', '04:12', 'Already1Year.mp3'],
-  ['가시', 'Buzz', '04:05', 'buzz-gasi.mp3'],
-  ['고백', '델리스파이스', '03:41', 'Confession.mp3'],
-  ['Rising Sun', '동방신기', '05:02', 'dongbangsinki-risingSun.mp3'],
-  ['응급실', 'izi', '04:23', 'EmergencyRoom.mp3'],
-  ['For You', '에메랄드 캐슬', '04:30', 'ForYou.mp3'],
-  ['I Believe', '신승훈', '04:16', 'IBelieve.mp3'],
-  ['Never Ending Story', '부활', '04:52', 'NeverEndingStory.mp3'],
-  ['한잔의 추억', '이장희', '03:22', 'OneDrink.mp3'],
-  ['다시 사랑한다 말할까', '김동률', '04:47', 'ShouldIsayILoveAgain.mp3'],
-  ['Miracle', '슈퍼주니어', '03:38', 'superJunior-miracle.mp3'],
-  ['가시나무', '시인과 촌장', '04:01', 'Thorn.mp3'],
-  ['Bo Peep Bo Peep', '티아라', '03:29', 'tiara-boPeepBoPeep.mp3'],
-  ['Timeless', 'SG워너비', '04:35', 'Timeless.mp3'],
+  ['벌써 1년', '브라운아이드소울', '03:28', 'Already1Year.mp3'],
+  ['가시', 'Buzz', '04:02', 'buzz-gasi.mp3'],
+  ['고백', '델리스파이스', '05:25', 'Confession.mp3'],
+  ['Rising Sun', '동방신기', '04:40', 'dongbangsinki-risingSun.mp3'],
+  ['응급실', 'izi', '03:44', 'EmergencyRoom.mp3'],
+  ['For You', '에메랄드 캐슬', '04:06', 'ForYou.mp3'],
+  ['I Believe', '신승훈', '04:43', 'IBelieve.mp3'],
+  ['Never Ending Story', '부활', '04:15', 'NeverEndingStory.mp3'],
+  ['한잔의 추억', '이장희', '04:51', 'OneDrink.mp3'],
+  ['다시 사랑한다 말할까', '김동률', '04:48', 'ShouldIsayILoveAgain.mp3'],
+  ['Miracle', '슈퍼주니어', '02:57', 'superJunior-miracle.mp3'],
+  ['가시나무', '시인과 촌장', '04:02', 'Thorn.mp3'],
+  ['Bo Peep Bo Peep', '티아라', '03:45', 'tiara-boPeepBoPeep.mp3'],
+  ['Timeless', 'SG워너비', '03:55', 'Timeless.mp3'],
+
+  // ---- 2026-08 추가 ----
+  ['사랑 안해', '백지영', '04:13', 'baekjiyoung-iWontLove.mp3'],
+  ['낙원 (Feat. 이재훈)', '싸이', '03:42', 'psy-paradise.mp3'],
+  ['Fly (Feat. Amin.J)', '에픽하이', '03:21', 'epikhigh-fly.mp3'],
+  ['천하무적', 'MC몽', '03:30', 'mcmong-invincible.mp3'],
+  ['I Love U Oh Thank U (Feat. 김태우)', 'MC몽', '04:13', 'mcmong-iLoveUOhThankU.mp3'],
+  ['아이스크림', 'MC몽', '03:36', 'mcmong-iceCream.mp3'],
+  ['못된 여자 Ⅱ (With 서인영)', '원투', '03:59', 'onetwo-badGirl2.mp3'],
+  ['Must Have Love', 'SG워너비, 브라운아이드걸스', '04:20', 'sgwannabe-mustHaveLove.mp3'],
+  ['해바라기 (Feat. 써니사이드 MJ)', '가비엔제이', '03:41', 'gavynj-sunflower.mp3'],
+  ['기억을 걷는 시간', '넬', '05:13', 'nell-timeWalkingOnMemory.mp3'],
+  ['사랑했잖아', '린', '04:01', 'lyn-iLovedYou.mp3'],
+  ['몽환의 숲 (Feat. 이루마)', '키네틱플로우', '04:05', 'kineticflow-dreamyForest.mp3'],
+  ['눈의 꽃', '박효신', '05:40', 'parkhyoshin-snowFlower.mp3'],
+  ['밤하늘의 별을 (With KCM & 노누)', '양정승', '03:44', 'yangjeongseung-starsInTheNight.mp3'],
+  ['우산 (Feat. 윤하)', '에픽하이', '05:02', 'epikhigh-umbrella.mp3'],
+  ['세글자', '엠투엠', '03:52', 'm2m-threeWords.mp3'],
+  ['까만안경 (Feat. 데이라이트)', '이루', '04:10', 'eru-blackGlasses.mp3'],
+  ['소주 한 잔', '임창정', '04:51', 'limchangjung-oneShotOfSoju.mp3'],
+  ['청혼', '노을', '04:27', 'noel-proposal.mp3'],
+  ['Y (Please Tell Me Why)', '프리스타일', '04:40', 'freestyle-y.mp3'],
+  ['화분', '알렉스', '04:26', 'alex-flowerpot.mp3'],
 ];
 
 const DEFAULT_MINIMI_PATH = '/resources/images/default/defaultMinimiIcon.gif';

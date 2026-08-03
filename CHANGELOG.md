@@ -40,6 +40,76 @@ alter table "visitCnt"
 alter table "friends"
   add column if not exists "acceptDate" timestamptz;
 
+-- 상점 BGM 21곡 추가 (2026-08). 이미 있는 건 건너뛰므로 여러 번 실행해도 중복되지 않는다.
+insert into "bgm" ("title", "artist", "runningTime", "bgmPrice", "contentPath")
+select v."title", v."artist", v."runningTime", v."bgmPrice", v."contentPath"
+from (values
+  ('사랑 안해', '백지영', '04:13', '15', '/resources/sounds/baekjiyoung-iWontLove.mp3'),
+  ('낙원 (Feat. 이재훈)', '싸이', '03:42', '15', '/resources/sounds/psy-paradise.mp3'),
+  ('Fly (Feat. Amin.J)', '에픽하이', '03:21', '15', '/resources/sounds/epikhigh-fly.mp3'),
+  ('천하무적', 'MC몽', '03:30', '15', '/resources/sounds/mcmong-invincible.mp3'),
+  ('I Love U Oh Thank U (Feat. 김태우)', 'MC몽', '04:13', '15', '/resources/sounds/mcmong-iLoveUOhThankU.mp3'),
+  ('아이스크림', 'MC몽', '03:36', '15', '/resources/sounds/mcmong-iceCream.mp3'),
+  ('못된 여자 Ⅱ (With 서인영)', '원투', '03:59', '15', '/resources/sounds/onetwo-badGirl2.mp3'),
+  ('Must Have Love', 'SG워너비, 브라운아이드걸스', '04:20', '15', '/resources/sounds/sgwannabe-mustHaveLove.mp3'),
+  ('해바라기 (Feat. 써니사이드 MJ)', '가비엔제이', '03:41', '15', '/resources/sounds/gavynj-sunflower.mp3'),
+  ('기억을 걷는 시간', '넬', '05:13', '15', '/resources/sounds/nell-timeWalkingOnMemory.mp3'),
+  ('사랑했잖아', '린', '04:01', '15', '/resources/sounds/lyn-iLovedYou.mp3'),
+  ('몽환의 숲 (Feat. 이루마)', '키네틱플로우', '04:05', '15', '/resources/sounds/kineticflow-dreamyForest.mp3'),
+  ('눈의 꽃', '박효신', '05:40', '15', '/resources/sounds/parkhyoshin-snowFlower.mp3'),
+  ('밤하늘의 별을 (With KCM & 노누)', '양정승', '03:44', '15', '/resources/sounds/yangjeongseung-starsInTheNight.mp3'),
+  ('우산 (Feat. 윤하)', '에픽하이', '05:02', '15', '/resources/sounds/epikhigh-umbrella.mp3'),
+  ('세글자', '엠투엠', '03:52', '15', '/resources/sounds/m2m-threeWords.mp3'),
+  ('까만안경 (Feat. 데이라이트)', '이루', '04:10', '15', '/resources/sounds/eru-blackGlasses.mp3'),
+  ('소주 한 잔', '임창정', '04:51', '15', '/resources/sounds/limchangjung-oneShotOfSoju.mp3'),
+  ('청혼', '노을', '04:27', '15', '/resources/sounds/noel-proposal.mp3'),
+  ('Y (Please Tell Me Why)', '프리스타일', '04:40', '15', '/resources/sounds/freestyle-y.mp3'),
+  ('화분', '알렉스', '04:26', '15', '/resources/sounds/alex-flowerpot.mp3')
+) as v("title", "artist", "runningTime", "bgmPrice", "contentPath")
+where not exists (
+  select 1 from "bgm" b where b."contentPath" = v."contentPath"
+);
+
+-- (선택) 기존 14곡의 재생시간 교정. 눈대중으로 적혀 있어 11곡이 최대 104초 어긋나 있었다.
+-- 상점·재생목록에 보이는 숫자라서 같이 맞춰 두는 편이 낫다.
+update "bgm" b set "runningTime" = v."runningTime"
+from (values
+  ('/resources/sounds/Already1Year.mp3', '03:28'),
+  ('/resources/sounds/buzz-gasi.mp3', '04:02'),
+  ('/resources/sounds/Confession.mp3', '05:25'),
+  ('/resources/sounds/dongbangsinki-risingSun.mp3', '04:40'),
+  ('/resources/sounds/EmergencyRoom.mp3', '03:44'),
+  ('/resources/sounds/ForYou.mp3', '04:06'),
+  ('/resources/sounds/IBelieve.mp3', '04:43'),
+  ('/resources/sounds/NeverEndingStory.mp3', '04:15'),
+  ('/resources/sounds/OneDrink.mp3', '04:51'),
+  ('/resources/sounds/ShouldIsayILoveAgain.mp3', '04:48'),
+  ('/resources/sounds/superJunior-miracle.mp3', '02:57'),
+  ('/resources/sounds/Thorn.mp3', '04:02'),
+  ('/resources/sounds/tiara-boPeepBoPeep.mp3', '03:45'),
+  ('/resources/sounds/Timeless.mp3', '03:55')
+) as v("contentPath", "runningTime")
+where b."contentPath" = v."contentPath";
+
+update "userBgm" u set "runningTime" = v."runningTime"
+from (values
+  ('/resources/sounds/Already1Year.mp3', '03:28'),
+  ('/resources/sounds/buzz-gasi.mp3', '04:02'),
+  ('/resources/sounds/Confession.mp3', '05:25'),
+  ('/resources/sounds/dongbangsinki-risingSun.mp3', '04:40'),
+  ('/resources/sounds/EmergencyRoom.mp3', '03:44'),
+  ('/resources/sounds/ForYou.mp3', '04:06'),
+  ('/resources/sounds/IBelieve.mp3', '04:43'),
+  ('/resources/sounds/NeverEndingStory.mp3', '04:15'),
+  ('/resources/sounds/OneDrink.mp3', '04:51'),
+  ('/resources/sounds/ShouldIsayILoveAgain.mp3', '04:48'),
+  ('/resources/sounds/superJunior-miracle.mp3', '02:57'),
+  ('/resources/sounds/Thorn.mp3', '04:02'),
+  ('/resources/sounds/tiara-boPeepBoPeep.mp3', '03:45'),
+  ('/resources/sounds/Timeless.mp3', '03:55')
+) as v("contentPath", "runningTime")
+where u."contentPath" = v."contentPath";
+
 -- 인내의 숲 등반 기록 (광장 입구 팻말의 상위 3명).
 -- 사람마다 맵별로 한 줄만 두어(unique) 한 사람이 1·2·3등을 다 차지하지 않게 한다.
 create table if not exists "forestRecord" (
@@ -191,6 +261,19 @@ update "userBgm" set "title" = '벌써 1년', "artist" = '브라운아이드소�
 ### BGM
 - 내 미니홈피 진입 시 **자동 재생**, 다른 홈 방문 시 정지.
 - '벌써 1년'(브라운아이드소울) 메타데이터 교정.
+- **21곡 추가 (14 → 35곡)** — 백지영/싸이/에픽하이/MC몽/원투/SG워너비/가비엔제이/넬/린/
+  키네틱플로우/박효신/양정승/엠투엠/이루/임창정/노을/프리스타일/알렉스.
+  - 파일명을 **ASCII 로 정리**했다(`artist-title.mp3`). 받은 파일은 한글·공백·`[]`·`│`·`!`
+    가 섞인 유튜브 제목이었는데, 주소로 다루기 번거롭고 기존 14곡도 전부 ASCII 다.
+  - **128kbps 로 다시 인코딩**했다. 원본이 320kbps 라 21곡에 203MB 였고 그대로 넣으면
+    git 이력에 영구히 남는다(되돌리기 어렵다). 배경으로 트는 BGM 이라 귀로 구분하기
+    어려운 데다 기존 곡이 이미 128kbps 여서 사양도 맞춰졌다 → **82MB (-60%)**.
+  - **재생시간은 파일에서 실측**(ffprobe)해서 넣었다.
+- **기존 14곡의 재생시간 교정** — 눈대중으로 적혀 있어 **11곡이 최대 104초까지** 어긋나 있었다
+  (고백 03:41 → 05:25, 한잔의 추억 03:22 → 04:51, 벌써 1년 04:12 → 03:28 …).
+  상점·재생목록에 그대로 보이는 숫자라 파일 기준으로 맞췄다.
+- 받은 파일 중 **거북이 '비행기' 는 0바이트**(다운로드 실패)라 넣지 못했다.
+  **izi '응급실' · 델리스파이스 '고백' 은 이미 상점에 있는 곡**이라 넣지 않았다.
 
 ### 공개범위 (전체공개 / 일촌공개 / 나만보기)
 - **다이어리 · 사진첩 · 게시판 · 방명록** 모든 글에 글별 공개범위. 공용 `ScopePicker` 하나로 통일.
