@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
+import { toUploadableImage } from '@/lib/heic';
 import ScopePicker from '@/components/minihome/ScopePicker';
 import type { Scope } from '@/lib/db/visibility';
 
@@ -91,9 +92,21 @@ export default function AlbumWriteClient({ userNickname }: { userNickname: strin
                 name="albumFile"
                 ref={fileInputRef}
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 hidden
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                onChange={async (e) => {
+                  const picked = Array.from(e.target.files ?? []);
+                  // 아이폰 HEIC 는 JPEG 로 변환해야 미리보기/저장이 모든 브라우저에서 된다
+                  const converted: File[] = [];
+                  for (const f of picked) {
+                    try {
+                      converted.push(await toUploadableImage(f));
+                    } catch {
+                      void showAlert(`'${f.name}' 사진을 처리하지 못했어요. 건너뜁니다.`);
+                    }
+                  }
+                  setFiles(converted);
+                }}
               />
               사진 선택
             </label>

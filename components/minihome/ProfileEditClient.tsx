@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { showAlert } from '@/lib/ui/dialog';
+import { isHeic, toUploadableImage } from '@/lib/heic';
 
 /** views/miniHome/mnhProfileEdit.jsp */
 export default function ProfileEditClient() {
@@ -29,16 +30,34 @@ export default function ProfileEditClient() {
                 type="file"
                 id="fileInput"
                 name="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const picked = e.target.files?.[0] ?? null;
-                  if (picked && !picked.type.startsWith('image/')) {
+                accept="image/*,.heic,.heif"
+                onChange={async (e) => {
+                  const input = e.target;
+                  const picked = input.files?.[0] ?? null;
+                  if (picked && !picked.type.startsWith('image/') && !isHeic(picked)) {
                     void showAlert('이미지 형식의 파일을 업로드해주세요.');
-                    e.target.value = '';
+                    input.value = '';
                     setFile(null);
                     return;
                   }
-                  setFile(picked);
+                  if (!picked) {
+                    setFile(null);
+                    return;
+                  }
+                  let out: File;
+                  try {
+                    out = await toUploadableImage(picked);
+                  } catch {
+                    void showAlert('이 사진을 처리하지 못했습니다. 다른 사진을 선택해주세요.');
+                    input.value = '';
+                    setFile(null);
+                    return;
+                  }
+                  // 네이티브 폼 제출이 변환된 JPEG 를 보내도록 input 의 파일을 교체
+                  const dt = new DataTransfer();
+                  dt.items.add(out);
+                  input.files = dt.files;
+                  setFile(out);
                 }}
               />
             </div>
