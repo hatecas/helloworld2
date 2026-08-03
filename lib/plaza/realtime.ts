@@ -9,6 +9,7 @@ import {
   type EmoteMsg,
   type HelloMsg,
   type PosMsg,
+  type SummitMsg,
 } from './protocol';
 
 /**
@@ -25,6 +26,8 @@ export interface PlazaHandlers {
   onChat: (msg: ChatMsg) => void;
   /** 누군가 특수 동작을 했다 */
   onEmote: (msg: EmoteMsg) => void;
+  /** 누군가 인내의 숲 정상에 올랐다 (기록을 같이 보며 경쟁하는 맛) */
+  onSummit: (msg: SummitMsg) => void;
   /** 새로 들어온 사람이 인사하면 — 내 좌표를 한 번 쏴 주라는 신호 */
   onHello: (msg: HelloMsg) => void;
   /** 같은 닉네임이 다른 곳에서 접속했다 — 이 창은 물러나야 한다 */
@@ -40,6 +43,7 @@ export interface PlazaConnection {
   sendEmote: (msg: EmoteMsg) => void;
   sendHello: (msg: HelloMsg) => void;
   sendClaim: (msg: ClaimMsg) => void;
+  sendSummit: (msg: SummitMsg) => void;
   leave: () => void;
 }
 
@@ -59,6 +63,7 @@ export async function joinPlaza(
     sendEmote: () => {},
     sendHello: () => {},
     sendClaim: () => {},
+    sendSummit: () => {},
     leave: () => {},
   };
 
@@ -103,7 +108,8 @@ export async function joinPlaza(
     .on('broadcast', { event: 'chat' }, ({ payload }) => handlers.onChat(payload as ChatMsg))
     .on('broadcast', { event: 'emote' }, ({ payload }) => handlers.onEmote(payload as EmoteMsg))
     .on('broadcast', { event: 'hello' }, ({ payload }) => handlers.onHello(payload as HelloMsg))
-    .on('broadcast', { event: 'claim' }, ({ payload }) => handlers.onClaim(payload as ClaimMsg));
+    .on('broadcast', { event: 'claim' }, ({ payload }) => handlers.onClaim(payload as ClaimMsg))
+    .on('broadcast', { event: 'summit' }, ({ payload }) => handlers.onSummit(payload as SummitMsg));
 
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
@@ -124,6 +130,7 @@ export async function joinPlaza(
     sendEmote: (msg) => send('emote', msg),
     sendHello: (msg) => send('hello', msg),
     sendClaim: (msg) => send('claim', msg),
+    sendSummit: (msg) => send('summit', msg),
     leave: () => {
       void channel.unsubscribe();
       void client.removeAllChannels();

@@ -94,6 +94,21 @@
 }
 
 /*
+ * 카메라 칸.
+ *
+ * 맵이 화면보다 세로로 길면(인내의 숲) 이 칸이 맵 전체 크기가 되고 JS 가 translateY 로
+ * 밀어 올린다. 광장은 맵 = 화면이라 높이 100% · 이동 0 이어서 예전과 똑같이 그려진다.
+ * 안쪽 요소의 % 좌표는 이 칸을 기준으로 잡히므로 좌표 계산이 한 갈래로 유지된다.
+ */
+.pz-world {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	will-change: transform;
+}
+
+/*
  * 잔디. 단색이 아니라 결이 보이도록 아주 옅은 줄무늬 + 얼룩을 겹친다.
  * (2D 단색 배경이 싸구려로 보이는 가장 큰 이유가 이 결의 부재다)
  */
@@ -402,11 +417,20 @@
 	will-change: transform;
 }
 
+/*
+ * 미니미 그림.
+ *
+ * 폭 · 위아래 마진은 JS 가 그림마다 재 둔 값으로 넣는다(lib/minimi/fit.ts).
+ * 캔버스 안 캐릭터 크기가 96~240px 로 제각각이라 그대로 두면 누구는 거인,
+ * 누구는 콩알이 되고 어떤 미니미는 땅에서 떠 보인다.
+ * 여백을 마진으로 걷어내므로 이름표는 머리 위, 그림자는 발밑에 정확히 붙는다.
+ */
 .pz-minimi {
 	width: 100%;
 	height: auto;
 	display: block;
 	image-rendering: pixelated;
+	transform-origin: 50% 100%;
 	filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.22));
 }
 
@@ -431,6 +455,7 @@
 	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
 }
 
+/* 폭은 JS 가 캐릭터 크기에 맞춰 넣는다 (아래 값은 못 넣었을 때의 기본) */
 .pz-shadow {
 	position: absolute;
 	bottom: 1px;
@@ -591,6 +616,27 @@
 	color: var(--hw-muted);
 }
 
+/* 한 줄 = [닉네임 + 내용] ... [발송 시각]. 시간은 오른쪽에 붙여 둔다. */
+.pz-log-line {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.pz-log-body {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.pz-log-time {
+	flex: none;
+	color: var(--hw-muted);
+	font-size: 11px;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
 .pz-log-line b {
 	color: var(--hw-navy);
 	margin-right: 5px;
@@ -665,6 +711,358 @@
 
 .pz-chat-send:hover {
 	filter: brightness(1.05);
+}
+
+/* ==================================================================
+   인내의 숲 — 옆에서 보는 점프 퀘스트 맵
+
+   광장 배경은 CSS 도형으로 그렸지만, 여기는 발판·나무처럼 '물체' 가 많아
+   도트 PNG 를 쓴다 (npm run forest:sprites 로 생성).
+   배경색·안개·반딧불처럼 형태가 없는 것만 CSS 로 남긴다.
+   ================================================================== */
+
+.pz-stage--forest {
+	background: #0d1f28;
+}
+
+/* 위(정상)로 갈수록 달빛이 들어 밝아진다 — 어디쯤 올라왔는지 눈으로 알 수 있게 */
+.pz-stage--forest .pz-world {
+	background:
+		radial-gradient(120% 40% at 50% 2%, rgba(150, 200, 225, 0.3), transparent 70%),
+		linear-gradient(to bottom, #1d3d4a 0%, #16303c 18%, #102630 48%, #0b1a22 100%);
+}
+
+/* 깊은 곳(2층)은 한눈에 다른 데임을 알 수 있게 보랏빛으로 */
+.pz-stage--forest2 {
+	background: #150f26;
+}
+
+.pz-stage--forest2 .pz-world {
+	background:
+		radial-gradient(120% 40% at 50% 2%, rgba(190, 160, 235, 0.28), transparent 70%),
+		linear-gradient(to bottom, #33224d 0%, #26183a 18%, #1a1128 48%, #100a1a 100%);
+}
+
+.pz-stage--forest2 .pz-fog {
+	background: radial-gradient(60% 100% at 50% 50%, rgba(205, 185, 240, 0.14), transparent 70%);
+}
+
+/* ---- 움직이는 방해물 — 닿으면 튕겨 나간다 ---- */
+
+.pz-hazard {
+	position: absolute;
+	height: auto;
+	/* (x, y) 는 그림 '중심' 이다 */
+	transform: translate(-50%, -50%);
+	z-index: 5;
+	image-rendering: pixelated;
+	pointer-events: none;
+	filter: drop-shadow(0 0 6px rgba(255, 120, 120, 0.4));
+}
+
+/* 맞아서 튕겨 나가는 동안 깜빡인다 — 왜 떨어지는지 알 수 있게 */
+.pz-actor.is-hurt .pz-minimi {
+	animation: pz-hurt 0.14s steps(1) infinite;
+}
+
+@keyframes pz-hurt {
+	0%, 100% { filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.22)); }
+	50%      { filter: brightness(2.4) saturate(0.3) drop-shadow(0 0 6px rgba(255, 90, 90, 0.9)); }
+}
+
+.pz-fog {
+	position: absolute;
+	left: -10%;
+	width: 120%;
+	height: 90px;
+	pointer-events: none;
+	background: radial-gradient(60% 100% at 50% 50%, rgba(190, 220, 230, 0.16), transparent 70%);
+	animation: pz-fog-drift 26s ease-in-out infinite alternate;
+}
+
+.pz-fog--1 { top: 12%; }
+.pz-fog--2 { top: 44%; animation-delay: -9s; animation-duration: 32s; }
+.pz-fog--3 { top: 74%; animation-delay: -17s; animation-duration: 38s; }
+
+@keyframes pz-fog-drift {
+	from { transform: translateX(-4%); }
+	to   { transform: translateX(4%); }
+}
+
+.pz-firefly {
+	position: absolute;
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	pointer-events: none;
+	background: #eaffa8;
+	box-shadow: 0 0 8px 3px rgba(210, 255, 130, 0.45);
+	animation: pz-firefly-blink 5s ease-in-out infinite;
+}
+
+@keyframes pz-firefly-blink {
+	0%, 100% { opacity: 0.15; transform: translate(0, 0); }
+	50%      { opacity: 0.95; transform: translate(6px, -8px); }
+}
+
+/* 장식 그림 — (x, y) 는 밑변 중심이라 transform 은 JS 가 넣는다 */
+.pz-prop {
+	position: absolute;
+	height: auto;
+	image-rendering: pixelated;
+	pointer-events: none;
+	z-index: 2;
+}
+
+/*
+ * 배경 나무.
+ * 발판과 같은 초록이라 조금만 밝아도 등반 경로와 섞여 어디를 밟는지 헷갈린다.
+ * 많이 어둡게 · 흐리게 깔아서 '뒤에 있는 것' 으로만 읽히게 한다.
+ */
+.pz-prop--far {
+	z-index: 1;
+	opacity: 0.34;
+	filter: brightness(0.42) saturate(0.5) blur(1.2px);
+}
+
+/*
+ * 발판. 가운데는 타일을 반복하고 좌우 끝만 마감 그림을 붙인다.
+ * (끝 마감까지 반복 배경으로 처리하면 폭이 짧은 발판에서 무늬가 깨진다)
+ */
+.pz-platform {
+	position: absolute;
+	/* 두께(height)는 JS 가 맵 크기에 대한 비율로 넣는다 */
+	z-index: 3;
+	background: url('/resources/images/plaza/forest/platform.png') repeat-x left top;
+	background-size: auto 100%;
+	image-rendering: pixelated;
+	filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+}
+
+/*
+ * 끝 마감. 원본 그림 비율(8x12)을 지키면서 발판 두께에 맞춰 커지도록
+ * 폭은 aspect-ratio 에 맡기고 자리는 right/left: 100% 로 잡는다
+ * (고정 px 로 두면 화면 크기에 따라 마감만 커지거나 사이가 벌어진다).
+ */
+.pz-platform::before,
+.pz-platform::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	height: 100%;
+	width: auto;
+	aspect-ratio: 8 / 12;
+	background: url('/resources/images/plaza/forest/platform-cap.png') no-repeat left top;
+	background-size: 100% 100%;
+	image-rendering: pixelated;
+}
+
+.pz-platform::before {
+	right: 100%;
+}
+
+.pz-platform::after {
+	left: 100%;
+	transform: scaleX(-1);
+}
+
+/* ==================================================================
+   기록 팻말 — 광장의 숲 입구 옆
+
+   나무판은 도트 그림(record-board.png, 72x56)이고 글자는 그 위에 얹는다.
+   기록이 바뀔 때마다 그림을 다시 만들 수는 없기 때문이다.
+   글자 크기는 cqw(칸 폭의 %)로 잡아 무대가 커지거나 작아져도 판 안에 그대로 담긴다.
+   ================================================================== */
+
+.pz-record {
+	position: absolute;
+	/* (x, y) 는 밑변 중심 */
+	transform: translate(-50%, -100%);
+	z-index: 4;
+	aspect-ratio: 72 / 56;
+	background: url('/resources/images/plaza/record-board.png') no-repeat center top;
+	background-size: 100% 100%;
+	image-rendering: pixelated;
+	pointer-events: none;
+	container-type: inline-size;
+	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.28));
+}
+
+/*
+ * 글자 자리 = 그림의 어두운 안쪽 패널 (원본 72x56 에서 x 4~68, y 5~37).
+ * 비율로 맞춰 두면 판 크기가 바뀌어도 글자가 테두리를 넘지 않는다.
+ */
+.pz-record-text {
+	position: absolute;
+	left: 5.5%;
+	right: 5.5%;
+	top: 9%;
+	height: 57%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 1.5%;
+	/*
+	 * 폭 170px 기준으로 11.9px — 제목 1줄 + 기록 3줄이 64px 이라 패널(75px) 안에 담긴다.
+	 * (7.6cqw 로 잡았더니 78px 이 되어 아래가 넘쳤다)
+	 * cqw 를 못 쓰는 브라우저는 위의 고정 px 로 떨어진다.
+	 */
+	font-size: 11px;
+	font-size: 7cqw;
+	line-height: 1.25;
+	color: #f0e3c8;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.pz-record-title {
+	margin-bottom: 3%;
+	text-align: center;
+	font-size: 92%;
+	color: #ffd98a;
+}
+
+.pz-record-row {
+	display: flex;
+	align-items: baseline;
+	gap: 4%;
+	white-space: nowrap;
+}
+
+.pz-record-rank {
+	flex: none;
+	width: 9%;
+	color: #ffd98a;
+}
+
+.pz-record-who {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pz-record-time {
+	flex: none;
+	font-variant-numeric: tabular-nums;
+	opacity: 0.85;
+}
+
+.pz-record-empty {
+	text-align: center;
+	opacity: 0.7;
+	font-size: 88%;
+}
+
+/* ---- 문(포탈) — 광장·숲 양쪽에서 같은 그림을 쓴다 ---- */
+
+.pz-portal {
+	position: absolute;
+	/* (x, y) 는 발 기준 중심이라 가운데 아래를 맞춘다 */
+	transform: translate(-50%, -100%);
+	z-index: 4;
+	aspect-ratio: 40 / 56;
+	background: url('/resources/images/plaza/portal.png') no-repeat center bottom;
+	background-size: 100% 100%;
+	image-rendering: pixelated;
+	filter: drop-shadow(0 0 10px rgba(110, 200, 255, 0.45));
+	animation: pz-portal-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes pz-portal-glow {
+	0%, 100% { filter: drop-shadow(0 0 8px rgba(110, 200, 255, 0.35)); }
+	50%      { filter: drop-shadow(0 0 16px rgba(140, 220, 255, 0.7)); }
+}
+
+.pz-portal-label {
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + 6px);
+	transform: translateX(-50%);
+	padding: 1px 8px;
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+	color: #eaf7ff;
+	background: rgba(16, 40, 58, 0.8);
+	border-radius: 999px;
+}
+
+/* 문 앞에 서면 ↑ 표시가 뜬다 */
+.pz-portal-key {
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + 26px);
+	transform: translateX(-50%);
+	font-size: 15px;
+	font-weight: 700;
+	color: #ffffff;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.pz-portal.is-near .pz-portal-key {
+	opacity: 1;
+	animation: pz-portal-key-bob 0.9s ease-in-out infinite;
+}
+
+@keyframes pz-portal-key-bob {
+	0%, 100% { transform: translate(-50%, 0); }
+	50%      { transform: translate(-50%, -5px); }
+}
+
+/* ---- 화면에 붙는 안내 (카메라와 함께 움직이지 않는다) ---- */
+
+.pz-hint {
+	position: absolute;
+	left: 50%;
+	bottom: 14px;
+	transform: translateX(-50%);
+	z-index: 30;
+	padding: 6px 14px;
+	font-size: 12px;
+	white-space: nowrap;
+	color: #ffffff;
+	background: rgba(18, 30, 40, 0.82);
+	border-radius: 999px;
+	backdrop-filter: blur(2px);
+}
+
+.pz-hint b {
+	color: var(--hw-accent);
+}
+
+/* 정상 도착 — 내 기록은 강조, 남의 기록은 차분하게 */
+.pz-summit {
+	position: absolute;
+	left: 50%;
+	top: 16px;
+	transform: translateX(-50%);
+	z-index: 30;
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 8px 16px;
+	font-size: 13px;
+	white-space: nowrap;
+	color: #ffffff;
+	background: rgba(18, 30, 40, 0.85);
+	border-radius: 999px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+	animation: pz-pop 0.25s ease-out;
+}
+
+.pz-summit.is-mine {
+	background: var(--hw-accent-strong);
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.pz-summit-icon {
+	font-size: 15px;
+}
+
+.pz-summit-time {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.9;
 }
 
 @media (max-width: 720px) {

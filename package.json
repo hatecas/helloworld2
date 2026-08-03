@@ -18,7 +18,9 @@
     "avatar:bg": "node scripts/strip-avatar-bg.mjs",
     "minimi:gif": "node scripts/sheet-to-gif.mjs",
     "minimi:pack": "node scripts/build-minimi-pack.mjs",
-    "minimi:from-gif": "node scripts/gif-to-minimi.mjs"
+    "minimi:from-gif": "node scripts/gif-to-minimi.mjs",
+    "minimi:sizes": "node scripts/measure-minimi.mjs",
+    "forest:sprites": "node scripts/build-forest-sprites.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

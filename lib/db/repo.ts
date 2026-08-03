@@ -1,9 +1,10 @@
 import { getStore, type Table } from './store';
 import { nowIso, todayYmd, withinHours, ymd, ymdDot, ymdhm, ymdhmDot } from './format';
 import { canEnterHome, canView, visibleTo, type Scope, type Viewer } from './visibility';
+import { CHAT_TTL_MS } from '../plaza/protocol';
 import type {
-  Album, AlbumComment, Board, BoardComment, Diary, DiaryComment, Friend, FriendStatus,
-  Notice, NotiRead, PlazaChat, StorageCategory, StoreItem, User, Visit,
+  Album, AlbumComment, Board, BoardComment, Diary, DiaryComment, ForestRecord, Friend,
+  FriendStatus, Notice, NotiRead, PlazaChat, StorageCategory, StoreItem, User, Visit,
 } from './types';
 
 /**
@@ -417,6 +418,27 @@ export async function getMyFriends(
   return nicknames
     .filter((n) => emailOf.has(n))
     .map((n) => ({ Name: n, userEmail: emailOf.get(n)! }));
+}
+
+/**
+ * 승인된 일촌별로 "언제부터 일촌인지" (닉네임 → ISO).
+ *
+ * 알림은 이 시각 이후에 올라온 글만 보낸다. acceptDate 컬럼이 생기기 전에 맺은
+ * 관계는 값이 없으므로 신청일(createDate)로 대신한다.
+ * 끊었다 다시 맺은 관계가 여러 행 남아 있으면 가장 최근 것을 쓴다.
+ */
+export async function getFriendSince(userNickname: string): Promise<Map<string, string>> {
+  const accepted = (await myFriendRows(userNickname)).filter((f) => f.fStatus === 1);
+  const since = new Map<string, string>();
+
+  for (const row of accepted) {
+    const other = otherSide(row, userNickname);
+    if (!other || other === userNickname) continue;
+    const at = row.acceptDate || row.createDate;
+    const prev = since.get(other);
+    if (!prev || new Date(at).getTime() > new Date(prev).getTime()) since.set(other, at);
+  }
+  return since;
 }
 
 /**
@@ -873,10 +895,27 @@ export async function updateFriendStatus(
   patch: { fStatus?: FriendStatus; del?: 'Y' | 'N' },
 ): Promise<number> {
   const change: Partial<Friend> = {};
-  if (patch.fStatus != null) change.fStatus = patch.fStatus;
+  if (patch.fStatus != null) {
+    change.fStatus = patch.fStatus;
+    // 승인하는 순간을 남긴다 — 일촌의 새 글 알림은 이 시각 이후 것만 보낸다
+    if (patch.fStatus === 1) change.acceptDate = nowIso();
+  }
   if (patch.del != null) change.del_yn = patch.del;
   if (Object.keys(change).length === 0) return 0;
-  return db().update('friends', { seq }, change);
+
+  try {
+    return await db().update('friends', { seq }, change);
+  } catch (error) {
+    /*
+     * acceptDate 컬럼은 손으로 추가하는 것이라 '배포는 됐고 SQL 은 아직' 인 순간이 있다.
+     * 그때 컬럼이 없다고 통째로 실패하면 일촌 수락 자체가 안 된다. 그 값만 빼고 한 번 더 한다.
+     * (없으면 getFriendSince 가 신청일로 대신 보므로 알림도 그럭저럭 맞는다)
+     */
+    if (change.acceptDate == null) throw error;
+    console.error('[friends:acceptDate 없이 재시도]', error);
+    delete change.acceptDate;
+    return db().update('friends', { seq }, change);
+  }
 }
 
 export async function changeName(
@@ -1310,6 +1349,12 @@ export async function selectAlbums(
   return [...filtered].sort((a, b) => b.seq - a.seq);
 }
 
+/** 사진 한 장 (공개범위 판정은 부르는 쪽에서 한다 — getBoardContent 와 같은 형태) */
+export async function getAlbumContent(seq: number): Promise<Album | null> {
+  const rows = await db().select('album', { seq });
+  return rows[0] ?? null;
+}
+
 export async function insertAlbum(params: {
   userNickname: string;
   title: string;
@@ -1458,23 +1503,27 @@ export function visitPageCount(totalCnt: number): number {
 
 /** 화면에 되살릴 지난 대화 수 */
 export const PLAZA_CHAT_LIMIT = 60;
-/** DB 에 남겨 두는 최대 줄 수 (넘으면 오래된 것부터 지운다) */
-const PLAZA_CHAT_KEEP = 400;
 
 export interface PlazaChatRow {
   seq: number;
   nickname: string;
   text: string;
+  /** 발송 시각 ISO — 표기(HH:MM)와 2시간 경과 판정은 클라이언트가 KST 로 한다 */
   at: string;
 }
 
-/** 오래된 → 최신 순 (화면 로그와 같은 순서) */
+/**
+ * 오래된 → 최신 순 (화면 로그와 같은 순서).
+ * 발송한 지 CHAT_TTL_MS(2시간) 넘은 줄은 돌려주지 않는다.
+ */
 export async function getPlazaChat(limit = PLAZA_CHAT_LIMIT): Promise<PlazaChatRow[]> {
   const rows = await db().select('plazaChat');
+  const cutoff = Date.now() - CHAT_TTL_MS;
   return [...rows]
+    .filter((c) => new Date(c.create_date).getTime() >= cutoff)
     .sort((a, b) => a.seq - b.seq)
     .slice(-limit)
-    .map((c) => ({ seq: c.seq, nickname: c.userNickname, text: c.content, at: ymdhm(c.create_date) }));
+    .map((c) => ({ seq: c.seq, nickname: c.userNickname, text: c.content, at: c.create_date }));
 }
 
 export async function insertPlazaChat(userNickname: string, content: string) {
@@ -1482,13 +1531,70 @@ export async function insertPlazaChat(userNickname: string, content: string) {
     userNickname, content, create_date: nowIso(),
   } as Omit<PlazaChat, 'seq'>);
 
-  // 오래된 줄 정리 (자주 할 필요 없어 가끔만)
-  const all = await db().select('plazaChat');
-  if (all.length > PLAZA_CHAT_KEEP) {
-    const stale = [...all].sort((a, b) => a.seq - b.seq).slice(0, all.length - PLAZA_CHAT_KEEP);
-    for (const r of stale) await db().remove('plazaChat', { seq: r.seq });
-  }
+  // 2시간 지난 줄은 지운다. 줄 수 상한을 두는 대신 시간으로 자르므로
+  // 기록이 무한히 쌓이지 않고, 광장에 오래 머무는 사람의 화면과도 기준이 같다.
+  const cutoff = Date.now() - CHAT_TTL_MS;
+  const stale = (await db().select('plazaChat')).filter(
+    (c) => new Date(c.create_date).getTime() < cutoff,
+  );
+  for (const r of stale) await db().remove('plazaChat', { seq: r.seq });
+
   return row;
+}
+
+/* ================================================================== */
+/* 인내의 숲 등반 기록                                                  */
+/* ================================================================== */
+
+export interface ForestRecordRow {
+  nickname: string;
+  ms: number;
+}
+
+/**
+ * 기록을 남긴다. 그 사람의 그 맵 기록보다 빠를 때만 갱신한다.
+ * 사람마다 한 줄만 두므로 팻말의 '상위 3명' 이 정말 3명이 된다.
+ *
+ * 돌려주는 값: 갱신했으면 true (개인 최고 기록)
+ */
+export async function saveForestRecord(
+  userNickname: string,
+  map: string,
+  ms: number,
+): Promise<boolean> {
+  const [mine] = await db().select('forestRecord', { userNickname, map });
+
+  if (!mine) {
+    await db().insert('forestRecord', {
+      userNickname, map, ms, create_date: nowIso(),
+    } as Omit<ForestRecord, 'seq'>);
+    return true;
+  }
+  if (ms >= mine.ms) return false;
+
+  await db().update('forestRecord', { seq: mine.seq }, { ms, create_date: nowIso() });
+  return true;
+}
+
+/**
+ * 빠른 순으로 상위 몇 명.
+ *
+ * 실패하면 빈 목록으로 넘어간다. 이 함수는 광장 페이지를 서버에서 그릴 때 불리는데,
+ * 스키마(forestRecord)는 손으로 적용하므로 '배포는 됐고 SQL 은 아직' 인 순간이 있다.
+ * 그때 예외가 올라가면 팻말이 아니라 광장 자체가 안 열린다. 팻말은 비어 있어도 되지만
+ * 광장이 닫히면 안 된다.
+ */
+export async function getForestRecords(map: string, limit = 3): Promise<ForestRecordRow[]> {
+  try {
+    const rows = await db().select('forestRecord', { map });
+    return [...rows]
+      .sort((a, b) => a.ms - b.ms)
+      .slice(0, limit)
+      .map((r) => ({ nickname: r.userNickname, ms: r.ms }));
+  } catch (error) {
+    console.error('[forestRecord:list]', error);
+    return [];
+  }
 }
 
 /* ================================================================== */
@@ -1642,10 +1748,14 @@ export async function getNotifications(
     });
   }
 
-  // 일촌(수락된)이 올린 새 콘텐츠 — 게시글 / 사진 / 다이어리
-  const friendNicks = [
-    ...new Set((await getMyFriends(viewer)).map((f) => f.Name).filter((n) => n && n !== viewer)),
-  ];
+  /*
+   * 일촌(수락된)이 올린 새 콘텐츠 — 게시글 / 사진 / 다이어리.
+   *
+   * 일촌을 맺기 전에 올라온 글은 알리지 않는다. 예전엔 기준이 없어서 일촌을
+   * 맺는 순간 그 사람이 여태 올린 글이 죄다 알림으로 쏟아졌다.
+   */
+  const friendSince = await getFriendSince(viewer);
+  const friendNicks = [...friendSince.keys()];
   if (friendNicks.length > 0) {
     const [fBoards, fAlbums, fDiaries] = await Promise.all([
       db().selectIn('board', 'userNickname', friendNicks),
@@ -1657,8 +1767,15 @@ export async function getNotifications(
     const live = <T extends { del_yn: string; openScope: number }>(r: T) =>
       r.del_yn.toLowerCase() === 'n' && canView(r.openScope, friendViewer);
 
+    /** 일촌을 맺은 뒤에 올라온 글인가 (ISO 표기가 달라질 수 있어 시각으로 비교) */
+    const afterFriendship = (r: { userNickname: string; create_date: string }) => {
+      const since = friendSince.get(r.userNickname);
+      if (!since) return false;
+      return new Date(r.create_date).getTime() >= new Date(since).getTime();
+    };
+
     for (const b of fBoards) {
-      if (!live(b)) continue;
+      if (!live(b) || !afterFriendship(b)) continue;
       items.push({
         id: `fboard-${b.seq}`, type: 'fboard', actor: b.userNickname, date: b.create_date,
         text: `${b.userNickname}님이 새 게시글 "${clip(b.title)}"을 올렸어요`,
@@ -1666,7 +1783,7 @@ export async function getNotifications(
       });
     }
     for (const a of fAlbums) {
-      if (!live(a)) continue;
+      if (!live(a) || !afterFriendship(a)) continue;
       items.push({
         id: `falbum-${a.seq}`, type: 'falbum', actor: a.userNickname, date: a.create_date,
         text: `${a.userNickname}님이 새 사진 "${clip(a.title)}"을 올렸어요`,
@@ -1674,7 +1791,7 @@ export async function getNotifications(
       });
     }
     for (const d of fDiaries) {
-      if (!live(d)) continue;
+      if (!live(d) || !afterFriendship(d)) continue;
       items.push({
         id: `fdiary-${d.seq}`, type: 'fdiary', actor: d.userNickname, date: d.create_date,
         text: `${d.userNickname}님이 새 다이어리를 올렸어요`,

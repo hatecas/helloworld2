@@ -55,7 +55,41 @@ export const EMOTE_MS = 2200;
 export const CHAT_MAX = 120;
 export const CHAT_LOG_MAX = 60;
 
+/**
+ * 채팅을 남겨 두는 시간(ms).
+ * 이 시간이 지난 줄은 화면에서도 빠지고 DB 기록에서도 지워진다.
+ * (광장 대화는 그때그때 하는 잡담이라 오래 쌓아 둘 이유가 없다)
+ */
+export const CHAT_TTL_MS = 2 * 60 * 60 * 1000;
+
+/** 화면 갱신 주기(ms) — 2시간 지난 줄을 걷어내는 간격 */
+export const CHAT_SWEEP_MS = 30_000;
+
+/**
+ * 채팅 발송 시각 표기 (한국 시간 HH:MM).
+ * lib/db/format.ts 와 같은 이유로 KST 고정이다 — 서버는 UTC 로 도니까
+ * 지난 대화를 서버에서 포맷하면 9시간 어긋난다.
+ */
+export function chatTimeLabel(ts: number): string {
+  if (!Number.isFinite(ts)) return '';
+  const k = new Date(ts + 9 * 60 * 60 * 1000);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`;
+}
+
 export const CHANNEL = 'plaza';
+
+/**
+ * 맵.
+ *
+ * 채널은 맵별로 쪼개지 않고 하나를 쓰고, 메시지에 어느 맵인지를 실어 보낸다.
+ * 받는 쪽이 '내 맵 사람만' 그리므로 서로 안 섞이고, 그러면서도 한 계정 중복접속
+ * 판정(claim)이 맵을 넘어 그대로 동작한다. 채팅은 맵을 가리지 않고 다 들린다
+ * (숲에서 등반하면서 광장 사람과 얘기할 수 있게 — 방이 나뉘면 둘 다 조용해진다).
+ */
+export type MapId = 'plaza' | 'forest' | 'forest2';
+
+export const DEFAULT_MAP: MapId = 'plaza';
 
 export type Facing = 'left' | 'right';
 
@@ -81,8 +115,25 @@ export interface PosMsg {
   y: number;
   facing: Facing;
   moving: boolean;
-  /** 점프로 떠 있는 높이(px). 0 이면 바닥. */
+  /** 점프로 떠 있는 높이(px). 0 이면 바닥. (광장 전용 — 숲은 y 가 직접 오르내린다) */
   jump?: number;
+  /** 지금 있는 맵. 예전 버전이 보낸 메시지에는 없으므로 없으면 광장으로 본다. */
+  map?: MapId;
+  /** 엎드려 있는지 (인내의 숲에서 ↓ 를 누른 상태) — 남들 화면에도 엎드린 모습으로 보인다 */
+  crouch?: boolean;
+}
+
+/**
+ * broadcast 'summit' — 인내의 숲 정상 도착.
+ *
+ * 같은 숲에 있는 사람들끼리 기록을 보며 경쟁하는 게 이 맵의 재미라서,
+ * 도착하면 걸린 시간을 같이 알린다.
+ */
+export interface SummitMsg {
+  id: string;
+  nickname: string;
+  /** 시작 발판을 떠난 뒤 정상까지 걸린 시간(ms) */
+  ms: number;
 }
 
 /** broadcast 'chat' — 채팅 한 줄 */

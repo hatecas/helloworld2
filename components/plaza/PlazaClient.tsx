@@ -6,44 +6,77 @@ import {
   BUBBLE_MS,
   CHAT_LOG_MAX,
   CHAT_MAX,
+  CHAT_SWEEP_MS,
+  CHAT_TTL_MS,
+  chatTimeLabel,
   EMOTE_MS,
   GRAVITY,
   JUMP_V0,
   MINIMI_W,
   POS_INTERVAL,
-  SPEED,
-  WALK,
-  WORLD_H,
-  WORLD_W,
+  MINIMI_H,
   cleanChat,
   clamp,
   depthScale,
-  spawnPoint,
   TAB_CHANNEL,
   type ChatMsg,
   type Facing,
+  type MapId,
   type PosMsg,
+  type SummitMsg,
 } from '@/lib/plaza/protocol';
+import {
+  FOREST_JUMP_V0,
+  KNOCK_MS,
+  KNOCK_VX,
+  KNOCK_VY,
+  cameraY,
+  gravityFor,
+  hazardHit,
+  hazardPos,
+  landingOn,
+  mapOf,
+  portalAt,
+  type Portal,
+} from '@/lib/plaza/maps';
 import { emoteByIndex, emoteSrc, emotesFor } from '@/lib/plaza/emotes';
 import { joinPlaza, type PlazaConnection, type PlazaStatus } from '@/lib/plaza/realtime';
 import { linkify } from '@/lib/plaza/linkify';
-import { playChime } from '@/lib/plaza/chime';
+import { playBump, playChime } from '@/lib/plaza/chime';
+import { MINIMI_TARGET_H } from '@/lib/minimi/sizes.generated';
+import { CROUCH_SQUASH, applyMinimiFit, minimiTransform, shadowWidth } from '@/lib/minimi/fit';
 
 /** 한 명의 화면상 상태. 좌표는 60fps 로 움직이므로 React state 가 아니라 ref 로 들고 있는다. */
 interface Actor {
   id: string;
   nickname: string;
   minimi: string;
+  /** 지금 어느 맵에 있는지 — 내 맵 사람만 그린다 */
+  map: MapId;
   x: number;
   y: number;
   /** 네트워크로 받은 목표 위치 (내 캐릭터는 x,y 와 같다) */
   tx: number;
   ty: number;
   facing: Facing;
-  /** 점프로 떠 있는 높이(px). 좌표(y)는 그대로고 보이는 위치만 올라간다. */
+  /** 점프로 떠 있는 높이(px). 좌표(y)는 그대로고 보이는 위치만 올라간다. (광장 전용) */
   jump: number;
   tjump: number;
   jumpV: number;
+  /**
+   * 인내의 숲(옆에서 보는 구도) 전용 — 세로 속도와 발판에 서 있는지.
+   * 여기서는 y 가 곧 높이라서 jump 대신 y 가 직접 오르내린다.
+   */
+  vy: number;
+  grounded: boolean;
+  /** 방해물에 맞고 튕겨 나가는 가로 속도 (조작으로는 안 생긴다) */
+  vx: number;
+  /** 이때까지는 조작이 안 먹는다(튕겨 나가는 중) + 다시 맞지 않는다 */
+  stunUntil: number;
+  /** 하향 점프로 통과하는 중인 발판 높이 — 이 높이까지의 발판은 밟지 않는다 */
+  dropFrom: number | null;
+  /** 엎드려 있는지 (↓). 몸통이 낮아져 머리 위로 지나가는 방해물을 피한다. */
+  crouch: boolean;
   /** 재생 중인 특수 동작 이름. null 이면 평소 모습 */
   emote: string | null;
   /** 이모트 재생 토큰 — 연타했을 때 앞선 타이머가 뒤 것을 지워 버리지 않게 */
@@ -64,25 +97,44 @@ interface LogLine {
   nickname: string;
   text: string;
   mine: boolean;
+  /** 발송 시각(epoch ms) — 오른쪽 시간 표기와 2시간 경과 삭제에 쓴다 */
+  ts: number;
 }
 
 const KEY_LEFT = new Set(['ArrowLeft', 'a', 'A', 'ㅁ']);
 const KEY_RIGHT = new Set(['ArrowRight', 'd', 'D', 'ㅇ']);
 const KEY_UP = new Set(['ArrowUp', 'w', 'W', 'ㅈ']);
 const KEY_DOWN = new Set(['ArrowDown', 's', 'S', 'ㄴ']);
+/** 점프 — ALT 는 예전부터 쓰던 키, 스페이스는 발판을 뛰는 데 더 자연스러워 같이 받는다 */
+const KEY_JUMP = new Set(['Alt', ' ']);
 
 const SOUND_KEY = 'helloworld_plaza_sound';
+
+/** 문을 지나온 직후 되돌아가지 않게 두는 여유(ms) */
+const PORTAL_COOLDOWN_MS = 700;
+/** 정상 도착 알림이 떠 있는 시간(ms) */
+const SUMMIT_MS = 6000;
+
+/** 12.34초 */
+function climbLabel(ms: number): string {
+  return `${(ms / 1000).toFixed(2)}초`;
+}
+
+type RecordRow = { nickname: string; ms: number };
 
 export default function PlazaClient({
   nickname,
   minimi,
   supabaseUrl,
   supabaseAnonKey,
+  records: initialRecords,
 }: {
   nickname: string;
   minimi: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  /** 팻말에 새길 상위 기록 — 서버에서 미리 실어 온다 */
+  records: Record<string, RecordRow[]>;
 }) {
   const [myId] = useState(() => `${nickname}#${Math.random().toString(36).slice(2, 8)}`);
   /** 내 미니미가 할 수 있는 특수 동작. 없는 미니미면 빈 배열이라 안내도 안 뜬다. */
@@ -93,8 +145,31 @@ export default function PlazaClient({
   const connRef = useRef<PlazaConnection | null>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
+  /** 움직이는 방해물 그림들 — 매 프레임 자리를 옮기므로 ref 로 들고 있는다 */
+  const hazardElsRef = useRef<Array<HTMLImageElement | null>>([]);
   const typingRef = useRef(false);
   const soundRef = useRef(true);
+
+  /* ---- 맵 ---- */
+  const [mapId, setMapId] = useState<MapId>('plaza');
+  // 매 프레임 도는 루프는 state 가 아니라 ref 를 본다 (effect 재구성 없이 즉시 반영)
+  const mapRef = useRef<MapId>('plaza');
+  /** 카메라가 보여 주는 세로 시작점 (광장은 늘 0) */
+  const camRef = useRef(0);
+  const portalCooldownRef = useRef(0);
+  /** 지금 발이 들어와 있는 문 — 안내를 띄우고 ↑ 를 받는다 */
+  const [nearPortal, setNearPortal] = useState<Portal | null>(null);
+  const nearPortalRef = useRef<Portal | null>(null);
+
+  /* ---- 인내의 숲 등반 ---- */
+  /** 시작 발판을 떠난 시각 (아직 안 떠났으면 null) */
+  const climbStartRef = useRef<number | null>(null);
+  /** 이번 등반에서 정상 도착을 이미 알렸는지 */
+  const summitDoneRef = useRef(false);
+  const [summit, setSummit] = useState<{ nickname: string; ms: number; mine: boolean } | null>(null);
+  /** 광장 팻말에 새길 상위 기록 (맵별) */
+  const [records, setRecords] = useState<Record<string, RecordRow[]>>(initialRecords);
 
   const [ids, setIds] = useState<string[]>([myId]);
   const [, setRev] = useState(0);
@@ -119,11 +194,12 @@ export default function PlazaClient({
   /* ---------------------------------------------------------------- 내 캐릭터 */
 
   useEffect(() => {
-    const start = spawnPoint(myId);
+    const start = mapOf('plaza').spawn(myId);
     actorsRef.current.set(myId, {
       id: myId,
       nickname,
       minimi,
+      map: 'plaza',
       x: start.x,
       y: start.y,
       tx: start.x,
@@ -132,6 +208,12 @@ export default function PlazaClient({
       jump: 0,
       tjump: 0,
       jumpV: 0,
+      vy: 0,
+      grounded: false,
+      vx: 0,
+      stunUntil: 0,
+      dropFrom: null,
+      crouch: false,
       emote: null,
       emoteToken: 0,
       el: null,
@@ -166,9 +248,12 @@ export default function PlazaClient({
     return () => bc.close();
   }, [myId, nickname, leaveForOther]);
 
+  /** 그릴 사람 목록 — 내가 있는 맵에 있는 사람만 */
   const syncIds = useCallback(() => {
     setIds((prev) => {
-      const next = [...actorsRef.current.keys()];
+      const next = [...actorsRef.current.values()]
+        .filter((a) => a.map === mapRef.current)
+        .map((a) => a.id);
       if (prev.length === next.length && prev.every((id, i) => id === next[i])) return prev;
       return next;
     });
@@ -180,45 +265,73 @@ export default function PlazaClient({
     let cancelled = false;
     fetch('/api/plaza/chat', { cache: 'no-store' })
       .then((res) => res.json())
-      .then((json: { log?: Array<{ seq: number; nickname: string; text: string }> }) => {
-        if (cancelled) return;
-        setLog(
-          (json.log ?? []).map((l) => ({
-            msgId: `h${l.seq}`,
-            nickname: l.nickname,
-            text: l.text,
-            mine: l.nickname === nickname,
-          })),
-        );
-      })
+      .then(
+        (json: { log?: Array<{ seq: number; nickname: string; text: string; at: string }> }) => {
+          if (cancelled) return;
+          setLog(
+            (json.log ?? []).map((l) => ({
+              msgId: `h${l.seq}`,
+              nickname: l.nickname,
+              text: l.text,
+              mine: l.nickname === nickname,
+              ts: new Date(l.at).getTime(),
+            })),
+          );
+        },
+      )
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [nickname]);
 
+  /*
+   * 2시간 지난 줄은 화면에서 걷어낸다.
+   * 서버 기록도 같은 기준으로 지워지지만(insertPlazaChat), 광장을 열어 둔 채
+   * 오래 머무는 창은 새로 받아오지 않으므로 여기서도 주기적으로 정리한다.
+   */
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const cutoff = Date.now() - CHAT_TTL_MS;
+      setLog((prev) => (prev.some((l) => l.ts < cutoff) ? prev.filter((l) => l.ts >= cutoff) : prev));
+    }, CHAT_SWEEP_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
   /* ------------------------------------------------------------------- 실시간 */
 
   const upsertRemote = useCallback(
     (msg: PosMsg) => {
       if (msg.id === myId) return;
-      const map = actorsRef.current;
-      const found = map.get(msg.id);
+      const actors = actorsRef.current;
+      const at: MapId = msg.map ?? 'plaza';
+      const found = actors.get(msg.id);
       if (found) {
+        // 맵을 옮긴 사람은 순간이동처럼 보이지 않게 목표가 아니라 현재 위치까지 바꾼다
+        const moved = found.map !== at;
+        found.map = at;
         found.tx = msg.x;
         found.ty = msg.y;
         found.tjump = msg.jump ?? 0;
         found.facing = msg.facing;
+        found.crouch = Boolean(msg.crouch);
+        if (moved) {
+          found.x = msg.x;
+          found.y = msg.y;
+          found.jump = msg.jump ?? 0;
+          syncIds();
+        }
         if (found.nickname !== msg.nickname || found.minimi !== msg.minimi) {
           found.nickname = msg.nickname;
           found.minimi = msg.minimi;
           setRev((r) => r + 1);
         }
       } else {
-        map.set(msg.id, {
+        actors.set(msg.id, {
           id: msg.id,
           nickname: msg.nickname,
           minimi: msg.minimi,
+          map: at,
           x: msg.x,
           y: msg.y,
           tx: msg.x,
@@ -227,6 +340,12 @@ export default function PlazaClient({
           jump: msg.jump ?? 0,
           tjump: msg.jump ?? 0,
           jumpV: 0,
+          vy: 0,
+          grounded: false,
+          vx: 0,
+          stunUntil: 0,
+          dropFrom: null,
+          crouch: Boolean(msg.crouch),
           emote: null,
           emoteToken: 0,
           el: null,
@@ -245,9 +364,10 @@ export default function PlazaClient({
       { msgId: msg.msgId, actorId: msg.id, text: msg.text },
     ]);
     setLog((prev) =>
-      [...prev, { msgId: msg.msgId, nickname: msg.nickname, text: msg.text, mine }].slice(
-        -CHAT_LOG_MAX,
-      ),
+      [
+        ...prev,
+        { msgId: msg.msgId, nickname: msg.nickname, text: msg.text, mine, ts: Date.now() },
+      ].slice(-CHAT_LOG_MAX),
     );
     // 남이 보낸 것만 띠링 (내가 친 글에까지 울리면 시끄럽다)
     if (!mine && soundRef.current) playChime();
@@ -293,10 +413,83 @@ export default function PlazaClient({
         facing: me.facing,
         moving,
         jump: Math.round(me.jump),
+        map: me.map,
+        crouch: me.crouch,
       });
     },
     [myId],
   );
+
+  /* ------------------------------------------------------------------- 맵 이동 */
+
+  /**
+   * 문을 통해 다른 맵으로. 도착 지점은 그 맵의 되돌아가는 문에서 떨어뜨려 둔다
+   * (겹쳐 서면 ↑ 를 누르고 있는 동안 곧바로 왕복해 버린다).
+   */
+  const travel = useCallback(
+    (to: MapId) => {
+      const me = actorsRef.current.get(myId);
+      if (!me) return;
+
+      const dest = mapOf(to);
+      const at = dest.arrival[me.map] ?? dest.spawn(myId);
+
+      me.map = to;
+      me.x = at.x;
+      me.y = at.y;
+      me.tx = at.x;
+      me.ty = at.y;
+      me.jump = 0;
+      me.tjump = 0;
+      me.jumpV = 0;
+      me.vy = 0;
+      me.vx = 0;
+      me.stunUntil = 0;
+      me.dropFrom = null;
+      me.crouch = false;
+      me.grounded = false;
+
+      mapRef.current = to;
+      hazardElsRef.current = [];
+      setMapId(to);
+      camRef.current = cameraY(dest, at.y);
+      portalCooldownRef.current = performance.now() + PORTAL_COOLDOWN_MS;
+      keysRef.current.clear();
+      nearPortalRef.current = null;
+      setNearPortal(null);
+
+      // 등반 기록은 맵을 드나들면 처음부터
+      climbStartRef.current = null;
+      // 정상으로 되돌아 들어온 경우(깊은 곳 → 1층)는 도착 알림이 다시 뜨지 않게 한다
+      summitDoneRef.current = dest.summitY != null && at.y <= dest.summitY;
+      setSummit(null);
+
+      syncIds();
+      sendMyPos(false);
+    },
+    [myId, sendMyPos, syncIds],
+  );
+
+  /* ------------------------------------------------------------- 등반 기록 */
+
+  /*
+   * 처음 것은 서버가 실어 보내므로 여기서 다시 받아 오지 않는다.
+   * 누군가 정상에 올랐을 때만 다시 읽어서 팻말을 갱신한다.
+   */
+  const loadRecords = useCallback(() => {
+    fetch('/api/plaza/records', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json: Record<string, RecordRow[]>) => setRecords(json))
+      .catch(() => undefined);
+  }, []);
+
+  /** 정상 도착 알림 (내 것이든 남의 것이든 같은 자리에 띄운다) */
+  const showSummit = useCallback((nickname: string, ms: number, mine: boolean) => {
+    setSummit({ nickname, ms, mine });
+    window.setTimeout(() => {
+      setSummit((cur) => (cur && cur.nickname === nickname && cur.ms === ms ? null : cur));
+    }, SUMMIT_MS);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -312,6 +505,14 @@ export default function PlazaClient({
         onChat: (msg) => live && pushChat(msg, false),
         onEmote: (msg) => {
           if (live && msg.id !== myId) playEmote(msg.id, msg.emote);
+        },
+        // 같은 숲에 있는 사람의 기록만 띄운다 (광장에 있는데 남의 등반 기록이 뜨면 뜬금없다)
+        onSummit: (msg: SummitMsg) => {
+          if (!live || msg.id === myId) return;
+          // 남이 올랐으면 팻말도 바뀌었을 수 있다 (어느 맵에 있든 다시 읽는다)
+          loadRecords();
+          if (mapRef.current !== 'forest') return;
+          showSummit(msg.nickname, msg.ms, false);
         },
         onHello: () => live && sendMyPos(false),
         // 다른 기기/브라우저에서 같은 계정이 들어왔다
@@ -362,6 +563,7 @@ export default function PlazaClient({
     sendMyPos,
     syncIds,
     leaveForOther,
+    showSummit,
   ]);
 
   /* --------------------------------------------------------------- 키보드 입력 */
@@ -393,11 +595,51 @@ export default function PlazaClient({
       if (KEY_LEFT.has(k) || KEY_RIGHT.has(k) || KEY_UP.has(k) || KEY_DOWN.has(k)) {
         keysRef.current.add(k);
         e.preventDefault();
-      } else if (k === 'Alt') {
-        // ALT 는 브라우저 메뉴로 포커스가 튀므로 막는다
+
+        /*
+         * ↑(또는 W) 로 문에 들어간다 — 메이플의 포탈과 같은 조작.
+         * keydown 에서만 다루므로 문을 지나온 직후 키를 누르고 있어도 곧바로
+         * 되돌아가지 않는다(쿨다운까지 두 겹으로 막는다).
+         */
+        if (KEY_UP.has(k)) {
+          const portal = nearPortalRef.current;
+          if (portal && performance.now() >= portalCooldownRef.current) travel(portal.to);
+        }
+      } else if (KEY_JUMP.has(k)) {
+        // ALT 는 브라우저 메뉴로 포커스가 튀므로, 스페이스는 화면이 스크롤되므로 막는다
         e.preventDefault();
         const me = actorsRef.current.get(myId);
-        if (me && me.jump === 0) me.jumpV = JUMP_V0;
+        if (!me) return;
+        const here = mapOf(me.map);
+        if (here.kind === 'platform') {
+          // 발판에 서 있을 때만 (공중 2단 점프 없음), 튕겨 나가는 중엔 조작 불가
+          if (me.grounded && performance.now() >= me.stunUntil) {
+            const holdingDown = [...keysRef.current].some((key) => KEY_DOWN.has(key));
+            if (holdingDown) {
+              /*
+               * 하향 점프 — ↓ 를 누른 채 점프하면 밟고 선 발판을 통과해 아래로 내려간다.
+               * 잘못 오른 길을 되돌아갈 때 맨 아래까지 떨어질 필요가 없다.
+               */
+              me.dropFrom = me.y;
+              me.vy = 60;
+            } else {
+              me.vy = -FOREST_JUMP_V0;
+              me.dropFrom = null;
+            }
+            me.grounded = false;
+            // 시작 발판을 처음 떠나는 순간부터 등반 시간을 센다
+            if (
+              here.startY != null &&
+              me.y >= here.startY &&
+              climbStartRef.current === null &&
+              !holdingDown
+            ) {
+              climbStartRef.current = performance.now();
+            }
+          }
+        } else if (me.jump === 0) {
+          me.jumpV = JUMP_V0;
+        }
       } else if (k === 'Enter') {
         chatInputRef.current?.focus();
         e.preventDefault();
@@ -422,7 +664,7 @@ export default function PlazaClient({
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
     };
-  }, [myId, playEmote]);
+  }, [myId, playEmote, travel]);
 
   /* ------------------------------------------------------------ 이동 + 그리기 루프 */
 
@@ -431,6 +673,7 @@ export default function PlazaClient({
     let last = performance.now();
     let lastSent = 0;
     let wasBusy = false;
+    let wasCrouch = false;
 
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -441,8 +684,11 @@ export default function PlazaClient({
         return;
       }
 
+      const map = mapOf(mapRef.current);
       const stageW = stageRef.current?.clientWidth ?? 0;
       const stageH = stageRef.current?.clientHeight ?? 0;
+      /** 논리 px → 화면 px */
+      const unit = stageH > 0 ? stageH / map.viewH : 0;
       const me = actorsRef.current.get(myId);
 
       if (me) {
@@ -456,83 +702,251 @@ export default function PlazaClient({
           else if (KEY_DOWN.has(k)) dy += 1;
         }
 
-        const moving = dx !== 0 || dy !== 0;
-        if (moving) {
-          const len = Math.hypot(dx, dy) || 1;
-          me.x = clamp(me.x + (dx / len) * SPEED * dt, WALK.minX, WALK.maxX);
-          me.y = clamp(me.y + (dy / len) * SPEED * dt, WALK.minY, WALK.maxY);
-          if (dx !== 0) me.facing = dx < 0 ? 'left' : 'right';
+        let busy: boolean;
+
+        if (map.kind === 'topdown') {
+          /* ---- 광장: 위에서 내려다보는 구도. y 는 깊이라 위아래로 자유롭게 걷는다 ---- */
+          // 여기서 ↓ 는 '아래로 걷기' 다 — 숲에서 엎드린 채 넘어와도 일어선다
+          me.crouch = false;
+          const moving = dx !== 0 || dy !== 0;
+          if (moving) {
+            const len = Math.hypot(dx, dy) || 1;
+            me.x = clamp(me.x + (dx / len) * map.speed * dt, map.walk.minX, map.walk.maxX);
+            me.y = clamp(me.y + (dy / len) * map.speed * dt, map.walk.minY, map.walk.maxY);
+            if (dx !== 0) me.facing = dx < 0 ? 'left' : 'right';
+          }
+
+          // 점프 — 화면상 높이만 바뀐다
+          if (me.jumpV !== 0 || me.jump > 0) {
+            me.jump += me.jumpV * dt;
+            me.jumpV -= GRAVITY * dt;
+            if (me.jump <= 0) {
+              me.jump = 0;
+              me.jumpV = 0;
+            }
+          }
+          me.tjump = me.jump;
+          busy = moving || me.jump > 0;
+        } else {
+          /* ---- 인내의 숲: 옆에서 보는 구도. 좌우로만 걷고 중력이 늘 작용한다 ---- */
+          const stunned = now < me.stunUntil;
+          /*
+           * 엎드리기 — ↓ 를 누르고 있으면 발판에 붙어 납작해진다.
+           * 몸통이 낮아져 머리 위로 지나가는 방해물을 피할 수 있고, 대신 걸을 수 없다.
+           * (그 자리에서 기다릴지, 일어나 뛸지를 고르게 된다)
+           */
+          me.crouch = dy > 0 && me.grounded && !stunned;
+
+          const moving = !stunned && !me.crouch && dx !== 0;
+          if (moving) {
+            me.x = clamp(me.x + dx * map.speed * dt, map.walk.minX, map.walk.maxX);
+            me.facing = dx < 0 ? 'left' : 'right';
+          }
+
+          // 튕겨 나가는 중 — 조작 대신 관성으로 밀려나고 빠르게 잦아든다
+          if (me.vx !== 0) {
+            me.x = clamp(me.x + me.vx * dt, map.walk.minX, map.walk.maxX);
+            me.vx *= Math.pow(0.02, dt);
+            if (Math.abs(me.vx) < 4) me.vx = 0;
+          }
+
+          const prevY = me.y;
+          // 올라갈 때보다 떨어질 때를 무겁게 — 정점에서 붕 뜨지 않고 툭 떨어진다
+          me.vy += gravityFor(me.vy) * dt;
+          me.y += me.vy * dt;
+          me.grounded = false;
+
+          /*
+           * 착지. 서 있는 동안에도 매 프레임 아주 조금 떨어졌다가 다시 같은 발판에
+           * 올라서는 식이라, '서 있기' 와 '발판 끝에서 걸어 나가면 떨어지기' 가
+           * 따로 코드를 두지 않아도 저절로 처리된다.
+           * 하향 점프 중이면 dropFrom 높이까지의 발판은 건너뛴다.
+           */
+          if (me.vy >= 0) {
+            const land = landingOn(map.platforms, me.x, prevY, me.y, me.dropFrom);
+            if (land) {
+              me.y = land.y;
+              me.vy = 0;
+              me.grounded = true;
+              me.dropFrom = null;
+
+              if (map.startY != null && land.y >= map.startY) {
+                // 시작 발판으로 돌아왔다 — 기록을 다시 잰다
+                climbStartRef.current = null;
+                summitDoneRef.current = false;
+              } else if (map.summitY != null && land.y <= map.summitY && !summitDoneRef.current) {
+                summitDoneRef.current = true;
+                const ms = Math.max(0, now - (climbStartRef.current ?? now));
+                showSummit(nickname, ms, true);
+                connRef.current?.sendSummit({ id: myId, nickname, ms });
+
+                // 팻말에 새길 기록으로 남긴다 (개인 최고 기록만 갱신된다)
+                void fetch('/api/plaza/records', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ map: map.id, ms: Math.round(ms) }),
+                })
+                  .then((res) => res.json())
+                  .then((json: { ok?: boolean; top?: Array<{ nickname: string; ms: number }> }) => {
+                    if (json.ok && json.top) setRecords((prev) => ({ ...prev, [map.id]: json.top! }));
+                  })
+                  .catch(() => undefined);
+              }
+            }
+          }
+
+          /*
+           * 움직이는 방해물. 닿으면 반대쪽으로 튕겨 나가고 잠깐 조작이 안 먹는다 —
+           * 대개 발판을 놓치고 아래로 떨어진다. 튕겨 나가는 동안은 다시 맞지 않는다.
+           */
+          if (!stunned) {
+            const at = Date.now();
+            const hit = hazardHit(map, me.x, me.y, at, me.crouch);
+            if (hit) {
+              const from = hazardPos(hit, at);
+              const away = me.x <= from.x ? -1 : 1;
+              me.vx = away * KNOCK_VX;
+              me.vy = -KNOCK_VY;
+              me.stunUntil = now + KNOCK_MS;
+              me.grounded = false;
+              me.dropFrom = null;
+              if (soundRef.current) playBump();
+            }
+          }
+
+          // 발판을 다 놓쳐 맵 밖으로 떨어지면 시작 지점으로
+          if (me.y > map.h) {
+            const restart = map.spawn(myId);
+            me.x = restart.x;
+            me.y = restart.y;
+            me.vy = 0;
+            me.vx = 0;
+            me.dropFrom = null;
+            climbStartRef.current = null;
+            summitDoneRef.current = false;
+          }
+
+          me.jump = 0;
+          me.tjump = 0;
+          busy = moving || !me.grounded || me.vx !== 0;
         }
 
-        // 점프 — 화면상 높이만 바뀐다
-        if (me.jumpV !== 0 || me.jump > 0) {
-          me.jump += me.jumpV * dt;
-          me.jumpV -= GRAVITY * dt;
-          if (me.jump <= 0) {
-            me.jump = 0;
-            me.jumpV = 0;
-          }
-        }
         me.tx = me.x;
         me.ty = me.y;
-        me.tjump = me.jump;
 
-        const busy = moving || me.jump > 0;
+        // 문 앞인가 — 안내를 띄우고 ↑ 를 받는다
+        const portal = portalAt(map, me.x, me.y);
+        if (portal !== nearPortalRef.current) {
+          nearPortalRef.current = portal;
+          setNearPortal(portal);
+        }
+
+        // 카메라는 내 캐릭터를 따라간다 (광장은 맵이 화면과 같아 늘 0)
+        const camTarget = cameraY(map, me.y);
+        camRef.current += (camTarget - camRef.current) * (1 - Math.pow(0.002, dt));
+
+        // 엎드리기는 제자리에서 일어나는 변화라 '움직임' 으로는 안 잡힌다 — 따로 알린다
+        const poseChanged = me.crouch !== wasCrouch;
         if (busy && now - lastSent > POS_INTERVAL) {
           sendMyPos(true);
           lastSent = now;
-        } else if (!busy && wasBusy) {
+        } else if ((!busy && wasBusy) || poseChanged) {
           sendMyPos(false);
           lastSent = now;
         }
         wasBusy = busy;
+        wasCrouch = me.crouch;
+      }
+
+      if (worldRef.current) {
+        worldRef.current.style.transform = `translateY(${-(camRef.current / map.h) * 100}%)`;
+      }
+
+      // 방해물 자리 — 벽시계의 함수라 서로 맞추는 통신 없이도 모두 같은 자리에 본다
+      if (map.hazards.length > 0) {
+        const at = Date.now();
+        map.hazards.forEach((h, i) => {
+          const el = hazardElsRef.current[i];
+          if (!el) return;
+          const p = hazardPos(h, at);
+          el.style.left = `${(p.x / map.w) * 100}%`;
+          el.style.top = `${(p.y / map.h) * 100}%`;
+        });
       }
 
       const ease = 1 - Math.pow(0.001, dt);
       for (const a of actorsRef.current.values()) {
+        // 다른 맵에 있는 사람은 그리지 않는다 (같은 채널이라 좌표는 계속 들어온다)
+        if (a.map !== map.id) continue;
+
         if (a.id !== myId) {
           a.x += (a.tx - a.x) * ease;
           a.y += (a.ty - a.y) * ease;
           a.jump += (a.tjump - a.jump) * ease;
         }
 
-        const scale = depthScale(a.y);
-        // 점프 높이는 논리 px → 화면 px 로 환산
-        const jumpPx = stageH > 0 ? (a.jump / WORLD_H) * stageH : a.jump;
+        // 원근 축소는 '깊이' 가 있는 광장에서만. 옆에서 보는 숲은 다 같은 크기다.
+        const scale = map.kind === 'topdown' ? depthScale(a.y) : 1;
+        const jumpPx = map.kind === 'topdown' ? a.jump * unit : 0;
 
         if (a.el) {
-          a.el.style.left = `${(a.x / WORLD_W) * 100}%`;
-          a.el.style.top = `${(a.y / WORLD_H) * 100}%`;
+          a.el.style.left = `${(a.x / map.w) * 100}%`;
+          a.el.style.top = `${(a.y / map.h) * 100}%`;
           a.el.style.transform = `translate(-50%, -100%) translateY(${-jumpPx}px) scale(${scale})`;
-          a.el.style.zIndex = String(Math.round(a.y));
+          // 광장은 앞뒤가 있어 y 로 겹침을 정하고, 숲은 전부 같은 평면이다
+          a.el.style.zIndex = String(map.kind === 'topdown' ? Math.round(a.y) : 600);
+          // 방해물에 맞아 튕겨 나가는 중 (내 캐릭터만 알 수 있다)
+          if (a.id === myId) a.el.classList.toggle('is-hurt', now < a.stunUntil);
         }
+
+        /*
+         * 엎드린 모습.
+         * 도트 미니미는 '납작하게 엎드린' 그림(Sleep)이 이미 있으니 그걸 쓰고,
+         * 없는 미니미(메이플 몹들)는 세로로 눌러서 엎드린 것처럼 보이게 한다.
+         */
+        const proneSrc = a.crouch ? emoteSrc(a.minimi, 'sleep') : null;
+        const src = proneSrc || (a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi;
+        const squash = a.crouch && !proneSrc ? CROUCH_SQUASH : 1;
+
         if (a.imgEl) {
           /*
-           * 미니미 원본 스프라이트는 '왼쪽' 을 보고 있다.
-           * 그래서 오른쪽으로 갈 때 뒤집어야 한다.
-           * (반대로 걸어 놨더니 왼쪽으로 가면 오른쪽을 보는 버그가 있었다)
+           * 미니미마다 캔버스 안 캐릭터 크기가 달라서(실측 96~240px) 그대로 두면
+           * 누구는 거인, 누구는 콩알이다. 그림마다 재 둔 값으로 크기와 발높이를 맞춘다.
+           * 폭·마진은 그림(또는 눌린 정도)이 바뀔 때만 손대면 된다
+           * (매 프레임 쓰면 레이아웃이 계속 다시 계산된다).
            */
-          const flip = a.facing === 'right' ? 'scaleX(-1)' : 'scaleX(1)';
-          if (a.imgEl.style.transform !== flip) a.imgEl.style.transform = flip;
+          const fitKey = `${src}|${squash}`;
+          if (a.imgEl.dataset.fit !== fitKey) {
+            applyMinimiFit(a.imgEl, src, squash);
+            a.imgEl.dataset.fit = fitKey;
+          }
+          // 엎드리기로 그림이 바뀌는 건 JSX 가 모르므로(리렌더 없이 매 프레임 바뀐다) 여기서 갈아 준다
+          if (a.imgEl.dataset.shown !== src) {
+            a.imgEl.src = src;
+            a.imgEl.dataset.shown = src;
+          }
+          // 좌우 반전 + 가로 치우침 보정 (원본은 '왼쪽' 을 보고 있다)
+          const t = minimiTransform(src, a.facing, squash);
+          if (a.imgEl.style.transform !== t) a.imgEl.style.transform = t;
         }
 
         /*
          * 말풍선이 무대 밖으로 나가 잘리지 않게 안쪽으로 밀어 넣는다.
          * 좌우는 실제 렌더 폭으로 계산하고, 위쪽 여유가 없으면 캐릭터 아래로 뒤집는다.
+         * 세로는 카메라가 움직이므로 '화면에 보이는' 발 위치로 따진다.
          */
         if (a.bubbleEl && a.el && stageW > 0) {
           const bw = a.bubbleEl.offsetWidth;
           const bh = a.bubbleEl.offsetHeight;
-          const cx = (a.x / WORLD_W) * stageW;
+          const cx = (a.x / map.w) * stageW;
           const half = bw / 2;
           let shift = 0;
           if (cx - half < 6) shift = 6 - (cx - half);
           else if (cx + half > stageW - 6) shift = stageW - 6 - (cx + half);
           a.bubbleEl.style.transform = `translateX(${shift}px)`;
 
-          // 머리 위 여유가 모자라면 말풍선을 캐릭터 아래로 뒤집는다
-          const feetPx = (a.y / WORLD_H) * stageH;
-          const spritePx = MINIMI_W * 0.75 * scale * (stageW / WORLD_W);
+          const feetPx = (a.y - camRef.current) * unit;
+          const spritePx = MINIMI_H * MINIMI_TARGET_H * scale * (stageW / map.w);
           const headroom = feetPx - spritePx - jumpPx;
           a.el.classList.toggle('is-bubble-below', headroom < bh + 24);
         }
@@ -543,7 +957,7 @@ export default function PlazaClient({
 
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [myId, sendMyPos]);
+  }, [myId, nickname, sendMyPos, showSummit]);
 
   /* --------------------------------------------------------------------- 채팅 */
 
@@ -580,6 +994,8 @@ export default function PlazaClient({
   /* --------------------------------------------------------------------- 화면 */
 
   const bubbleOf = (id: string) => bubbles.find((b) => b.actorId === id);
+  const map = mapOf(mapId);
+  const inForest = map.kind === 'platform';
 
   // 다른 창/기기에서 같은 계정이 접속하면 이 창은 물러난다 (한 계정 = 한 자리)
   if (kicked) {
@@ -613,7 +1029,7 @@ export default function PlazaClient({
   return (
     <div className="pz">
       <div className="pz-head">
-        <h1 className="pz-title">광장</h1>
+        <h1 className="pz-title">{map.name}</h1>
         <span className={`pz-status pz-status--${status}`}>
           {status === 'online'
             ? `${ids.length}명 접속중`
@@ -624,9 +1040,19 @@ export default function PlazaClient({
                 : '연결 끊김'}
         </span>
         <span className="pz-keyhint">
-          방향키 · WASD 이동 &nbsp;/&nbsp; ALT 점프 &nbsp;/&nbsp; Enter 채팅
-          {myEmotes.length > 0 && (
-            <> &nbsp;/&nbsp; {myEmotes.map((e, i) => `${i + 1} ${e.label}`).join(' · ')}</>
+          {inForest ? (
+            <>
+              ← → 이동 &nbsp;/&nbsp; SPACE · ALT 점프 &nbsp;/&nbsp; ↓ 엎드리기 &nbsp;/&nbsp; ↓ +
+              점프 하향점프 &nbsp;/&nbsp; ↑ 문 &nbsp;/&nbsp; Enter 채팅
+            </>
+          ) : (
+            <>
+              방향키 · WASD 이동 &nbsp;/&nbsp; SPACE · ALT 점프 &nbsp;/&nbsp; ↑ 문 &nbsp;/&nbsp;
+              Enter 채팅
+              {myEmotes.length > 0 && (
+                <> &nbsp;/&nbsp; {myEmotes.map((e, i) => `${i + 1} ${e.label}`).join(' · ')}</>
+              )}
+            </>
           )}
         </span>
       </div>
@@ -639,113 +1065,260 @@ export default function PlazaClient({
       )}
 
       <div className="pz-stage-wrap">
-        <div className="pz-stage" ref={stageRef}>
-          {/* ---- 배경: 위로도 걸어다닐 수 있게 바닥이 화면 전체를 덮는다 ---- */}
-          <div className="pz-ground" />
-          <div className="pz-haze" />
-          <div className="pz-path pz-path--v" />
-          <div className="pz-path pz-path--h" />
-          <div className="pz-plaza-ring">
-            <div className="pz-plaza-ring-inner" />
-          </div>
+        <div className={`pz-stage pz-stage--${map.id}`} ref={stageRef}>
+          {/*
+            카메라 칸. 맵이 화면보다 세로로 길면(인내의 숲) 이 칸이 맵 전체 크기가 되고
+            루프가 translateY 로 밀어 올린다. 광장은 맵 = 화면이라 늘 제자리다.
+          */}
+          <div
+            className="pz-world"
+            ref={worldRef}
+            style={{ height: `${(map.h / map.viewH) * 100}%` }}
+          >
+            {!inForest && (
+              <>
+                {/* ---- 광장 배경: 위로도 걸어다닐 수 있게 바닥이 화면 전체를 덮는다 ---- */}
+                <div className="pz-ground" />
+                <div className="pz-haze" />
+                <div className="pz-path pz-path--v" />
+                <div className="pz-path pz-path--h" />
+                <div className="pz-plaza-ring">
+                  <div className="pz-plaza-ring-inner" />
+                </div>
 
-          <div className="pz-fountain">
-            <div className="pz-fountain-basin" />
-            <div className="pz-fountain-jet" />
-            <div className="pz-fountain-ripple" />
-            <div className="pz-fountain-ripple pz-fountain-ripple--2" />
-          </div>
+                <div className="pz-fountain">
+                  <div className="pz-fountain-basin" />
+                  <div className="pz-fountain-jet" />
+                  <div className="pz-fountain-ripple" />
+                  <div className="pz-fountain-ripple pz-fountain-ripple--2" />
+                </div>
 
-          {[
-            { c: 'pz-tree--a', l: '7%', t: '30%' },
-            { c: 'pz-tree--b', l: '90%', t: '26%' },
-            { c: 'pz-tree--c', l: '18%', t: '84%' },
-            { c: 'pz-tree--d', l: '82%', t: '88%' },
-            { c: 'pz-tree--e', l: '46%', t: '13%' },
-          ].map((t) => (
-            <div key={t.c} className={`pz-tree ${t.c}`} style={{ left: t.l, top: t.t }}>
-              <span className="pz-tree-shadow" />
-              <span className="pz-tree-trunk" />
-              <span className="pz-tree-crown" />
-            </div>
-          ))}
-
-          {[
-            { l: '26%', t: '52%' },
-            { l: '74%', t: '52%' },
-          ].map((b) => (
-            <div key={b.l} className="pz-bench" style={{ left: b.l, top: b.t }}>
-              <span className="pz-bench-shadow" />
-              <span className="pz-bench-seat" />
-            </div>
-          ))}
-
-          {[
-            { l: '13%', t: '58%' },
-            { l: '87%', t: '58%' },
-          ].map((p) => (
-            <div key={p.l} className="pz-lamp" style={{ left: p.l, top: p.t }}>
-              <span className="pz-lamp-shadow" />
-              <span className="pz-lamp-pole" />
-              <span className="pz-lamp-head" />
-            </div>
-          ))}
-
-          {['12%,22%', '31%,74%', '66%,20%', '58%,90%', '88%,70%', '40%,44%'].map((f) => {
-            const [l, t] = f.split(',');
-            return <span key={f} className="pz-flower" style={{ left: l, top: t }} />;
-          })}
-
-          <div className="pz-vignette" />
-
-          {/* ---- 사람들 ---- */}
-          {ids.map((id) => {
-            const a = actorsRef.current.get(id);
-            if (!a) return null;
-            const bubble = bubbleOf(id);
-            return (
-              <div
-                key={id}
-                className={id === myId ? 'pz-actor pz-actor--me' : 'pz-actor'}
-                ref={(el) => {
-                  const cur = actorsRef.current.get(id);
-                  if (cur) cur.el = el;
-                }}
-                style={{ width: `${(MINIMI_W / WORLD_W) * 100}%` }}
-              >
-                {bubble && (
-                  <div
-                    className="pz-bubble"
-                    ref={(el) => {
-                      const cur = actorsRef.current.get(id);
-                      if (cur) cur.bubbleEl = el;
-                    }}
-                  >
-                    {linkify(bubble.text)}
+                {[
+                  { c: 'pz-tree--a', l: '7%', t: '30%' },
+                  { c: 'pz-tree--b', l: '90%', t: '26%' },
+                  { c: 'pz-tree--c', l: '18%', t: '84%' },
+                  { c: 'pz-tree--d', l: '82%', t: '88%' },
+                  { c: 'pz-tree--e', l: '46%', t: '13%' },
+                ].map((t) => (
+                  <div key={t.c} className={`pz-tree ${t.c}`} style={{ left: t.l, top: t.t }}>
+                    <span className="pz-tree-shadow" />
+                    <span className="pz-tree-trunk" />
+                    <span className="pz-tree-crown" />
                   </div>
-                )}
-                <span className="pz-name">{a.nickname}</span>
-                <img
-                  className="pz-minimi"
-                  src={(a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi}
-                  alt=""
-                  draggable={false}
+                ))}
+
+                {[
+                  { l: '26%', t: '52%' },
+                  { l: '74%', t: '52%' },
+                ].map((b) => (
+                  <div key={b.l} className="pz-bench" style={{ left: b.l, top: b.t }}>
+                    <span className="pz-bench-shadow" />
+                    <span className="pz-bench-seat" />
+                  </div>
+                ))}
+
+                {[
+                  { l: '13%', t: '58%' },
+                  { l: '87%', t: '58%' },
+                ].map((p) => (
+                  <div key={p.l} className="pz-lamp" style={{ left: p.l, top: p.t }}>
+                    <span className="pz-lamp-shadow" />
+                    <span className="pz-lamp-pole" />
+                    <span className="pz-lamp-head" />
+                  </div>
+                ))}
+
+                {['12%,22%', '31%,74%', '66%,20%', '58%,90%', '88%,70%', '40%,44%'].map((f) => {
+                  const [l, t] = f.split(',');
+                  return <span key={f} className="pz-flower" style={{ left: l, top: t }} />;
+                })}
+              </>
+            )}
+
+            {inForest && (
+              <>
+                {/* ---- 인내의 숲: 안개층 + 반딧불 (배경색은 CSS, 물체는 도트 PNG) ---- */}
+                <div className="pz-fog pz-fog--1" />
+                <div className="pz-fog pz-fog--2" />
+                <div className="pz-fog pz-fog--3" />
+                {[
+                  '14,18', '78,12', '35,29', '62,41', '22,52', '86,58',
+                  '48,66', '9,73', '70,81', '38,88', '90,93', '55,96',
+                ].map((f) => {
+                  const [l, t] = f.split(',');
+                  return (
+                    <span
+                      key={f}
+                      className="pz-firefly"
+                      style={{ left: `${l}%`, top: `${t}%`, animationDelay: `${Number(l) % 5}s` }}
+                    />
+                  );
+                })}
+
+                {/* 장식 (밑변 중심 기준으로 앉힌다) */}
+                {map.props.map((p, i) => (
+                  <img
+                    key={`${p.src}-${i}`}
+                    className={p.far ? 'pz-prop pz-prop--far' : 'pz-prop'}
+                    src={p.src}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      left: `${(p.x / map.w) * 100}%`,
+                      top: `${(p.y / map.h) * 100}%`,
+                      width: `${(p.w / map.w) * 100}%`,
+                      transform: `translate(-50%, -100%)${p.flip ? ' scaleX(-1)' : ''}`,
+                    }}
+                  />
+                ))}
+
+                {/* 움직이는 방해물 — 자리는 매 프레임 루프가 넣는다 */}
+                {map.hazards.map((h, i) => (
+                  <img
+                    key={`${h.src}-${i}`}
+                    className="pz-hazard"
+                    src={h.src}
+                    alt=""
+                    draggable={false}
+                    ref={(el) => {
+                      hazardElsRef.current[i] = el;
+                    }}
+                    style={{ width: `${(h.w / map.w) * 100}%` }}
+                  />
+                ))}
+
+                {/* 발판 */}
+                {map.platforms.map((p) => (
+                  <div
+                    key={`${p.x}-${p.y}`}
+                    className="pz-platform"
+                    style={{
+                      left: `${((p.x - p.w / 2) / map.w) * 100}%`,
+                      top: `${(p.y / map.h) * 100}%`,
+                      width: `${(p.w / map.w) * 100}%`,
+                      // 두께도 논리 px 기준 — 고정 px 로 두면 화면이 좁을 때 발판만 두꺼워진다
+                      height: `${(18 / map.h) * 100}%`,
+                    }}
+                  />
+                ))}
+              </>
+            )}
+
+            {/*
+              기록 팻말 — 나무판은 도트 그림이고 글자는 그 위에 얹는다.
+              (기록이 바뀔 때마다 그림을 다시 만들 수는 없으니까)
+            */}
+            {map.recordSign && (
+              <div
+                className="pz-record"
+                style={{
+                  left: `${(map.recordSign.x / map.w) * 100}%`,
+                  top: `${(map.recordSign.y / map.h) * 100}%`,
+                  width: `${(map.recordSign.w / map.w) * 100}%`,
+                }}
+              >
+                <div className="pz-record-text">
+                  <b className="pz-record-title">{map.recordSign.title}</b>
+                  {(records[map.recordSign.of] ?? []).length === 0 ? (
+                    <span className="pz-record-empty">아직 오른 사람이 없어요</span>
+                  ) : (
+                    (records[map.recordSign.of] ?? []).map((r, i) => (
+                      <span key={r.nickname} className="pz-record-row">
+                        <span className="pz-record-rank">{i + 1}</span>
+                        <span className="pz-record-who">{r.nickname}</span>
+                        <span className="pz-record-time">{climbLabel(r.ms)}</span>
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ---- 문 ---- */}
+            {map.portals.map((p) => (
+              <div
+                key={`${p.to}-${p.x}`}
+                className={nearPortal === p ? 'pz-portal is-near' : 'pz-portal'}
+                style={{
+                  left: `${(p.x / map.w) * 100}%`,
+                  top: `${(p.y / map.h) * 100}%`,
+                  width: `${(p.w / map.w) * 100}%`,
+                }}
+              >
+                <span className="pz-portal-label">{p.label}</span>
+                <span className="pz-portal-key">↑</span>
+              </div>
+            ))}
+
+            {/* ---- 사람들 ---- */}
+            {ids.map((id) => {
+              const a = actorsRef.current.get(id);
+              if (!a) return null;
+              const bubble = bubbleOf(id);
+              return (
+                <div
+                  key={id}
+                  className={id === myId ? 'pz-actor pz-actor--me' : 'pz-actor'}
                   ref={(el) => {
                     const cur = actorsRef.current.get(id);
-                    if (cur) cur.imgEl = el;
+                    if (cur) cur.el = el;
                   }}
-                  onError={(e) => {
-                    // 폴백까지 실패하면 멈춘다(React 합성이벤트라 onerror=null 무효, 무한 요청 방지)
-                    const img = e.currentTarget;
-                    if (img.dataset.fallback) return;
-                    img.dataset.fallback = '1';
-                    img.src = '/resources/images/default/defaultMinimiIcon.gif';
-                  }}
-                />
-                <span className="pz-shadow" />
-              </div>
-            );
-          })}
+                  style={{ width: `${(MINIMI_W / map.w) * 100}%` }}
+                >
+                  {bubble && (
+                    <div
+                      className="pz-bubble"
+                      ref={(el) => {
+                        const cur = actorsRef.current.get(id);
+                        if (cur) cur.bubbleEl = el;
+                      }}
+                    >
+                      {linkify(bubble.text)}
+                    </div>
+                  )}
+                  <span className="pz-name">{a.nickname}</span>
+                  <img
+                    className="pz-minimi"
+                    src={(a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi}
+                    alt=""
+                    draggable={false}
+                    ref={(el) => {
+                      const cur = actorsRef.current.get(id);
+                      if (cur) cur.imgEl = el;
+                    }}
+                    onError={(e) => {
+                      // 폴백까지 실패하면 멈춘다(React 합성이벤트라 onerror=null 무효, 무한 요청 방지)
+                      const img = e.currentTarget;
+                      if (img.dataset.fallback) return;
+                      img.dataset.fallback = '1';
+                      img.src = '/resources/images/default/defaultMinimiIcon.gif';
+                    }}
+                  />
+                  {/* 그림자도 캐릭터 크기에 맞춘다 — 콩알 미니미에 커다란 그림자가 깔리지 않게 */}
+                  <span className="pz-shadow" style={{ width: `${shadowWidth(a.minimi)}%` }} />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 비네트·안내는 카메라와 함께 움직이면 안 되므로 카메라 칸 밖에 둔다 */}
+          <div className="pz-vignette" />
+
+          {nearPortal && (
+            <div className="pz-hint">
+              <b>↑</b> {nearPortal.label}(으)로 이동
+            </div>
+          )}
+
+          {summit && (
+            <div className={summit.mine ? 'pz-summit is-mine' : 'pz-summit'}>
+              <span className="pz-summit-icon" aria-hidden="true">
+                🌳
+              </span>
+              <b>{summit.mine ? '정상 도착!' : `${summit.nickname}님 정상 도착!`}</b>
+              <span className="pz-summit-time">{climbLabel(summit.ms)}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -754,7 +1327,10 @@ export default function PlazaClient({
         <div className="pz-log" ref={logRef}>
           {log.length === 0 ? (
             <div className="pz-log-empty">
-              방향키(또는 WASD)로 움직이고, Enter 로 채팅해 보세요. ALT 로 점프합니다.
+              방향키(또는 WASD)로 움직이고, Enter 로 채팅해 보세요. SPACE 로 점프합니다.
+              <br />
+              위쪽 <b>문</b> 앞에서 <b>↑</b> 를 누르면 <b>인내의 숲</b>으로 갑니다 — 발판을 밟고
+              정상까지 오르는 곳이에요.
               {myEmotes.length > 0 && (
                 <>
                   <br />
@@ -766,7 +1342,10 @@ export default function PlazaClient({
           ) : (
             log.map((l) => (
               <div key={l.msgId} className={l.mine ? 'pz-log-line is-mine' : 'pz-log-line'}>
-                <b>{l.nickname}</b> {linkify(l.text)}
+                <span className="pz-log-body">
+                  <b>{l.nickname}</b> {linkify(l.text)}
+                </span>
+                <span className="pz-log-time">{chatTimeLabel(l.ts)}</span>
               </div>
             ))
           )}

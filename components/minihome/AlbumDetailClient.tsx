@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { showAlert, showConfirm } from '@/lib/ui/dialog';
 
 import CommentThread, { type ThreadComment } from '@/components/minihome/CommentThread';
+import ScrapButton from '@/components/minihome/ScrapButton';
+import { splitScrapText } from '@/lib/scrap';
 
 /** views/miniHome/albumDetail.jsp + resources/js/album.js 의 deleteAlbum */
 export default function AlbumDetailClient({
@@ -17,6 +19,7 @@ export default function AlbumDetailClient({
   createDate,
   images,
   canComment,
+  canScrap,
   comments,
 }: {
   userNickname: string;
@@ -29,9 +32,17 @@ export default function AlbumDetailClient({
   createDate: string;
   images: string[];
   canComment: boolean;
+  /** 일촌의 사진이라 내 사진첩으로 퍼갈 수 있는가 */
+  canScrap: boolean;
   comments: ThreadComment[];
 }) {
   const router = useRouter();
+
+  /*
+   * 퍼온 사진이면 "퍼가요~♡" 를 맨 위에 따로 그린다.
+   * 표시는 설명 첫 줄에 저장돼 있는데, 설명은 사진 아래에 나오기 때문이다.
+   */
+  const { scrapped, body } = splitScrapText(content);
 
   const addComment = async (text: string, parentSeq: number | null) => {
     try {
@@ -93,6 +104,7 @@ export default function AlbumDetailClient({
         <div className="album-container3">
           <div className="album-container2">
             <div className="album-container1">
+              {scrapped && <div className="scrap-mark">퍼가요~♡</div>}
               <div className="album-title">{title}</div>
               <div className="album-wd">
                 <span className="album-writer">{writer}</span>
@@ -114,7 +126,7 @@ export default function AlbumDetailClient({
                   />
                 </div>
               ))}
-              <div className="album-content">{content}</div>
+              <div className="album-content">{body}</div>
 
               <div className="album-comment-section">
                 <CommentThread
@@ -139,6 +151,14 @@ export default function AlbumDetailClient({
               >
                 목록
               </a>
+              {canScrap && (
+                <ScrapButton
+                  kind="album"
+                  seq={seq}
+                  viewerNickname={viewerNickname}
+                  className="album-under-scrap"
+                />
+              )}
               {isOwner && (
                 <a className="album-under-right" onClick={() => void deleteAlbum()}>
                   삭제

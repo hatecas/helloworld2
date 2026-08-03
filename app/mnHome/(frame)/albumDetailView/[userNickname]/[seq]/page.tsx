@@ -53,6 +53,8 @@ export default async function AlbumDetailViewPage({
           createDate={ymdhm(album.create_date)}
           images={album.imagePath.split(',').filter(Boolean)}
           canComment={check === 1}
+          // 남(일촌)의 사진만 퍼갈 수 있다
+          canScrap={check === 1 && !common.isOwner && viewer?.userNickname !== userNickname}
           comments={comments}
         />
       </MiniHomeShell>

@@ -156,7 +156,7 @@ export function buildSeed(): Database {
     bgm: [], userBgm: [], profile: [], miniHomeTitle: [], miniroomBackground: [],
     miniroomMinimi: [], notice: [], board: [], boardCMT: [], diary: [], diaryCMT: [],
     album: [], albumCMT: [], visit: [], visitCnt: [], friends: [], friendCMT: [], loginStatus: [],
-    loginLog: [], notiRead: [], plazaChat: [],
+    loginLog: [], notiRead: [], plazaChat: [], forestRecord: [],
   };
 
   let seq = 1;
@@ -312,15 +312,16 @@ export function buildSeed(): Database {
   // ---- 일촌 ----
   db.friends.push({
     seq: next(), userNickname: '제인', friendNickname: '민호',
-    fStatus: 1, del_yn: 'N', createDate: iso(60),
+    fStatus: 1, del_yn: 'N', createDate: iso(60), acceptDate: iso(60),
   });
   db.friends.push({
     seq: next(), userNickname: '다인', friendNickname: '민호',
-    fStatus: 1, del_yn: 'N', createDate: iso(45),
+    fStatus: 1, del_yn: 'N', createDate: iso(45), acceptDate: iso(45),
   });
+  // 아직 신청만 해 둔 관계 — 승인 전이라 acceptDate 가 없다
   db.friends.push({
     seq: next(), userNickname: '소율', friendNickname: '제인',
-    fStatus: 0, del_yn: 'N', createDate: iso(2),
+    fStatus: 0, del_yn: 'N', createDate: iso(2), acceptDate: null,
   });
 
   db.friendCMT.push({

@@ -2204,3 +2204,46 @@ input.content-title-name:focus {
 		width: min(300px, 88vw);
 	}
 }
+
+/* ==================================================================
+   퍼가요 — 일촌의 게시글/사진을 내 미니홈피로 퍼가는 버튼과 표시
+
+   버튼은 '목록/수정/삭제' 옆에 끼어 들어가므로 작게 만든다.
+   ================================================================== */
+
+.btn-scrap {
+	flex: none;
+	align-self: center;
+	padding: 3px 8px;
+	border: 1px solid var(--mh-accent);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--mh-accent);
+	font-family: inherit;
+	font-size: 11px;
+	line-height: 1.5;
+	cursor: pointer;
+}
+
+.btn-scrap:hover:not(:disabled) {
+	background: var(--mh-accent);
+	color: #fff;
+}
+
+.btn-scrap:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+/* 사진첩 하단 줄에서는 '삭제' 왼쪽에 붙는다 */
+.album-under-scrap {
+	margin-right: 8px;
+}
+
+/* 퍼온 글 맨 위에 붙는 "퍼가요~♡" */
+.scrap-mark {
+	margin: 0 0 8px;
+	color: var(--mh-accent);
+	font-size: 12px;
+	font-weight: bold;
+}

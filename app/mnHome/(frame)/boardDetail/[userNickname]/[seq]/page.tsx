@@ -58,6 +58,8 @@ export default async function BoardDetailPage({
           writer={board.userNickname}
           createDate={ymdhm(board.create_date)}
           canComment={check === 1}
+          // 남(일촌)의 글만 퍼갈 수 있다
+          canScrap={check === 1 && !common.isOwner && viewer?.userNickname !== userNickname}
           comments={comments}
         />
       </MiniHomeShell>

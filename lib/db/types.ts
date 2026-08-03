@@ -243,6 +243,13 @@ export interface Friend {
   fStatus: FriendStatus;
   del_yn: YN;
   createDate: string;
+  /**
+   * 일촌이 된(승인된) 시각. 신청만 해 둔 상태면 없다.
+   * 일촌의 새 글 알림을 '맺은 뒤' 것만 보내는 기준이다. (예전에는 기준이 없어서
+   * 일촌을 맺으면 그 사람이 과거에 올린 글까지 알림으로 한꺼번에 떴다)
+   * 이 컬럼이 생기기 전에 맺은 관계는 비어 있어 createDate 로 대신한다.
+   */
+  acceptDate?: string | null;
 }
 
 export interface FriendComment {
@@ -297,6 +304,22 @@ export interface PlazaChat {
   create_date: string;
 }
 
+/**
+ * 인내의 숲 등반 기록.
+ *
+ * 사람마다 맵별로 '가장 빠른 기록' 한 줄만 남긴다. 광장 팻말에 상위 3명을 새기는데,
+ * 기록을 다 쌓아 두면 한 사람이 1·2·3등을 다 차지해서 '3명' 이 아니게 된다.
+ */
+export interface ForestRecord {
+  seq: number;
+  userNickname: string;
+  /** 어느 맵의 기록인지 ('forest' = 인내의 숲, 'forest2' = 숲 깊은 곳) */
+  map: string;
+  /** 시작 발판을 떠나 정상까지 걸린 시간(ms) */
+  ms: number;
+  create_date: string;
+}
+
 /** 인메모리/Supabase 어댑터가 공유하는 전체 데이터 형태 */
 export interface Database {
   user: User[];
@@ -326,4 +349,5 @@ export interface Database {
   loginLog: LoginLog[];
   notiRead: NotiRead[];
   plazaChat: PlazaChat[];
+  forestRecord: ForestRecord[];
 }

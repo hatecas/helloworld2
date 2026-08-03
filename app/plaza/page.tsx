@@ -6,7 +6,12 @@ import Footer from '@/components/index/Footer';
 import IndexHeader from '@/components/index/IndexHeader';
 import PlazaClient from '@/components/plaza/PlazaClient';
 import { getSessionUser } from '@/lib/session';
-import { DEFAULT_MINIMI_PATH, getMyDotori, selectUserMinimi } from '@/lib/db/repo';
+import {
+  DEFAULT_MINIMI_PATH,
+  getForestRecords,
+  getMyDotori,
+  selectUserMinimi,
+} from '@/lib/db/repo';
 
 export const metadata: Metadata = { title: '광장' };
 
@@ -21,9 +26,12 @@ export default async function PlazaPage() {
   const user = await getSessionUser();
   if (!user) redirect('/?msg=' + encodeURIComponent('광장은 로그인 후 이용할 수 있어요.'));
 
-  const [dotori, minimi] = await Promise.all([
+  // 기록은 서버에서 미리 실어 보낸다 — 팻말이 빈 채로 잠깐 보이지 않게
+  const [dotori, minimi, forest, forest2] = await Promise.all([
     getMyDotori(user.userNickname),
     selectUserMinimi(user.userNickname),
+    getForestRecords('forest'),
+    getForestRecords('forest2'),
   ]);
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -40,6 +48,7 @@ export default async function PlazaPage() {
           minimi={minimi ?? DEFAULT_MINIMI_PATH}
           supabaseUrl={supabaseUrl}
           supabaseAnonKey={supabaseAnonKey}
+          records={{ forest, forest2 }}
         />
       </div>
       <div className="bottom-fix" />

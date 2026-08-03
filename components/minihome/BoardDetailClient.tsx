@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 
 import CommentThread, { type ThreadComment } from '@/components/minihome/CommentThread';
+import ScrapButton from '@/components/minihome/ScrapButton';
 
 /** views/miniHome/boardDetail.jsp + resources/js/board.js 의 댓글 처리 */
 export default function BoardDetailClient({
@@ -15,6 +16,7 @@ export default function BoardDetailClient({
   writer,
   createDate,
   canComment,
+  canScrap,
   comments: initialComments,
 }: {
   userNickname: string;
@@ -26,6 +28,8 @@ export default function BoardDetailClient({
   writer: string;
   createDate: string;
   canComment: boolean;
+  /** 일촌의 글이라 내 게시판으로 퍼갈 수 있는가 */
+  canScrap: boolean;
   comments: ThreadComment[];
 }) {
   const router = useRouter();
@@ -72,6 +76,7 @@ export default function BoardDetailClient({
       <div className="board-content-container" dangerouslySetInnerHTML={{ __html: content }} />
 
       <div className="board-detail-right">
+        {canScrap && <ScrapButton kind="board" seq={seq} viewerNickname={viewerNickname} />}
         <button
           className="btn-boardlist"
           id="btnBoardView"

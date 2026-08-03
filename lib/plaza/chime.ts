@@ -55,3 +55,21 @@ export function playChime(): void {
     // 소리는 부가 기능이라 실패해도 조용히 넘어간다
   }
 }
+
+/**
+ * 툭 — 인내의 숲에서 방해물에 부딪혀 튕겨 나갈 때.
+ *
+ * 채팅음(올라가는 두 음)과 반대로 낮은 데서 더 낮게 떨어뜨린다.
+ * 소리만 듣고도 '채팅이 왔다' 와 '맞았다' 가 구별돼야 한다.
+ */
+export function playBump(): void {
+  try {
+    const ac = audioContext();
+    if (!ac) return;
+    const now = ac.currentTime;
+    tone(ac, 220, now, 0.14, 0.2); // 라 (낮은)
+    tone(ac, 147, now + 0.06, 0.2, 0.16); // 레 (더 낮은)
+  } catch {
+    // 소리는 부가 기능이라 실패해도 조용히 넘어간다
+  }
+}

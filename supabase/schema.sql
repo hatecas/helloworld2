@@ -14,6 +14,7 @@
 
 begin;
 
+drop table if exists "forestRecord"        cascade;
 drop table if exists "plazaChat"           cascade;
 drop table if exists "notiRead"            cascade;
 drop table if exists "loginLog"            cascade;
@@ -296,7 +297,10 @@ create table "friends" (
                    references "user"("userNickname") on update cascade on delete cascade,
   "fStatus"        smallint    not null default 0, -- 0 대기 / 1 승인 / -1 거절
   "del_yn"         varchar(1)  not null default 'N',
-  "createDate"     timestamptz not null default now()
+  "createDate"     timestamptz not null default now(),
+  -- 일촌이 된(승인된) 시각. 신청만 해 둔 상태면 null.
+  -- 일촌의 새 글 알림을 '맺은 뒤' 것만 보내는 기준이다.
+  "acceptDate"     timestamptz
 );
 create index on "friends" ("userNickname");
 create index on "friends" ("friendNickname");
@@ -357,6 +361,20 @@ create table "plazaChat" (
 );
 create index on "plazaChat" ("seq" desc);
 
+-- 인내의 숲 등반 기록.
+-- 사람마다 맵별로 '가장 빠른 기록' 한 줄만 남긴다(unique) — 광장 팻말에 상위 3명을
+-- 새기는데, 기록을 다 쌓으면 한 사람이 1·2·3등을 다 차지해 '3명' 이 아니게 된다.
+create table "forestRecord" (
+  "seq"          serial primary key,
+  "userNickname" varchar(50) not null
+                 references "user"("userNickname") on update cascade on delete cascade,
+  "map"          varchar(20) not null,   -- 'forest' | 'forest2'
+  "ms"           integer     not null,   -- 시작 발판을 떠나 정상까지 (ms)
+  "create_date"  timestamptz not null default now(),
+  unique ("userNickname", "map")
+);
+create index on "forestRecord" ("map", "ms");
+
 -- ------------------------------------------------------------------ RLS
 -- 정책을 하나도 만들지 않으므로 service_role 을 제외한 모든 접근이 막힌다.
 -- 이 앱은 서버에서 service_role 키로만 붙으므로 그대로 동작한다.
@@ -390,8 +408,21 @@ alter table "loginStatus"        enable row level security;
 alter table "loginLog"           enable row level security;
 alter table "notiRead"           enable row level security;
 alter table "plazaChat"          enable row level security;
+alter table "forestRecord"       enable row level security;
 
 commit;
+
+-- ---------------------------------------------------------------------
+-- 이미 만들어 둔 DB 에 나중에 추가된 컬럼 (전체를 다시 만들 필요 없이 이것만 실행)
+--
+--   -- 일촌 승인 시각. 알림을 '일촌 맺은 뒤' 글만 보내려고 추가.
+--   alter table "friends" add column if not exists "acceptDate" timestamptz;
+--
+-- 값이 비어 있는(이 컬럼 생기기 전에 맺은) 관계는 코드가 createDate 로 대신 본다.
+-- 굳이 채워 두고 싶으면:
+--   update "friends" set "acceptDate" = "createDate"
+--    where "fStatus" = 1 and "acceptDate" is null;
+-- ---------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------
 -- RLS 는 위 트랜잭션 안에서 이미 켰다.
