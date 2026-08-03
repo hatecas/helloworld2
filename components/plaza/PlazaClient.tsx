@@ -735,8 +735,11 @@ export default function PlazaClient({
                     if (cur) cur.imgEl = el;
                   }}
                   onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = '/resources/images/default/defaultMinimiIcon.gif';
+                    // 폴백까지 실패하면 멈춘다(React 합성이벤트라 onerror=null 무효, 무한 요청 방지)
+                    const img = e.currentTarget;
+                    if (img.dataset.fallback) return;
+                    img.dataset.fallback = '1';
+                    img.src = '/resources/images/default/defaultMinimiIcon.gif';
                   }}
                 />
                 <span className="pz-shadow" />

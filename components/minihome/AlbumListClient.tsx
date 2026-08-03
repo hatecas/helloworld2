@@ -45,8 +45,12 @@ export default function AlbumListClient({
                     className="addImage"
                     alt={album.title}
                     onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = `/resources/images/album/${album.thumbnail}`;
+                      // 못 불러온 이미지는 한 번만 숨긴다. (src 를 다시 세팅하면
+                      // React 합성이벤트라 onError 가 재발동해 무한 요청이 된다)
+                      const img = e.currentTarget;
+                      if (img.dataset.failed) return;
+                      img.dataset.failed = '1';
+                      img.style.display = 'none';
                     }}
                   />
                 </div>

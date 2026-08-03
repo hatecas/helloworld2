@@ -20,9 +20,13 @@ export default function ProfileBox({ common }: { common: MiniHomeCommon }) {
             src={`/resources/images/download/${common.image}`}
             alt="프로필 이미지"
             onError={(e) => {
-              // 기본 프로필 이미지는 download 가 아니라 default 폴더에 있다
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = `/resources/images/default/${common.image}`;
+              // 기본 프로필 이미지는 download 가 아니라 default 폴더에 있다.
+              // 폴백까지 실패하면 멈춘다 — React 합성이벤트라 onerror=null 은 안 먹고,
+              // src 를 계속 바꾸면 무한 요청이 된다.
+              const img = e.currentTarget;
+              if (img.dataset.fallback) return;
+              img.dataset.fallback = '1';
+              img.src = `/resources/images/default/${common.image}`;
             }}
           />
         </div>
