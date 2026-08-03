@@ -5,6 +5,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // heic-convert(libheif WASM)는 서버 번들에 넣지 않고 런타임에 그대로 require 한다
+  serverExternalPackages: ['heic-convert'],
   // 구버전 JSP URL 을 그대로 살리기 위한 별칭
   async redirects() {
     return [

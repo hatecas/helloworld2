@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { showAlert } from '@/lib/ui/dialog';
+import { toUploadableImage } from '@/lib/heic';
 
 /**
  * 자체 경량 리치텍스트 에디터.
@@ -98,10 +99,12 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function RichText
   };
 
   const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    if (!picked) return;
     try {
+      // 아이폰 HEIC 는 JPEG 로 변환해 올린다 (서버에도 안전망이 있지만 업로드 크기도 줄여준다)
+      const file = await toUploadableImage(picked);
       const form = new FormData();
       form.append('file', file);
       const res = await fetch('/mnHome/uploadImage', { method: 'POST', body: form });
@@ -216,7 +219,7 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function RichText
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             hidden
             onChange={(e) => void onPickImage(e)}
           />

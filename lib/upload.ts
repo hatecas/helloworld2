@@ -23,7 +23,9 @@ export const UPLOAD_BUCKET = 'uploads';
 /** 버킷 안에서의 경로 — 구 폴더 구조를 그대로 따른다 */
 const UPLOAD_PREFIX = 'download';
 
-const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']);
+// heic/heif 는 저장 직전 saveUploadedFile 에서 JPEG 로 변환되지만,
+// 라우트의 isAllowedImage 게이트를 통과해 여기까지 오도록 허용 목록에 넣어 둔다.
+const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif']);
 
 const MIME: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -32,7 +34,33 @@ const MIME: Record<string, string> = {
   gif: 'image/gif',
   bmp: 'image/bmp',
   webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
 };
+
+// ISO-BMFF ftyp major_brand 중 HEIC/HEIF 계열
+const HEIC_BRANDS = new Set([
+  'heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs', 'mif1', 'msf1', 'heif',
+]);
+
+/**
+ * 버퍼가 HEIC/HEIF 인지 "실제 바이트"로 판별한다.
+ * iOS 가 HEIC 를 .png/image_png 로 잘못 라벨해 보내는 경우가 있어 확장자·타입은 못 믿는다.
+ */
+function isHeicBuffer(buf: Buffer): boolean {
+  if (buf.length < 12) return false;
+  // 바이트 4~7 이 'ftyp'
+  if (!(buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70)) return false;
+  const brand = buf.toString('latin1', 8, 12).toLowerCase();
+  return HEIC_BRANDS.has(brand);
+}
+
+/** HEIC/HEIF 버퍼를 JPEG 버퍼로 변환. heic-convert 는 순수 JS/WASM 이라 서버리스에서도 동작한다. */
+async function heicBufferToJpeg(buf: Buffer): Promise<Buffer> {
+  const convert = (await import('heic-convert')).default;
+  const out = await convert({ buffer: buf, format: 'JPEG', quality: 0.9 });
+  return Buffer.from(out);
+}
 
 function extensionOf(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() ?? '';
@@ -91,9 +119,17 @@ async function ensureBucket(
  * 구 AlbumServiceImpl 과 같은 "UUID-원본명" 형식을 유지한다.
  */
 export async function saveUploadedFile(file: File): Promise<string> {
-  const original = path.basename(file.name).replace(/[\\/]/g, '');
-  const filename = `${randomUUID()}-${original}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let name = path.basename(file.name).replace(/[\\/]/g, '');
+  let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+
+  // 서버 최종 안전망: 클라이언트 변환을 거치지 않았거나(SmartEditor 등) 잘못 라벨된
+  // HEIC 가 그대로 올라오면 여기서 JPEG 로 바꿔 저장한다. (안 그러면 흰 화면이 된다)
+  if (isHeicBuffer(buffer)) {
+    buffer = await heicBufferToJpeg(buffer);
+    name = `${name.replace(/\.[^.]+$/, '') || 'image'}.jpg`;
+  }
+
+  const filename = `${randomUUID()}-${name}`;
 
   const client = await storageClient();
 
