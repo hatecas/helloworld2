@@ -124,9 +124,18 @@ export async function saveUploadedFile(file: File): Promise<string> {
 
   // 서버 최종 안전망: 클라이언트 변환을 거치지 않았거나(SmartEditor 등) 잘못 라벨된
   // HEIC 가 그대로 올라오면 여기서 JPEG 로 바꿔 저장한다. (안 그러면 흰 화면이 된다)
-  if (isHeicBuffer(buffer)) {
-    buffer = await heicBufferToJpeg(buffer);
-    name = `${name.replace(/\.[^.]+$/, '') || 'image'}.jpg`;
+  const heic = isHeicBuffer(buffer);
+  console.log(`[upload] 수신 · name="${name}" · size=${buffer.length}B · HEIC(바이트)=${heic}`);
+  if (heic) {
+    console.log('[upload] → 서버에서 HEIC→JPEG 변환 시작…');
+    try {
+      buffer = await heicBufferToJpeg(buffer);
+      name = `${name.replace(/\.[^.]+$/, '') || 'image'}.jpg`;
+      console.log(`[upload] → 변환 완료! → ${buffer.length}B · 저장명="${name}"`);
+    } catch (err) {
+      console.error('[upload] → 서버 HEIC 변환 실패:', err);
+      throw err;
+    }
   }
 
   const filename = `${randomUUID()}-${name}`;

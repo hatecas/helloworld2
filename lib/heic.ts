@@ -38,13 +38,33 @@ export async function isHeic(file: File): Promise<boolean> {
 
 /** HEIC/HEIF 이면 JPEG File 로 변환해 돌려주고, 그 외엔 원본을 그대로 돌려준다. */
 export async function toUploadableImage(file: File): Promise<File> {
-  if (!(await isHeic(file))) return file;
+  const heic = await isHeic(file);
+  console.log(
+    `[HEIC] 선택됨 · name="${file.name}" · type="${file.type || '(빈값)'}" · ` +
+      `size=${file.size}B · HEIC판정=${heic}`,
+  );
 
-  const heic2any = (await import('heic2any')).default;
-  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-  const blob = Array.isArray(converted) ? converted[0] : converted;
+  if (!heic) {
+    console.log('[HEIC] → HEIC 아님. 원본 그대로 업로드.');
+    return file;
+  }
 
-  // 원래 확장자(.png 로 잘못 붙었을 수 있음)를 떼고 .jpg 로 통일
-  const base = file.name.replace(/\.[^.]+$/, '') || 'image';
-  return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
+  console.log('[HEIC] → HEIC 감지! JPEG 로 변환 시작…');
+  try {
+    const heic2any = (await import('heic2any')).default;
+    const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+
+    // 원래 확장자(.png 로 잘못 붙었을 수 있음)를 떼고 .jpg 로 통일
+    const base = file.name.replace(/\.[^.]+$/, '') || 'image';
+    const out = new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
+    console.log(
+      `[HEIC] → 변환 완료! ${file.size}B(HEIC) → ${out.size}B(JPEG) · 새 파일명="${out.name}"`,
+    );
+    return out;
+  } catch (err) {
+    console.error('[HEIC] → 클라이언트 변환 실패(서버 안전망에 맡김):', err);
+    // 클라 변환이 실패해도 서버(saveUploadedFile)가 다시 변환하니 원본을 그대로 보낸다
+    return file;
+  }
 }
