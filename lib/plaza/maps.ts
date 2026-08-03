@@ -101,19 +101,12 @@ export interface PlazaMap {
   startY?: number;
   /** 이 높이 이상(y <= 이 값)에 서면 정상 */
   summitY?: number;
-  /**
-   * 이 시간보다 빠른 기록은 받지 않는다(ms).
-   *
-   * 기록은 브라우저가 재서 보내므로 마음먹으면 꾸밀 수 있다. 완전히 막을 방법은
-   * 서버가 등반을 따라 계산하는 것뿐이라 여기까지는 하지 않고, 대신 '물리적으로
-   * 불가능한 값' 만 걸러낸다. 발판을 하나도 건너뛸 수 없으므로 구간별 점프 체공
-   * 시간의 합이 하한이고, 그 값을 시뮬레이션으로 재서 넣었다.
-   */
+  /** 이 층만 오르는 데 걸리는 최소 시간(ms) — 구간별 점프 체공 시간의 합 */
   minClimbMs?: number;
   /** 기록 팻말 (여기서는 광장의 숲 입구 옆) */
   recordSign?: {
-    /** 어느 맵의 기록을 새길지 */
-    of: MapId;
+    /** 어느 기록을 새길지 (지금은 완주 기록 하나뿐 — RUN_KEY) */
+    of: string;
     title: string;
     /** 밑변 중심 */
     x: number;
@@ -122,6 +115,20 @@ export interface PlazaMap {
     w: number;
   };
 }
+
+/* ================================================================== */
+/* 완주 — 1층 시작부터 마지막 층 정상까지 한 번의 도전으로 본다            */
+/* ================================================================== */
+
+/** 도전이 시작되는 층 (여기 시작 발판을 떠나면 시계가 돌기 시작한다) */
+export const RUN_FIRST: MapId = 'forest';
+/** 도전이 끝나는 층 (여기 정상에 서면 완주 — 기록으로 남는 건 이것뿐) */
+export const RUN_LAST: MapId = 'forest2';
+/** 이 층들을 오르는 동안은 시계가 멈추지 않는다 (문을 지나도 이어진다) */
+export const RUN_MAPS: MapId[] = [RUN_FIRST, RUN_LAST];
+
+/** 기록 테이블에 쓰는 값. 층별 기록이 아니라 '완주' 기록 하나만 남긴다. */
+export const RUN_KEY = 'run';
 
 /* ================================================================== */
 /* 광장 — 위에서 내려다보는 구도 (예전 그대로)                           */
@@ -158,7 +165,7 @@ const PLAZA: PlazaMap = {
    * 숲 입구 문 바로 옆(오른쪽)에 기록 팻말을 세운다.
    * 문(519~601) 과 겹치지 않고, 벤치(74%, 아래쪽)·나무(90%)와도 떨어진 자리다.
    */
-  recordSign: { of: 'forest', title: '인내의 숲 기록', x: 690, y: PLAZA_PORTAL.y, w: 170 },
+  recordSign: { of: RUN_KEY, title: '인내의 숲 완주', x: 690, y: PLAZA_PORTAL.y, w: 170 },
 };
 
 /* ================================================================== */
@@ -490,6 +497,16 @@ export const MAPS: Record<MapId, PlazaMap> = { plaza: PLAZA, forest: FOREST, for
 export function mapOf(id: MapId | undefined): PlazaMap {
   return MAPS[id ?? 'plaza'] ?? PLAZA;
 }
+
+/**
+ * 완주 기록의 하한(ms).
+ *
+ * 기록은 브라우저가 재서 보내므로 마음먹으면 꾸밀 수 있다. 서버가 등반을 따라
+ * 계산하는 수준까지는 하지 않고, '물리적으로 불가능한 값' 만 걸러낸다.
+ * 발판을 하나도 건너뛸 수 없으니 두 층의 점프 체공 시간 합이 하한이다.
+ */
+export const RUN_MIN_MS =
+  (MAPS[RUN_FIRST].minClimbMs ?? 0) + (MAPS[RUN_LAST].minClimbMs ?? 0);
 
 /**
  * 지금 발밑에 닿을 발판을 찾는다.

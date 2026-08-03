@@ -31,6 +31,29 @@ export const DEFAULT_PROFILE_IMAGE = 'defaultProfile.png';
 /** NoticeController 가 하드코딩하고 있던 관리자 닉네임 */
 export const ADMIN_NICKNAMES = ['제인', '관리자'];
 
+/**
+ * 광장 공지를 띄울 수 있는 사람 — 닉네임이 아니라 '이름' 으로 정한다.
+ * (닉네임은 본인이 바꿀 수 있어서 기준으로 쓰기에 약하다)
+ */
+export const PLAZA_ADMIN_NAME = '이진우';
+
+/**
+ * 광장 관리자의 닉네임.
+ *
+ * 공지는 실시간 채널로 사람들끼리 직접 주고받으므로, 받는 쪽이 '관리자가 보낸 것인지'
+ * 를 스스로 확인할 수 있어야 한다. 그래서 이름으로 찾은 관리자의 닉네임을 모두에게
+ * 미리 알려 주고, 그 닉네임에서 온 공지만 띄운다.
+ */
+export async function getPlazaAdminNickname(): Promise<string | null> {
+  try {
+    const rows = await db().select('user', { userName: PLAZA_ADMIN_NAME });
+    return rows[0]?.userNickname ?? null;
+  } catch (error) {
+    console.error('[plazaAdmin]', error);
+    return null;
+  }
+}
+
 function desc<T>(rows: T[], key: (row: T) => string | number): T[] {
   return [...rows].sort((a, b) => {
     const x = key(a);

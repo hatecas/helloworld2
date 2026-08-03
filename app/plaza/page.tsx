@@ -6,10 +6,13 @@ import Footer from '@/components/index/Footer';
 import IndexHeader from '@/components/index/IndexHeader';
 import PlazaClient from '@/components/plaza/PlazaClient';
 import { getSessionUser } from '@/lib/session';
+import { RUN_KEY } from '@/lib/plaza/maps';
 import {
   DEFAULT_MINIMI_PATH,
+  PLAZA_ADMIN_NAME,
   getForestRecords,
   getMyDotori,
+  getPlazaAdminNickname,
   selectUserMinimi,
 } from '@/lib/db/repo';
 
@@ -27,11 +30,11 @@ export default async function PlazaPage() {
   if (!user) redirect('/?msg=' + encodeURIComponent('광장은 로그인 후 이용할 수 있어요.'));
 
   // 기록은 서버에서 미리 실어 보낸다 — 팻말이 빈 채로 잠깐 보이지 않게
-  const [dotori, minimi, forest, forest2] = await Promise.all([
+  const [dotori, minimi, run, adminNickname] = await Promise.all([
     getMyDotori(user.userNickname),
     selectUserMinimi(user.userNickname),
-    getForestRecords('forest'),
-    getForestRecords('forest2'),
+    getForestRecords(RUN_KEY),
+    getPlazaAdminNickname(),
   ]);
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -48,7 +51,14 @@ export default async function PlazaPage() {
           minimi={minimi ?? DEFAULT_MINIMI_PATH}
           supabaseUrl={supabaseUrl}
           supabaseAnonKey={supabaseAnonKey}
-          records={{ forest, forest2 }}
+          records={{ [RUN_KEY]: run }}
+          /*
+           * 공지는 관리자('이진우' 이름을 가진 계정)만 띄운다.
+           * 보내는 쪽은 isAdmin 으로 입력칸을 내주고, 받는 쪽은 adminNickname 과
+           * 맞는 공지만 띄운다 — 실시간 채널은 서버를 거치지 않기 때문이다.
+           */
+          isAdmin={user.userName === PLAZA_ADMIN_NAME}
+          adminNickname={adminNickname ?? ''}
         />
       </div>
       <div className="bottom-fix" />

@@ -8,6 +8,7 @@ import {
   type ClaimMsg,
   type EmoteMsg,
   type HelloMsg,
+  type NoticeMsg,
   type PosMsg,
   type SummitMsg,
 } from './protocol';
@@ -20,14 +21,21 @@ import {
  */
 
 export interface PlazaHandlers {
-  /** presence 로 파악한 현재 접속자 id 집합이 바뀔 때 */
-  onRoster: (ids: Set<string>) => void;
+  /**
+   * presence 로 파악한 현재 접속자가 바뀔 때 — id → 닉네임.
+   *
+   * 닉네임까지 주는 이유: 나간 사람을 알릴 때 쓴다. 좌표를 한 번도 보내지 않고
+   * 바로 나간 사람은 화면이 닉네임을 모르는데, presence 에는 처음부터 실려 있다.
+   */
+  onRoster: (roster: Map<string, string>) => void;
   onPos: (msg: PosMsg) => void;
   onChat: (msg: ChatMsg) => void;
   /** 누군가 특수 동작을 했다 */
   onEmote: (msg: EmoteMsg) => void;
   /** 누군가 인내의 숲 정상에 올랐다 (기록을 같이 보며 경쟁하는 맛) */
   onSummit: (msg: SummitMsg) => void;
+  /** 관리자 공지 — 보낸 사람이 정말 관리자인지는 화면에서 확인한다 */
+  onNotice: (msg: NoticeMsg) => void;
   /** 새로 들어온 사람이 인사하면 — 내 좌표를 한 번 쏴 주라는 신호 */
   onHello: (msg: HelloMsg) => void;
   /** 같은 닉네임이 다른 곳에서 접속했다 — 이 창은 물러나야 한다 */
@@ -44,6 +52,7 @@ export interface PlazaConnection {
   sendHello: (msg: HelloMsg) => void;
   sendClaim: (msg: ClaimMsg) => void;
   sendSummit: (msg: SummitMsg) => void;
+  sendNotice: (msg: NoticeMsg) => void;
   leave: () => void;
 }
 
@@ -64,6 +73,7 @@ export async function joinPlaza(
     sendHello: () => {},
     sendClaim: () => {},
     sendSummit: () => {},
+    sendNotice: () => {},
     leave: () => {},
   };
 
@@ -96,8 +106,12 @@ export async function joinPlaza(
   });
 
   const pushRoster = () => {
-    const state = channel.presenceState();
-    handlers.onRoster(new Set(Object.keys(state)));
+    const state = channel.presenceState<{ nickname?: string }>();
+    const roster = new Map<string, string>();
+    for (const [id, entries] of Object.entries(state)) {
+      roster.set(id, entries[0]?.nickname ?? '');
+    }
+    handlers.onRoster(roster);
   };
 
   channel
@@ -109,7 +123,8 @@ export async function joinPlaza(
     .on('broadcast', { event: 'emote' }, ({ payload }) => handlers.onEmote(payload as EmoteMsg))
     .on('broadcast', { event: 'hello' }, ({ payload }) => handlers.onHello(payload as HelloMsg))
     .on('broadcast', { event: 'claim' }, ({ payload }) => handlers.onClaim(payload as ClaimMsg))
-    .on('broadcast', { event: 'summit' }, ({ payload }) => handlers.onSummit(payload as SummitMsg));
+    .on('broadcast', { event: 'summit' }, ({ payload }) => handlers.onSummit(payload as SummitMsg))
+    .on('broadcast', { event: 'notice' }, ({ payload }) => handlers.onNotice(payload as NoticeMsg));
 
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
@@ -131,6 +146,7 @@ export async function joinPlaza(
     sendHello: (msg) => send('hello', msg),
     sendClaim: (msg) => send('claim', msg),
     sendSummit: (msg) => send('summit', msg),
+    sendNotice: (msg) => send('notice', msg),
     leave: () => {
       void channel.unsubscribe();
       void client.removeAllChannels();

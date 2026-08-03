@@ -642,6 +642,13 @@
 	margin-right: 5px;
 }
 
+/* 사람이 한 말이 아닌 알림 (누가 나갔다 등) — 눈에 덜 걸리게 */
+.pz-log-line.is-system .pz-log-body {
+	color: var(--hw-muted);
+	font-size: 12px;
+	font-style: italic;
+}
+
 .pz-log-line.is-mine b {
 	color: var(--hw-accent-strong);
 }
@@ -1010,6 +1017,172 @@
 	50%      { transform: translate(-50%, -5px); }
 }
 
+/* ==================================================================
+   관리자 공지 — 화면 위쪽에 크게 5초
+
+   무대 폭에 비례해 커지도록 vw 가 아니라 cqw(무대 폭의 %)로 잡는다.
+   무대는 1000:500 비율로 줄어들기 때문에, 화면이 작아지면 글자도 같이 작아져야
+   칸을 넘지 않는다.
+   ================================================================== */
+
+.pz-stage {
+	container-type: inline-size;
+}
+
+.pz-notice {
+	position: absolute;
+	left: 3%;
+	right: 3%;
+	top: 6%;
+	z-index: 40;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6em;
+	padding: 3.2% 4%;
+	text-align: center;
+	color: #fff8e6;
+	background: linear-gradient(180deg, rgba(24, 16, 6, 0.9), rgba(48, 28, 6, 0.9));
+	border: 2px solid rgba(255, 214, 122, 0.85);
+	border-radius: 14px;
+	box-shadow:
+		0 0 0 3px rgba(0, 0, 0, 0.25),
+		0 14px 40px rgba(0, 0, 0, 0.45);
+	animation: pz-notice-in 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
+	pointer-events: none;
+}
+
+.pz-notice-label {
+	padding: 0.15em 0.9em;
+	font-size: 2.2cqw;
+	font-weight: 700;
+	letter-spacing: 0.25em;
+	color: #2b1a06;
+	background: #ffd67a;
+	border-radius: 999px;
+}
+
+/* '존나 크게' — 무대 폭의 6% (1000px 무대에서 60px) */
+.pz-notice-text {
+	font-size: 6cqw;
+	font-weight: 800;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+	text-shadow:
+		0 2px 0 rgba(0, 0, 0, 0.55),
+		0 0 18px rgba(255, 190, 90, 0.5);
+}
+
+@keyframes pz-notice-in {
+	from { opacity: 0; transform: translateY(-14px) scale(0.94); }
+	to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- 관리자 공지 입력칸 (채팅칸 아래) ---- */
+
+.pz-notice-bar {
+	border-top: 1px dashed rgba(240, 138, 36, 0.5);
+	background: #fff8ef;
+}
+
+.pz-notice-tag {
+	flex: none;
+	padding: 4px 10px;
+	font-size: 12px;
+	font-weight: 700;
+	color: #ffffff;
+	background: var(--hw-accent);
+	border-radius: 999px;
+}
+
+.pz-notice-send {
+	background: #8a5a12;
+}
+
+/* ==================================================================
+   미니맵 — 우측 상단
+
+   세로로 긴 맵에서는 화면에 한 층 남짓만 보여서, 같이 오르는 사람이 위에 있는지
+   아래에 있는지 알 수가 없다. 발판 · 문 · 사람 · 지금 보고 있는 범위를 한 칸에 담는다.
+   높이는 맵 비율(aspect-ratio)을 JS 가 넣으므로 1층/2층 길이 차이가 그대로 보인다.
+   ================================================================== */
+
+.pz-minimap {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 25;
+	width: 8%;
+	min-width: 52px;
+	max-width: 84px;
+	border: 1px solid rgba(220, 240, 255, 0.35);
+	border-radius: 4px;
+	background: rgba(10, 22, 30, 0.62);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	pointer-events: none;
+	overflow: hidden;
+}
+
+.pz-mini-plat {
+	position: absolute;
+	height: 2px;
+	min-height: 1px;
+	border-radius: 1px;
+	background: rgba(140, 200, 155, 0.75);
+}
+
+/* 정상 발판은 눈에 띄게 (얼마나 남았는지 바로 보이게) */
+.pz-mini-plat.is-summit {
+	background: #ffd98a;
+}
+
+.pz-mini-portal {
+	position: absolute;
+	width: 4px;
+	height: 4px;
+	margin: -2px 0 0 -2px;
+	border-radius: 50%;
+	background: #7fd4ff;
+}
+
+/* 지금 화면에 보이는 범위 */
+.pz-mini-view {
+	position: absolute;
+	left: 0;
+	width: 100%;
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	background: rgba(255, 255, 255, 0.09);
+	box-sizing: border-box;
+}
+
+.pz-mini-dot {
+	position: absolute;
+	width: 5px;
+	height: 5px;
+	/* (x, y) 는 발 위치라 점의 가운데를 거기에 맞춘다 */
+	margin: -3px 0 0 -2.5px;
+	border-radius: 50%;
+	background: #ffffff;
+	box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+
+.pz-mini-dot.is-me {
+	width: 7px;
+	height: 7px;
+	margin: -4px 0 0 -3.5px;
+	background: var(--hw-accent);
+	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 720px) {
+	.pz-minimap {
+		min-width: 40px;
+		max-width: 56px;
+		top: 6px;
+		right: 6px;
+	}
+}
+
 /* ---- 화면에 붙는 안내 (카메라와 함께 움직이지 않는다) ---- */
 
 .pz-hint {
@@ -1054,6 +1227,18 @@
 .pz-summit.is-mine {
 	background: var(--hw-accent-strong);
 	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+/* 완주(2층 정상)는 층 통과보다 크게 알린다 */
+.pz-summit.is-done {
+	font-size: 14px;
+	background: rgba(94, 58, 12, 0.9);
+	box-shadow: 0 0 0 2px rgba(255, 217, 138, 0.7), 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.pz-summit.is-done.is-mine {
+	background: linear-gradient(100deg, #d98a1f, #f0b03c);
+	box-shadow: 0 0 0 2px #fff2c9, 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .pz-summit-icon {

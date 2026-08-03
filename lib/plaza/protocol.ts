@@ -124,16 +124,23 @@ export interface PosMsg {
 }
 
 /**
- * broadcast 'summit' — 인내의 숲 정상 도착.
+ * broadcast 'summit' — 정상 도착.
  *
- * 같은 숲에 있는 사람들끼리 기록을 보며 경쟁하는 게 이 맵의 재미라서,
+ * 같은 맵에 있는 사람들끼리 기록을 보며 경쟁하는 게 이 맵의 재미라서,
  * 도착하면 걸린 시간을 같이 알린다.
  */
 export interface SummitMsg {
   id: string;
   nickname: string;
-  /** 시작 발판을 떠난 뒤 정상까지 걸린 시간(ms) */
+  /** 1층 시작 발판을 떠난 뒤 여기까지 걸린 시간(ms) */
   ms: number;
+  /**
+   * 어느 맵의 정상인지. 이걸 안 실어 보내서 2층 정상에 올라도 2층 사람들에게는
+   * 안 뜨고 1층 사람에게만 뜨는 버그가 있었다. 없으면(예전 버전) 1층으로 본다.
+   */
+  map?: MapId;
+  /** 마지막 층까지 끝낸 '완주' 인지 (기록으로 남는 건 이것뿐) */
+  done?: boolean;
 }
 
 /** broadcast 'chat' — 채팅 한 줄 */
@@ -169,6 +176,34 @@ export interface HelloMsg {
 export interface ClaimMsg {
   id: string;
   nickname: string;
+}
+
+/**
+ * broadcast 'notice' — 관리자가 띄우는 광장 공지.
+ *
+ * 받는 쪽이 '정말 관리자가 보낸 것' 인지 스스로 확인해야 하므로 보낸 사람 닉네임을 같이 싣는다.
+ * (실시간 채널은 서버를 거치지 않아서 아무나 이 신호를 보낼 수 있다. 화면은 미리 받아 둔
+ *  관리자 닉네임과 맞는 것만 띄운다)
+ */
+export interface NoticeMsg {
+  from: string;
+  text: string;
+}
+
+/** 공지가 화면에 떠 있는 시간(ms) */
+export const NOTICE_MS = 5000;
+
+/** 공지 한 줄 최대 길이 (크게 띄우므로 채팅보다 짧게) */
+export const NOTICE_MAX = 60;
+
+/** 공지 입력 정리 — 채팅과 같은 규칙에 길이만 다르다 */
+export function cleanNotice(raw: string): string {
+  let out = '';
+  for (const ch of raw) {
+    const code = ch.charCodeAt(0);
+    out += code < 32 || code === 127 ? ' ' : ch;
+  }
+  return out.trim().slice(0, NOTICE_MAX);
 }
 
 /** 같은 브라우저의 다른 탭끼리 즉시 주고받는 통로 (네트워크를 타지 않는다) */

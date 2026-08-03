@@ -15,7 +15,10 @@ import {
   MINIMI_W,
   POS_INTERVAL,
   MINIMI_H,
+  NOTICE_MAX,
+  NOTICE_MS,
   cleanChat,
+  cleanNotice,
   clamp,
   depthScale,
   TAB_CHANNEL,
@@ -30,6 +33,10 @@ import {
   KNOCK_MS,
   KNOCK_VX,
   KNOCK_VY,
+  RUN_FIRST,
+  RUN_KEY,
+  RUN_LAST,
+  RUN_MAPS,
   cameraY,
   gravityFor,
   hazardHit,
@@ -84,6 +91,8 @@ interface Actor {
   el: HTMLDivElement | null;
   imgEl: HTMLImageElement | null;
   bubbleEl: HTMLDivElement | null;
+  /** 미니맵 위의 점 */
+  dotEl: HTMLElement | null;
 }
 
 interface Bubble {
@@ -99,6 +108,8 @@ interface LogLine {
   mine: boolean;
   /** 발송 시각(epoch ms) — 오른쪽 시간 표기와 2시간 경과 삭제에 쓴다 */
   ts: number;
+  /** 사람이 한 말이 아니라 알림(누가 나갔다 등) */
+  system?: boolean;
 }
 
 const KEY_LEFT = new Set(['ArrowLeft', 'a', 'A', 'ㅁ']);
@@ -120,6 +131,25 @@ function climbLabel(ms: number): string {
   return `${(ms / 1000).toFixed(2)}초`;
 }
 
+/**
+ * 지금 보여 줄 미니미 그림.
+ *
+ * 엎드리면 '납작하게 엎드린' 그림(도트 미니미의 Sleep)을, 없으면 평소 그림을 쓴다.
+ * 화면(JSX)과 매 프레임 도는 루프가 '같은 함수' 로 정해야 한다 —
+ * 예전에는 루프가 img.src 를 직접 갈아 끼웠는데, 리렌더가 한 번 일어나면 React 가
+ * 서 있는 그림으로 되돌려 놓고 루프의 중복 방지 검사는 이미 바꿨다고 여겨서
+ * 엎드린 채로 그림만 일어서 있었다.
+ */
+function spriteOf(a: { minimi: string; emote: string | null; crouch: boolean }): string {
+  const prone = a.crouch ? emoteSrc(a.minimi, 'sleep') : null;
+  return prone || (a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi;
+}
+
+/** 엎드린 그림이 없는 미니미는 세로로 눌러서 표현한다 */
+function squashOf(a: { minimi: string; crouch: boolean }): number {
+  return a.crouch && !emoteSrc(a.minimi, 'sleep') ? CROUCH_SQUASH : 1;
+}
+
 type RecordRow = { nickname: string; ms: number };
 
 export default function PlazaClient({
@@ -128,6 +158,8 @@ export default function PlazaClient({
   supabaseUrl,
   supabaseAnonKey,
   records: initialRecords,
+  isAdmin,
+  adminNickname,
 }: {
   nickname: string;
   minimi: string;
@@ -135,6 +167,10 @@ export default function PlazaClient({
   supabaseAnonKey: string;
   /** 팻말에 새길 상위 기록 — 서버에서 미리 실어 온다 */
   records: Record<string, RecordRow[]>;
+  /** 내가 공지를 띄울 수 있는 사람인지 */
+  isAdmin: boolean;
+  /** 관리자의 닉네임 — 이 사람이 보낸 공지만 띄운다 */
+  adminNickname: string;
 }) {
   const [myId] = useState(() => `${nickname}#${Math.random().toString(36).slice(2, 8)}`);
   /** 내 미니미가 할 수 있는 특수 동작. 없는 미니미면 빈 배열이라 안내도 안 뜬다. */
@@ -148,6 +184,8 @@ export default function PlazaClient({
   const worldRef = useRef<HTMLDivElement>(null);
   /** 움직이는 방해물 그림들 — 매 프레임 자리를 옮기므로 ref 로 들고 있는다 */
   const hazardElsRef = useRef<Array<HTMLImageElement | null>>([]);
+  /** 미니맵에서 '지금 화면에 보이는 범위' 를 나타내는 칸 */
+  const miniViewRef = useRef<HTMLDivElement>(null);
   const typingRef = useRef(false);
   const soundRef = useRef(true);
 
@@ -163,13 +201,34 @@ export default function PlazaClient({
   const nearPortalRef = useRef<Portal | null>(null);
 
   /* ---- 인내의 숲 등반 ---- */
-  /** 시작 발판을 떠난 시각 (아직 안 떠났으면 null) */
-  const climbStartRef = useRef<number | null>(null);
-  /** 이번 등반에서 정상 도착을 이미 알렸는지 */
+  /**
+   * 한 번의 도전이 시작된 시각 (아직 안 떠났으면 null).
+   *
+   * 1층 시작 발판을 떠날 때 돌기 시작해서 **문을 지나 2층으로 넘어가도 멈추지 않는다.**
+   * 기록은 '1층 시작부터 2층 정상까지' 한 번에 오른 시간이다.
+   * 1층 시작 발판으로 돌아오거나 광장으로 나가면 처음부터 다시 잰다.
+   */
+  const runStartRef = useRef<number | null>(null);
+  /** 지금 층의 정상 도착을 이미 알렸는지 */
   const summitDoneRef = useRef(false);
-  const [summit, setSummit] = useState<{ nickname: string; ms: number; mine: boolean } | null>(null);
+  const [summit, setSummit] = useState<{
+    nickname: string;
+    ms: number;
+    mine: boolean;
+    done: boolean;
+  } | null>(null);
   /** 광장 팻말에 새길 상위 기록 (맵별) */
   const [records, setRecords] = useState<Record<string, RecordRow[]>>(initialRecords);
+
+  /** 관리자 공지 — 화면 위쪽에 크게 잠깐 뜬다 */
+  const [notice, setNotice] = useState<string | null>(null);
+  const [noticeDraft, setNoticeDraft] = useState('');
+  /**
+   * 지금 접속해 있는 사람 (id → 닉네임).
+   * '나갔습니다' 를 띄우려면 이전 명단과 비교해야 한다 — 명단에 한 번도 없던 id 가
+   * 없다고 해서 나간 게 아니기 때문이다(좌표만 먼저 도착한 사람일 수 있다).
+   */
+  const rosterRef = useRef<Map<string, string>>(new Map());
 
   const [ids, setIds] = useState<string[]>([myId]);
   const [, setRev] = useState(0);
@@ -219,6 +278,7 @@ export default function PlazaClient({
       el: null,
       imgEl: null,
       bubbleEl: null,
+      dotEl: null,
     });
     setIds([myId]);
   }, [myId, nickname, minimi]);
@@ -314,7 +374,11 @@ export default function PlazaClient({
         found.ty = msg.y;
         found.tjump = msg.jump ?? 0;
         found.facing = msg.facing;
-        found.crouch = Boolean(msg.crouch);
+        const crouch = Boolean(msg.crouch);
+        if (crouch !== found.crouch) {
+          found.crouch = crouch;
+          setRev((r) => r + 1); // 엎드린 그림으로 갈아야 한다
+        }
         if (moved) {
           found.x = msg.x;
           found.y = msg.y;
@@ -351,12 +415,30 @@ export default function PlazaClient({
           el: null,
           imgEl: null,
           bubbleEl: null,
+          dotEl: null,
         });
         syncIds();
       }
     },
     [myId, syncIds],
   );
+
+  /** 채팅 로그에 알림 한 줄 (사람이 한 말과 구별해서 보여 준다) */
+  const pushSystem = useCallback((text: string) => {
+    setLog((prev) =>
+      [
+        ...prev,
+        {
+          msgId: `sys-${text}-${Date.now()}`,
+          nickname: '',
+          text,
+          mine: false,
+          ts: Date.now(),
+          system: true,
+        },
+      ].slice(-CHAT_LOG_MAX),
+    );
+  }, []);
 
   const pushChat = useCallback((msg: ChatMsg, mine: boolean) => {
     setBubbles((prev) => [
@@ -458,8 +540,11 @@ export default function PlazaClient({
       nearPortalRef.current = null;
       setNearPortal(null);
 
-      // 등반 기록은 맵을 드나들면 처음부터
-      climbStartRef.current = null;
+      /*
+       * 도전 시계는 층을 넘어갈 때(1층 정상 → 2층)는 그대로 이어 간다 — 기록이
+       * '1층 시작부터 2층 정상까지' 이기 때문이다. 광장으로 나가면 처음부터 다시.
+       */
+      if (!RUN_MAPS.includes(to)) runStartRef.current = null;
       // 정상으로 되돌아 들어온 경우(깊은 곳 → 1층)는 도착 알림이 다시 뜨지 않게 한다
       summitDoneRef.current = dest.summitY != null && at.y <= dest.summitY;
       setSummit(null);
@@ -483,13 +568,24 @@ export default function PlazaClient({
       .catch(() => undefined);
   }, []);
 
-  /** 정상 도착 알림 (내 것이든 남의 것이든 같은 자리에 띄운다) */
-  const showSummit = useCallback((nickname: string, ms: number, mine: boolean) => {
-    setSummit({ nickname, ms, mine });
+  /** 공지를 화면 위쪽에 크게 잠깐 띄운다 */
+  const showNotice = useCallback((text: string) => {
+    setNotice(text);
     window.setTimeout(() => {
-      setSummit((cur) => (cur && cur.nickname === nickname && cur.ms === ms ? null : cur));
-    }, SUMMIT_MS);
+      setNotice((cur) => (cur === text ? null : cur));
+    }, NOTICE_MS);
   }, []);
+
+  /** 정상 도착 알림 (내 것이든 남의 것이든 같은 자리에 띄운다) */
+  const showSummit = useCallback(
+    (who: string, ms: number, mine: boolean, done: boolean) => {
+      setSummit({ nickname: who, ms, mine, done });
+      window.setTimeout(() => {
+        setSummit((cur) => (cur && cur.nickname === who && cur.ms === ms ? null : cur));
+      }, SUMMIT_MS);
+    },
+    [],
+  );
 
   useEffect(() => {
     let live = true;
@@ -509,10 +605,16 @@ export default function PlazaClient({
         // 같은 숲에 있는 사람의 기록만 띄운다 (광장에 있는데 남의 등반 기록이 뜨면 뜬금없다)
         onSummit: (msg: SummitMsg) => {
           if (!live || msg.id === myId) return;
-          // 남이 올랐으면 팻말도 바뀌었을 수 있다 (어느 맵에 있든 다시 읽는다)
-          loadRecords();
-          if (mapRef.current !== 'forest') return;
-          showSummit(msg.nickname, msg.ms, false);
+          // 완주면 팻말이 바뀌었을 수 있다 (어느 맵에 있든 다시 읽는다)
+          if (msg.done) loadRecords();
+          // 알림은 '그 정상이 있는 맵' 에 있는 사람들에게만 띄운다
+          if (mapRef.current !== (msg.map ?? 'forest')) return;
+          showSummit(msg.nickname, msg.ms, false, Boolean(msg.done));
+        },
+        // 공지는 관리자 닉네임에서 온 것만 띄운다 (실시간 채널은 서버를 거치지 않는다)
+        onNotice: (msg) => {
+          if (!live || !adminNickname || msg.from !== adminNickname) return;
+          showNotice(msg.text);
         },
         onHello: () => live && sendMyPos(false),
         // 다른 기기/브라우저에서 같은 계정이 들어왔다
@@ -521,6 +623,20 @@ export default function PlazaClient({
         },
         onRoster: (roster) => {
           if (!live) return;
+
+          /*
+           * 나간 사람 알리기.
+           * '명단에 있었는데 이제 없는' id 만 나간 것으로 본다. 지금 명단에 없다는
+           * 이유만으로 판단하면, 좌표가 먼저 도착하고 presence 가 아직 안 붙은
+           * 사람까지 나갔다고 뜬다.
+           */
+          for (const [id, who] of rosterRef.current) {
+            if (id === myId || roster.has(id)) continue;
+            const name = who || actorsRef.current.get(id)?.nickname;
+            if (name) pushSystem(`${name}님이 서버를 나갔습니다`);
+          }
+          rosterRef.current = roster;
+
           let changed = false;
           for (const id of [...actorsRef.current.keys()]) {
             if (id !== myId && !roster.has(id)) {
@@ -529,7 +645,9 @@ export default function PlazaClient({
             }
           }
           if (changed) syncIds();
-          const missing = [...roster].some((id) => id !== myId && !actorsRef.current.has(id));
+          const missing = [...roster.keys()].some(
+            (id) => id !== myId && !actorsRef.current.has(id),
+          );
           if (missing) connRef.current?.sendHello({ id: myId });
         },
       },
@@ -627,14 +745,15 @@ export default function PlazaClient({
               me.dropFrom = null;
             }
             me.grounded = false;
-            // 시작 발판을 처음 떠나는 순간부터 등반 시간을 센다
+            // 1층 시작 발판을 처음 떠나는 순간부터 도전 시간을 센다
             if (
+              here.id === RUN_FIRST &&
               here.startY != null &&
               me.y >= here.startY &&
-              climbStartRef.current === null &&
+              runStartRef.current === null &&
               !holdingDown
             ) {
-              climbStartRef.current = performance.now();
+              runStartRef.current = performance.now();
             }
           }
         } else if (me.jump === 0) {
@@ -735,7 +854,12 @@ export default function PlazaClient({
            * 몸통이 낮아져 머리 위로 지나가는 방해물을 피할 수 있고, 대신 걸을 수 없다.
            * (그 자리에서 기다릴지, 일어나 뛸지를 고르게 된다)
            */
-          me.crouch = dy > 0 && me.grounded && !stunned;
+          const wantCrouch = dy > 0 && me.grounded && !stunned;
+          if (wantCrouch !== me.crouch) {
+            me.crouch = wantCrouch;
+            // 그림이 바뀌어야 하므로 다시 그린다 (자주 있는 일이 아니라 부담 없다)
+            setRev((r) => r + 1);
+          }
 
           const moving = !stunned && !me.crouch && dx !== 0;
           if (moving) {
@@ -771,26 +895,35 @@ export default function PlazaClient({
               me.dropFrom = null;
 
               if (map.startY != null && land.y >= map.startY) {
-                // 시작 발판으로 돌아왔다 — 기록을 다시 잰다
-                climbStartRef.current = null;
+                // 시작 발판으로 돌아왔다 — 1층이면 도전을 처음부터 다시 잰다
+                if (map.id === RUN_FIRST) runStartRef.current = null;
                 summitDoneRef.current = false;
               } else if (map.summitY != null && land.y <= map.summitY && !summitDoneRef.current) {
                 summitDoneRef.current = true;
-                const ms = Math.max(0, now - (climbStartRef.current ?? now));
-                showSummit(nickname, ms, true);
-                connRef.current?.sendSummit({ id: myId, nickname, ms });
+                const ms = Math.max(0, now - (runStartRef.current ?? now));
+                // 마지막 층 정상이면 '완주' — 기록으로 남는 건 이것뿐이다
+                const done = map.id === RUN_LAST;
 
-                // 팻말에 새길 기록으로 남긴다 (개인 최고 기록만 갱신된다)
-                void fetch('/api/plaza/records', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ map: map.id, ms: Math.round(ms) }),
-                })
-                  .then((res) => res.json())
-                  .then((json: { ok?: boolean; top?: Array<{ nickname: string; ms: number }> }) => {
-                    if (json.ok && json.top) setRecords((prev) => ({ ...prev, [map.id]: json.top! }));
+                showSummit(nickname, ms, true, done);
+                connRef.current?.sendSummit({ id: myId, nickname, ms, map: map.id, done });
+
+                if (done) {
+                  // 팻말에 새길 기록으로 남긴다 (개인 최고 기록만 갱신된다)
+                  void fetch('/api/plaza/records', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ms: Math.round(ms) }),
                   })
-                  .catch(() => undefined);
+                    .then((res) => res.json())
+                    .then(
+                      (json: { ok?: boolean; top?: Array<{ nickname: string; ms: number }> }) => {
+                        if (json.ok && json.top) {
+                          setRecords((prev) => ({ ...prev, [RUN_KEY]: json.top! }));
+                        }
+                      },
+                    )
+                    .catch(() => undefined);
+                }
               }
             }
           }
@@ -814,7 +947,12 @@ export default function PlazaClient({
             }
           }
 
-          // 발판을 다 놓쳐 맵 밖으로 떨어지면 시작 지점으로
+          /*
+           * 발판을 다 놓쳐 맵 밖으로 떨어지면 그 층 시작 지점으로.
+           * 도전 시계는 세우지 않는다 — 떨어지는 것도 걸린 시간에 들어가야
+           * '한 번에 얼마나 빨리 올랐나' 가 기록이 된다. (1층 시작 발판에 닿으면
+           * 위쪽 착지 처리에서 처음부터 다시 잰다)
+           */
           if (me.y > map.h) {
             const restart = map.spawn(myId);
             me.x = restart.x;
@@ -822,7 +960,6 @@ export default function PlazaClient({
             me.vy = 0;
             me.vx = 0;
             me.dropFrom = null;
-            climbStartRef.current = null;
             summitDoneRef.current = false;
           }
 
@@ -862,6 +999,12 @@ export default function PlazaClient({
         worldRef.current.style.transform = `translateY(${-(camRef.current / map.h) * 100}%)`;
       }
 
+      // 미니맵에서 '지금 보고 있는 범위'
+      if (miniViewRef.current) {
+        miniViewRef.current.style.top = `${(camRef.current / map.h) * 100}%`;
+        miniViewRef.current.style.height = `${(map.viewH / map.h) * 100}%`;
+      }
+
       // 방해물 자리 — 벽시계의 함수라 서로 맞추는 통신 없이도 모두 같은 자리에 본다
       if (map.hazards.length > 0) {
         const at = Date.now();
@@ -899,14 +1042,9 @@ export default function PlazaClient({
           if (a.id === myId) a.el.classList.toggle('is-hurt', now < a.stunUntil);
         }
 
-        /*
-         * 엎드린 모습.
-         * 도트 미니미는 '납작하게 엎드린' 그림(Sleep)이 이미 있으니 그걸 쓰고,
-         * 없는 미니미(메이플 몹들)는 세로로 눌러서 엎드린 것처럼 보이게 한다.
-         */
-        const proneSrc = a.crouch ? emoteSrc(a.minimi, 'sleep') : null;
-        const src = proneSrc || (a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi;
-        const squash = a.crouch && !proneSrc ? CROUCH_SQUASH : 1;
+        // 그림은 JSX 가 정한다 (여기서 src 를 직접 건드리면 리렌더와 싸운다)
+        const src = spriteOf(a);
+        const squash = squashOf(a);
 
         if (a.imgEl) {
           /*
@@ -919,11 +1057,6 @@ export default function PlazaClient({
           if (a.imgEl.dataset.fit !== fitKey) {
             applyMinimiFit(a.imgEl, src, squash);
             a.imgEl.dataset.fit = fitKey;
-          }
-          // 엎드리기로 그림이 바뀌는 건 JSX 가 모르므로(리렌더 없이 매 프레임 바뀐다) 여기서 갈아 준다
-          if (a.imgEl.dataset.shown !== src) {
-            a.imgEl.src = src;
-            a.imgEl.dataset.shown = src;
           }
           // 좌우 반전 + 가로 치우침 보정 (원본은 '왼쪽' 을 보고 있다)
           const t = minimiTransform(src, a.facing, squash);
@@ -950,6 +1083,12 @@ export default function PlazaClient({
           const headroom = feetPx - spritePx - jumpPx;
           a.el.classList.toggle('is-bubble-below', headroom < bh + 24);
         }
+
+        // 미니맵 위의 점 (누가 어디까지 올라갔는지)
+        if (a.dotEl) {
+          a.dotEl.style.left = `${(a.x / map.w) * 100}%`;
+          a.dotEl.style.top = `${(a.y / map.h) * 100}%`;
+        }
       }
 
       raf = requestAnimationFrame(frame);
@@ -975,6 +1114,16 @@ export default function PlazaClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     }).catch(() => undefined);
+  };
+
+  /** 관리자 공지 보내기 — 내 화면에도 바로 띄운다(보낸 건 되돌려받지 않는다) */
+  const sendNotice = () => {
+    if (!isAdmin || kickedRef.current) return;
+    const text = cleanNotice(noticeDraft);
+    if (!text) return;
+    connRef.current?.sendNotice({ from: nickname, text });
+    showNotice(text);
+    setNoticeDraft('');
   };
 
   const toggleSound = () => {
@@ -1279,7 +1428,7 @@ export default function PlazaClient({
                   <span className="pz-name">{a.nickname}</span>
                   <img
                     className="pz-minimi"
-                    src={(a.emote && emoteSrc(a.minimi, a.emote)) || a.minimi}
+                    src={spriteOf(a)}
                     alt=""
                     draggable={false}
                     ref={(el) => {
@@ -1304,6 +1453,62 @@ export default function PlazaClient({
           {/* 비네트·안내는 카메라와 함께 움직이면 안 되므로 카메라 칸 밖에 둔다 */}
           <div className="pz-vignette" />
 
+          {/* 관리자 공지 — 화면 위쪽에 크게 5초 */}
+          {notice && (
+            <div className="pz-notice" role="status">
+              <span className="pz-notice-label">공지</span>
+              <span className="pz-notice-text">{notice}</span>
+            </div>
+          )}
+
+          {/*
+            미니맵 — 세로로 긴 맵에서는 화면에 한 층 남짓만 보여서
+            같이 오르는 사람이 위에 있는지 아래에 있는지 알 수가 없다.
+            발판은 고정이라 여기서 한 번 그리고, 사람 점과 보고 있는 범위는 루프가 옮긴다.
+          */}
+          {inForest && (
+            <div className="pz-minimap" style={{ aspectRatio: `${map.w} / ${map.h}` }}>
+              {map.platforms.map((p) => (
+                <span
+                  key={`${p.x}-${p.y}`}
+                  className={
+                    map.summitY != null && p.y <= map.summitY
+                      ? 'pz-mini-plat is-summit'
+                      : 'pz-mini-plat'
+                  }
+                  style={{
+                    left: `${((p.x - p.w / 2) / map.w) * 100}%`,
+                    top: `${(p.y / map.h) * 100}%`,
+                    width: `${(p.w / map.w) * 100}%`,
+                  }}
+                />
+              ))}
+              {map.portals.map((p) => (
+                <span
+                  key={`${p.to}-${p.x}`}
+                  className="pz-mini-portal"
+                  style={{ left: `${(p.x / map.w) * 100}%`, top: `${(p.y / map.h) * 100}%` }}
+                />
+              ))}
+              <div className="pz-mini-view" ref={miniViewRef} />
+              {ids.map((id) => {
+                const a = actorsRef.current.get(id);
+                if (!a) return null;
+                return (
+                  <span
+                    key={id}
+                    className={id === myId ? 'pz-mini-dot is-me' : 'pz-mini-dot'}
+                    title={a.nickname}
+                    ref={(el) => {
+                      const cur = actorsRef.current.get(id);
+                      if (cur) cur.dotEl = el;
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+
           {nearPortal && (
             <div className="pz-hint">
               <b>↑</b> {nearPortal.label}(으)로 이동
@@ -1311,11 +1516,21 @@ export default function PlazaClient({
           )}
 
           {summit && (
-            <div className={summit.mine ? 'pz-summit is-mine' : 'pz-summit'}>
+            <div
+              className={`pz-summit${summit.mine ? ' is-mine' : ''}${summit.done ? ' is-done' : ''}`}
+            >
               <span className="pz-summit-icon" aria-hidden="true">
-                🌳
+                {summit.done ? '🏆' : '🌳'}
               </span>
-              <b>{summit.mine ? '정상 도착!' : `${summit.nickname}님 정상 도착!`}</b>
+              <b>
+                {summit.done
+                  ? summit.mine
+                    ? '완주!'
+                    : `${summit.nickname}님 완주!`
+                  : summit.mine
+                    ? '1층 통과!'
+                    : `${summit.nickname}님 1층 통과!`}
+              </b>
               <span className="pz-summit-time">{climbLabel(summit.ms)}</span>
             </div>
           )}
@@ -1341,9 +1556,12 @@ export default function PlazaClient({
             </div>
           ) : (
             log.map((l) => (
-              <div key={l.msgId} className={l.mine ? 'pz-log-line is-mine' : 'pz-log-line'}>
+              <div
+                key={l.msgId}
+                className={`pz-log-line${l.mine ? ' is-mine' : ''}${l.system ? ' is-system' : ''}`}
+              >
                 <span className="pz-log-body">
-                  <b>{l.nickname}</b> {linkify(l.text)}
+                  {l.system ? l.text : <><b>{l.nickname}</b> {linkify(l.text)}</>}
                 </span>
                 <span className="pz-log-time">{chatTimeLabel(l.ts)}</span>
               </div>
@@ -1392,6 +1610,41 @@ export default function PlazaClient({
             보내기
           </button>
         </div>
+
+        {/* 관리자만 보이는 공지 입력칸 — 광장 위쪽에 크게 5초 뜬다 */}
+        {isAdmin && (
+          <div className="pz-chat-bar pz-notice-bar">
+            <span className="pz-notice-tag">공지</span>
+            <input
+              type="text"
+              className="pz-chat-input"
+              placeholder={`모두에게 크게 띄울 공지 (${NOTICE_MS / 1000}초)`}
+              maxLength={NOTICE_MAX}
+              value={noticeDraft}
+              onChange={(e) => setNoticeDraft(e.target.value)}
+              onFocus={() => {
+                typingRef.current = true;
+                keysRef.current.clear();
+              }}
+              onBlur={() => {
+                typingRef.current = false;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  sendNotice();
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            <button type="button" className="pz-chat-send pz-notice-send" onClick={sendNotice}>
+              공지 띄우기
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
