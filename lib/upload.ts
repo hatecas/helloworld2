@@ -66,6 +66,24 @@ function extensionOf(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() ?? '';
 }
 
+/**
+ * Storage 객체 키로 안전한 파일명으로 정리한다.
+ * Supabase Storage 는 키에 한글·공백 등 비ASCII/특수문자가 들어가면 업로드를 거부한다
+ * (예: "ChatGPT Image 2026년 ….jpg"). UUID 를 앞에 붙여 유일성은 보장되므로,
+ * 원본명은 [A-Za-z0-9._-] 만 남기고 나머지는 _ 로 바꾼다.
+ */
+function safeStorageName(filename: string): string {
+  const ext = extensionOf(filename);
+  const base = filename.replace(/\.[^.]+$/, '');
+  const cleaned =
+    base
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 60) || 'image';
+  return ext ? `${cleaned}.${ext}` : cleaned;
+}
+
 export function isAllowedImage(filename: string): boolean {
   return ALLOWED_EXT.has(extensionOf(filename));
 }
@@ -138,7 +156,8 @@ export async function saveUploadedFile(file: File): Promise<string> {
     }
   }
 
-  const filename = `${randomUUID()}-${name}`;
+  const filename = `${randomUUID()}-${safeStorageName(name)}`;
+  console.log(`[upload] 저장 키="${filename}"`);
 
   const client = await storageClient();
 
