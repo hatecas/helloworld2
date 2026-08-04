@@ -29,7 +29,10 @@ import {
   type SummitMsg,
 } from '@/lib/plaza/protocol';
 import {
+  COYOTE_MS,
+  FOREST_AIR_ACCEL,
   FOREST_JUMP_V0,
+  JUMP_BUFFER_MS,
   KNOCK_MS,
   KNOCK_VX,
   KNOCK_VY,
@@ -76,6 +79,13 @@ interface Actor {
    */
   vy: number;
   grounded: boolean;
+  /**
+   * 인내의 숲 가로 이동 속도 — 지상에선 목표 속도로 즉시, 공중에선 관성으로 서서히 붙는다.
+   * (방해물에 튕기는 vx 와 달리 이건 내 조작으로 생기는 속도다)
+   */
+  mvx: number;
+  /** 발판을 걸어 벗어난 직후 이 시각까지는 아직 점프를 받아 준다 (코요테 타임) */
+  coyoteUntil: number;
   /** 방해물에 맞고 튕겨 나가는 가로 속도 (조작으로는 안 생긴다) */
   vx: number;
   /** 이때까지는 조작이 안 먹는다(튕겨 나가는 중) + 다시 맞지 않는다 */
@@ -209,6 +219,12 @@ export default function PlazaClient({
    * 1층 시작 발판으로 돌아오거나 광장으로 나가면 처음부터 다시 잰다.
    */
   const runStartRef = useRef<number | null>(null);
+  /**
+   * 점프 입력을 누른 시각 — 인내의 숲 전용. keydown 은 이 값만 찍고, 실제 점프는
+   * 이동 루프가 처리한다. 그래야 착지 직전 입력(점프 버퍼)과 발판을 벗어난 직후
+   * 입력(코요테)을 한곳에서 너그럽게 받아 줄 수 있다. (0 = 대기 중인 입력 없음)
+   */
+  const jumpReqRef = useRef(0);
   /** 지금 층의 정상 도착을 이미 알렸는지 */
   const summitDoneRef = useRef(false);
   const [summit, setSummit] = useState<{
@@ -269,6 +285,8 @@ export default function PlazaClient({
       jumpV: 0,
       vy: 0,
       grounded: false,
+      mvx: 0,
+      coyoteUntil: 0,
       vx: 0,
       stunUntil: 0,
       dropFrom: null,
@@ -406,6 +424,8 @@ export default function PlazaClient({
           jumpV: 0,
           vy: 0,
           grounded: false,
+          mvx: 0,
+          coyoteUntil: 0,
           vx: 0,
           stunUntil: 0,
           dropFrom: null,
@@ -525,6 +545,8 @@ export default function PlazaClient({
       me.tjump = 0;
       me.jumpV = 0;
       me.vy = 0;
+      me.mvx = 0;
+      me.coyoteUntil = 0;
       me.vx = 0;
       me.stunUntil = 0;
       me.dropFrom = null;
@@ -730,32 +752,12 @@ export default function PlazaClient({
         if (!me) return;
         const here = mapOf(me.map);
         if (here.kind === 'platform') {
-          // 발판에 서 있을 때만 (공중 2단 점프 없음), 튕겨 나가는 중엔 조작 불가
-          if (me.grounded && performance.now() >= me.stunUntil) {
-            const holdingDown = [...keysRef.current].some((key) => KEY_DOWN.has(key));
-            if (holdingDown) {
-              /*
-               * 하향 점프 — ↓ 를 누른 채 점프하면 밟고 선 발판을 통과해 아래로 내려간다.
-               * 잘못 오른 길을 되돌아갈 때 맨 아래까지 떨어질 필요가 없다.
-               */
-              me.dropFrom = me.y;
-              me.vy = 60;
-            } else {
-              me.vy = -FOREST_JUMP_V0;
-              me.dropFrom = null;
-            }
-            me.grounded = false;
-            // 1층 시작 발판을 처음 떠나는 순간부터 도전 시간을 센다
-            if (
-              here.id === RUN_FIRST &&
-              here.startY != null &&
-              me.y >= here.startY &&
-              runStartRef.current === null &&
-              !holdingDown
-            ) {
-              runStartRef.current = performance.now();
-            }
-          }
+          /*
+           * 실제 점프는 이동 루프가 처리한다 — 여기선 '눌렀다' 는 시각만 찍는다.
+           * 그래야 착지 직전 입력(버퍼)·발판을 막 벗어난 입력(코요테)을 놓치지 않고,
+           * 하향 점프인지(↓ 동시입력) 도 루프가 그 순간의 키 상태로 판단할 수 있다.
+           */
+          jumpReqRef.current = performance.now();
         } else if (me.jump === 0) {
           me.jumpV = JUMP_V0;
         }
@@ -793,6 +795,8 @@ export default function PlazaClient({
     let lastSent = 0;
     let wasBusy = false;
     let wasCrouch = false;
+    // 인내의 숲 코요테 타임용 — 지난 프레임에 발판에 서 있었는지
+    let prevGrounded = true;
 
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -849,6 +853,47 @@ export default function PlazaClient({
         } else {
           /* ---- 인내의 숲: 옆에서 보는 구도. 좌우로만 걷고 중력이 늘 작용한다 ---- */
           const stunned = now < me.stunUntil;
+
+          /*
+           * 점프 실행 — keydown 이 찍어 둔 요청(jumpReqRef)을 여기서 처리한다.
+           * · 발판에 서 있거나, 막 벗어난 직후(코요테 시간 안)면 곧바로 뛴다.
+           * · 아직 공중이면 요청을 버퍼 시간만큼 들고 있다가 착지하는 프레임에 뛴다.
+           * 이렇게 한곳에 모아야 '눌렀는데 씹힘' 이 사라진다.
+           */
+          const req = jumpReqRef.current;
+          if (req) {
+            if (now - req > JUMP_BUFFER_MS) {
+              jumpReqRef.current = 0; // 너무 오래된 입력은 버린다
+            } else if (!stunned) {
+              const canGround = me.grounded;
+              const canCoyote = !me.grounded && me.vy >= 0 && now <= me.coyoteUntil;
+              if (canGround || canCoyote) {
+                jumpReqRef.current = 0;
+                me.coyoteUntil = 0;
+                // 하향 점프 — ↓ 를 누른 채 뛰면 밟고 선 발판을 통과해 내려간다(공중/코요테에선 불가)
+                if (dy > 0 && canGround) {
+                  me.dropFrom = me.y;
+                  me.vy = 60;
+                } else {
+                  me.vy = -FOREST_JUMP_V0;
+                  me.dropFrom = null;
+                  // 방향키를 누른 채 뛰면 그 방향 최고 속도로 출발 — 건너뛰기 도달거리 유지
+                  if (dx !== 0) me.mvx = dx * map.speed;
+                  // 1층 시작 발판을 처음 떠나는 순간부터 도전 시간을 센다
+                  if (
+                    map.id === RUN_FIRST &&
+                    map.startY != null &&
+                    me.y >= map.startY &&
+                    runStartRef.current === null
+                  ) {
+                    runStartRef.current = now;
+                  }
+                }
+                me.grounded = false;
+              }
+            }
+          }
+
           /*
            * 엎드리기 — ↓ 를 누르고 있으면 발판에 붙어 납작해진다.
            * 몸통이 낮아져 머리 위로 지나가는 방해물을 피할 수 있고, 대신 걸을 수 없다.
@@ -861,11 +906,23 @@ export default function PlazaClient({
             setRev((r) => r + 1);
           }
 
-          const moving = !stunned && !me.crouch && dx !== 0;
-          if (moving) {
-            me.x = clamp(me.x + dx * map.speed * dt, map.walk.minX, map.walk.maxX);
-            me.facing = dx < 0 ? 'left' : 'right';
+          /*
+           * 가로 이동 — 지상에선 목표 속도로 즉시 붙지만, 공중에선 관성으로 서서히 붙는다.
+           * 공중에서 방향을 되돌리려면 관성을 거슬러야 해서 좌우로 '와다다' 튀지 않고
+           * 메이플처럼 무게가 실린다. (mvx 는 내 조작 속도 — 튕겨나가는 vx 와 별개다)
+           */
+          const controllable = !stunned && !me.crouch;
+          const targetVx = controllable && dx !== 0 ? dx * map.speed : 0;
+          if (me.grounded) {
+            me.mvx = targetVx;
+          } else {
+            const dv = targetVx - me.mvx;
+            const step = FOREST_AIR_ACCEL * dt;
+            me.mvx += Math.abs(dv) <= step ? dv : Math.sign(dv) * step;
           }
+          if (controllable && dx !== 0) me.facing = dx < 0 ? 'left' : 'right';
+          me.x = clamp(me.x + me.mvx * dt, map.walk.minX, map.walk.maxX);
+          const moving = me.mvx !== 0;
 
           // 튕겨 나가는 중 — 조작 대신 관성으로 밀려나고 빠르게 잦아든다
           if (me.vx !== 0) {
@@ -958,10 +1015,20 @@ export default function PlazaClient({
             me.x = restart.x;
             me.y = restart.y;
             me.vy = 0;
+            me.mvx = 0;
             me.vx = 0;
             me.dropFrom = null;
             summitDoneRef.current = false;
           }
+
+          /*
+           * 발판을 '걸어서' 벗어난 순간(점프가 아니라 — 그땐 vy 가 음수다)부터
+           * 잠깐 코요테 시간을 연다. 발판 끝에서 살짝 늦게 눌러도 점프가 나간다.
+           */
+          if (prevGrounded && !me.grounded && me.vy > 0) {
+            me.coyoteUntil = now + COYOTE_MS;
+          }
+          prevGrounded = me.grounded;
 
           me.jump = 0;
           me.tjump = 0;
