@@ -57,6 +57,25 @@ export function playChime(): void {
 }
 
 /**
+ * 딩-동-딩 — 관리자 공지가 뜰 때.
+ *
+ * 채팅음(두 음)보다 한 음 더 길게 올라가는 세 음이라, 소리만으로 '공지가 떴다' 를
+ * 채팅·부딪힘과 확실히 구분한다. 주목을 끌어야 하므로 조금 더 크고 길게 낸다.
+ */
+export function playNotice(): void {
+  try {
+    const ac = audioContext();
+    if (!ac) return;
+    const now = ac.currentTime;
+    tone(ac, 784, now, 0.2, 0.22); // 솔
+    tone(ac, 1047, now + 0.12, 0.24, 0.2); // 도 (위)
+    tone(ac, 1319, now + 0.26, 0.34, 0.18); // 미 (위)
+  } catch {
+    // 소리는 부가 기능이라 실패해도 조용히 넘어간다
+  }
+}
+
+/**
  * 툭 — 인내의 숲에서 방해물에 부딪혀 튕겨 나갈 때.
  *
  * 채팅음(올라가는 두 음)과 반대로 낮은 데서 더 낮게 떨어뜨린다.

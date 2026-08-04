@@ -52,7 +52,7 @@ import {
 import { emoteByIndex, emoteSrc, emotesFor } from '@/lib/plaza/emotes';
 import { joinPlaza, type PlazaConnection, type PlazaStatus } from '@/lib/plaza/realtime';
 import { linkify } from '@/lib/plaza/linkify';
-import { playBump, playChime } from '@/lib/plaza/chime';
+import { playBump, playChime, playNotice } from '@/lib/plaza/chime';
 import { MINIMI_TARGET_H } from '@/lib/minimi/sizes.generated';
 import { CROUCH_SQUASH, applyMinimiFit, minimiTransform, shadowWidth } from '@/lib/minimi/fit';
 
@@ -593,6 +593,8 @@ export default function PlazaClient({
   /** 공지를 화면 위쪽에 크게 잠깐 띄운다 */
   const showNotice = useCallback((text: string) => {
     setNotice(text);
+    // 발송자·수신자 모두에게 울린다 (음소거 설정은 존중)
+    if (soundRef.current) playNotice();
     window.setTimeout(() => {
       setNotice((cur) => (cur === text ? null : cur));
     }, NOTICE_MS);
