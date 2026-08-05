@@ -87,7 +87,7 @@ export const CHANNEL = 'plaza';
  * 판정(claim)이 맵을 넘어 그대로 동작한다. 채팅은 맵을 가리지 않고 다 들린다
  * (숲에서 등반하면서 광장 사람과 얘기할 수 있게 — 방이 나뉘면 둘 다 조용해진다).
  */
-export type MapId = 'plaza' | 'forest' | 'forest2';
+export type MapId = 'plaza' | 'forest' | 'forest2' | 'quiz';
 
 export const DEFAULT_MAP: MapId = 'plaza';
 
@@ -121,6 +121,18 @@ export interface PosMsg {
   map?: MapId;
   /** 엎드려 있는지 (인내의 숲에서 ↓ 를 누른 상태) — 남들 화면에도 엎드린 모습으로 보인다 */
   crouch?: boolean;
+  /**
+   * OX 퀴즈장 점수 — 이 방에 들어와서 맞힌 수 / 지금 연속 정답.
+   *
+   * 채점은 각자 자기 화면에서 하지만(정답도 위치도 다 알고 있으니 결과는 같다),
+   * **누적 점수만은 본인이 실어 보낸다.** 각자 자기가 본 것만 세면 늦게 들어온 사람 화면에는
+   * 먼저 와 있던 사람들이 전부 0점으로 보여서, 순위판이 화면마다 달라진다.
+   * 좌표에 얹어 보내므로 새 신호를 만들지 않는다.
+   *
+   * 방을 나가면 0으로 돌아간다 — 이 방에 있는 동안의 기록만 세는 판이다.
+   */
+  qzCorrect?: number;
+  qzStreak?: number;
 }
 
 /**

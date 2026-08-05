@@ -144,6 +144,16 @@ const PLAZA_PORTAL: Portal = {
   to: 'forest', label: '인내의 숲', x: 560, y: 190, w: 82, h: 112,
 };
 
+/*
+ * OX 퀴즈장으로 들어가는 문.
+ *
+ * 숲 문(519~601)과 기록 팻말(605~775) 이 오른쪽에 몰려 있어서 왼쪽에 세웠다.
+ * 가운데 원형 광장(이 높이에서 354~646)에 걸치지 않는 자리다.
+ */
+const PLAZA_QUIZ_PORTAL: Portal = {
+  to: 'quiz', label: 'OX 퀴즈장', x: 330, y: 190, w: 82, h: 112,
+};
+
 const PLAZA: PlazaMap = {
   id: 'plaza',
   name: '광장',
@@ -153,19 +163,68 @@ const PLAZA: PlazaMap = {
   viewH: WORLD_H,
   walk: WALK,
   speed: 190,
-  portals: [PLAZA_PORTAL],
+  portals: [PLAZA_QUIZ_PORTAL, PLAZA_PORTAL],
   platforms: [],
   // 광장 배경(잔디·분수·나무·벤치)은 CSS 로 그려져 있어서 장식 그림이 없다
   props: [],
   hazards: [],
   spawn: spawnPoint,
-  // 문 판정 상자 밖(오른쪽 아래)에 세운다 — 겹쳐 서면 ↑ 한 번에 되돌아가 버린다
-  arrival: { forest: { x: PLAZA_PORTAL.x + 140, y: PLAZA_PORTAL.y + 60 } },
+  // 문 판정 상자 밖(옆 아래)에 세운다 — 겹쳐 서면 ↑ 한 번에 되돌아가 버린다
+  arrival: {
+    forest: { x: PLAZA_PORTAL.x + 140, y: PLAZA_PORTAL.y + 60 },
+    quiz: { x: PLAZA_QUIZ_PORTAL.x - 140, y: PLAZA_QUIZ_PORTAL.y + 60 },
+  },
   /*
    * 숲 입구 문 바로 옆(오른쪽)에 기록 팻말을 세운다.
    * 문(519~601) 과 겹치지 않고, 벤치(74%, 아래쪽)·나무(90%)와도 떨어진 자리다.
    */
   recordSign: { of: RUN_KEY, title: '인내의 숲 완주', x: 690, y: PLAZA_PORTAL.y, w: 170 },
+};
+
+/* ================================================================== */
+/* OX 퀴즈장 — 광장에서 문으로 이어지는 방                                */
+/* ================================================================== */
+
+/*
+ * 광장과 같은 부감 구도지만 하는 일이 하나뿐인 방이다.
+ * 바닥의 O · X 칸(lib/plaza/quiz.ts 의 QUIZ_ZONES)과 그 사이의 중립 지대,
+ * 그리고 광장으로 되돌아가는 문만 있다.
+ *
+ * 위쪽 150px 은 무대 벽이라 걸어 들어갈 수 없다 — 문제판(화면에 붙는 칸)이 그 위에 뜨는데,
+ * 거기까지 걸어 올라갈 수 있으면 미니미가 문제 뒤로 숨는다.
+ */
+const QUIZ_EXIT: Portal = { to: 'plaza', label: '광장', x: 500, y: 478, w: 90, h: 112 };
+
+const QUIZ_ROOM: PlazaMap = {
+  id: 'quiz',
+  name: 'OX 퀴즈장',
+  kind: 'topdown',
+  w: WORLD_W,
+  h: WORLD_H,
+  viewH: WORLD_H,
+  walk: { minX: 40, maxX: WORLD_W - 40, minY: 150, maxY: WORLD_H - 18 },
+  /*
+   * 광장(190)의 두 배로 달린다.
+   * 한 문제가 6초뿐이라 광장 속도로는 걸어가는 데만 시간을 다 쓴다. 빨라지면
+   * 남들이 어느 칸으로 몰리는지 보고 막판에 갈아탈 여유(칸에서 칸까지 1.05초)가 생겨서,
+   * 아는 문제를 맞히는 놀이에 눈치 보는 재미가 얹힌다.
+   */
+  speed: 380,
+  portals: [QUIZ_EXIT],
+  platforms: [],
+  props: [],
+  hazards: [],
+  /*
+   * 들어오면 O 도 X 도 아닌 한가운데(x 430~570)에 선다. 어느 한쪽에 붙어서 시작하면
+   * 그 자리에 가만히 있는 것만으로 답을 고른 셈이 되어 공평하지 않다.
+   * 문(455~545, y 366 아래)과도 떨어져 있어 들어오자마자 되돌아 나가지 않는다.
+   */
+  spawn: (seed) => {
+    const h = hash(seed);
+    return { x: 430 + (h % 140), y: 270 + ((h >> 5) % 60) };
+  },
+  // 광장에서 들어올 때도 같은 규칙으로 흩어 세운다
+  arrival: {},
 };
 
 /* ================================================================== */
@@ -506,7 +565,12 @@ function hash(seed: string): number {
 
 /* ================================================================== */
 
-export const MAPS: Record<MapId, PlazaMap> = { plaza: PLAZA, forest: FOREST, forest2: FOREST2 };
+export const MAPS: Record<MapId, PlazaMap> = {
+  plaza: PLAZA,
+  quiz: QUIZ_ROOM,
+  forest: FOREST,
+  forest2: FOREST2,
+};
 
 export function mapOf(id: MapId | undefined): PlazaMap {
   return MAPS[id ?? 'plaza'] ?? PLAZA;

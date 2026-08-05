@@ -1100,6 +1100,494 @@
 }
 
 /* ==================================================================
+   OX 퀴즈장 — 광장에서 문으로 들어가는 방
+
+   광장과 같은 부감 구도라 좌표·이동은 그대로고, 배경만 실내 무대로 바꾼다.
+   바닥의 두 칸(O · X)은 배경의 일부라 사람(z-index = y)보다 아래에 깔리고,
+   문제판은 카메라 밖 화면 칸이라 늘 같은 자리에 뜬다.
+   글자 크기는 공지와 같은 이유로 cqw(무대 폭의 %)로 잡되, 무대가 아주 커지거나
+   작아질 때를 대비해 clamp 로 위아래를 막아 둔다.
+   ================================================================== */
+
+.pz-stage--quiz {
+	background: #121a2c;
+}
+
+/* 바닥 — 무대 카펫. 가운데(중립 지대)가 어둡고 O · X 쪽으로 조명이 떨어진다 */
+.pz-qz-floor {
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(38% 52% at 18% 64%, rgba(150, 200, 255, 0.16) 0%, transparent 72%),
+		radial-gradient(38% 52% at 82% 64%, rgba(255, 180, 170, 0.16) 0%, transparent 72%),
+		repeating-linear-gradient(
+			90deg,
+			rgba(255, 255, 255, 0.028) 0 2px,
+			transparent 2px 10px
+		),
+		linear-gradient(#20304c 0%, #1b2740 46%, #162034 100%);
+}
+
+/* 위쪽 벽 — 여기는 걸어 들어갈 수 없다(walk.minY = 150) */
+.pz-qz-wall {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	height: 30%;
+	background:
+		linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0) 82%),
+		linear-gradient(#2a1b3c 0%, #331f44 70%, #3a2450 100%);
+	box-shadow: inset 0 -6px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* 양옆 커튼 주름 */
+.pz-qz-curtain {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 16%;
+	background:
+		repeating-linear-gradient(
+			90deg,
+			rgba(0, 0, 0, 0.26) 0 7px,
+			rgba(255, 255, 255, 0.07) 7px 15px
+		),
+		linear-gradient(#6d1f36, #8c2a44);
+}
+
+.pz-qz-curtain--l {
+	left: 0;
+	border-radius: 0 0 30% 0;
+}
+
+.pz-qz-curtain--r {
+	right: 0;
+	border-radius: 0 0 0 30%;
+}
+
+/*
+ * 무대 조명. 벽 아래(y 150)에서 시작해 O · X 칸으로 퍼진다.
+ * 벽에는 문제판이 뜨므로 글자나 현수막을 두지 않는다 — 가려서 안 보인다.
+ */
+.pz-qz-beam {
+	position: absolute;
+	top: 30%;
+	height: 62%;
+	width: 46%;
+	pointer-events: none;
+	opacity: 0.5;
+}
+
+.pz-qz-beam--l {
+	left: 0;
+	background: linear-gradient(180deg, rgba(150, 200, 255, 0.5), transparent 78%);
+	clip-path: polygon(36% 0, 52% 0, 78% 100%, 4% 100%);
+}
+
+.pz-qz-beam--r {
+	right: 0;
+	background: linear-gradient(180deg, rgba(255, 180, 170, 0.5), transparent 78%);
+	clip-path: polygon(48% 0, 64% 0, 96% 100%, 22% 100%);
+}
+
+/* ---- 바닥에 칠한 O · X 칸 ---- */
+
+.pz-zone {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.15em;
+	border-radius: 16px;
+	pointer-events: none;
+	transition:
+		background 0.25s ease,
+		box-shadow 0.25s ease,
+		opacity 0.25s ease;
+}
+
+.pz-zone-mark {
+	font-size: clamp(22px, 7cqw, 74px);
+	font-weight: 900;
+	line-height: 1;
+	letter-spacing: 0.02em;
+	text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.pz-zone-label {
+	font-size: clamp(9px, 1.7cqw, 17px);
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 무대 바닥에 칠한 페인트처럼 — 빗금을 얕게 깔아 바닥에 붙어 보이게 한다 */
+.pz-zone--o {
+	background:
+		repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.055) 0 9px, transparent 9px 18px),
+		rgba(72, 132, 210, 0.26);
+	box-shadow: inset 0 0 0 3px rgba(128, 190, 255, 0.55);
+}
+
+.pz-zone--o .pz-zone-mark,
+.pz-zone--o .pz-zone-label {
+	color: #c6e2ff;
+}
+
+.pz-zone--x {
+	background:
+		repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.055) 0 9px, transparent 9px 18px),
+		rgba(210, 84, 78, 0.26);
+	box-shadow: inset 0 0 0 3px rgba(255, 158, 148, 0.55);
+}
+
+.pz-zone--x .pz-zone-mark,
+.pz-zone--x .pz-zone-label {
+	color: #ffd2cc;
+}
+
+/* 지금 이 칸에 서 있는 사람 수 */
+.pz-zone-count {
+	margin-top: 0.15em;
+	padding: 0.1em 0.7em;
+	font-size: clamp(9px, 1.5cqw, 15px);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: rgba(255, 255, 255, 0.9);
+	background: rgba(0, 0, 0, 0.34);
+	border-radius: 999px;
+}
+
+/* 정답이 공개되는 6초 — 맞은 칸은 금색으로 밝히고 틀린 칸은 가라앉힌다 */
+.pz-zone.is-right {
+	background: rgba(255, 214, 122, 0.4);
+	box-shadow:
+		inset 0 0 0 4px #f0b03c,
+		0 0 26px rgba(240, 176, 60, 0.45);
+	animation: pz-zone-hit 0.45s ease-out;
+}
+
+.pz-zone.is-wrong {
+	opacity: 0.4;
+}
+
+@keyframes pz-zone-hit {
+	from { transform: scale(0.97); }
+	to   { transform: scale(1); }
+}
+
+/* ---- 채점 — 미니미 머리 위 ---- */
+
+.pz-verdict {
+	margin-bottom: 3px;
+	padding: 1px 9px;
+	font-size: 11px;
+	font-weight: 800;
+	white-space: nowrap;
+	color: #ffffff;
+	background: rgba(74, 82, 86, 0.85);
+	border-radius: 999px;
+	animation: pz-pop 0.18s ease-out;
+}
+
+.pz-verdict.is-right {
+	background: linear-gradient(100deg, #d98a1f, #f0b03c);
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* 연속 정답 — 이름표 옆에 작게 (두 번 이상 맞혔을 때만) */
+.pz-streak {
+	margin-left: 4px;
+	font-size: 10px;
+	font-weight: 800;
+	color: #ffd98a;
+}
+
+/* ---- 문제판 ---- */
+
+/*
+ * 문제판. 오른쪽 22% 는 순위판 자리라 비워 둔다.
+ * 가운데 정렬(translateX) 대신 좌우를 못 박아, 순위판과 절대 겹치지 않게 했다.
+ */
+.pz-quiz {
+	position: absolute;
+	left: 2.5%;
+	right: 24%;
+	top: 10px;
+	z-index: 28;
+	padding: 8px 12px 10px;
+	text-align: center;
+	color: #eef6f0;
+	background: rgba(14, 26, 20, 0.82);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 13px;
+	box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(3px);
+}
+
+/* 접으면 머리줄만 남으므로 폭도 내용에 맞춰 줄인다 */
+.pz-quiz.is-fold {
+	right: auto;
+	max-width: 74%;
+	padding: 6px 10px 8px;
+}
+
+.pz-quiz-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pz-quiz-tag {
+	flex: none;
+	padding: 2px 9px;
+	font-size: 11px;
+	font-weight: 700;
+	color: #10241a;
+	background: #9fe0b4;
+	border-radius: 999px;
+}
+
+.pz-quiz-count {
+	margin-right: auto;
+	font-size: 13px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: #ffd98a;
+}
+
+.pz-quiz-score {
+	display: flex;
+	align-items: baseline;
+	gap: 7px;
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+.pz-quiz-score b {
+	color: #ffd98a;
+}
+
+.pz-quiz-score i {
+	font-style: normal;
+	opacity: 0.6;
+}
+
+.pz-quiz-fold {
+	flex: none;
+	padding: 2px 8px;
+	font-size: 11px;
+	color: rgba(238, 246, 240, 0.75);
+	background: rgba(255, 255, 255, 0.1);
+	border: 0;
+	border-radius: 999px;
+	cursor: pointer;
+}
+
+.pz-quiz-fold:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.pz-quiz-q {
+	margin: 7px 0 0;
+	font-size: clamp(12px, 2.2cqw, 23px);
+	font-weight: 700;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.pz-quiz-guide {
+	margin: 5px 0 0;
+	font-size: clamp(9px, 1.4cqw, 14px);
+	opacity: 0.6;
+}
+
+.pz-quiz-guide b {
+	color: #ffd98a;
+}
+
+.pz-quiz-answer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin: 6px 0 0;
+	animation: pz-pop 0.2s ease-out;
+}
+
+.pz-quiz-mark {
+	font-size: clamp(16px, 3cqw, 32px);
+	font-weight: 900;
+	line-height: 1;
+}
+
+.pz-quiz-mark.is-o {
+	color: #8ec6ff;
+}
+
+.pz-quiz-mark.is-x {
+	color: #ff9d94;
+}
+
+.pz-quiz-note {
+	font-size: clamp(10px, 1.6cqw, 16px);
+	line-height: 1.45;
+	opacity: 0.85;
+	text-align: left;
+}
+
+/* 남은 시간 — 폭은 그리기 루프가 매 프레임 줄인다 */
+.pz-quiz-bar {
+	display: block;
+	margin-top: 8px;
+	height: 4px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.14);
+	overflow: hidden;
+}
+
+.pz-quiz-bar > span {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border-radius: 999px;
+	background: #9fe0b4;
+}
+
+.pz-quiz.is-reveal .pz-quiz-bar > span {
+	background: #ffd98a;
+}
+
+/* ---- 순위판 (문제판 오른쪽) ---- */
+
+.pz-rank {
+	position: absolute;
+	right: 2.5%;
+	top: 10px;
+	z-index: 28;
+	width: 19%;
+	padding: 6px 7px 7px;
+	color: #eef6f0;
+	background: rgba(14, 26, 20, 0.82);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 11px;
+	box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(3px);
+}
+
+.pz-rank-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 4px;
+	margin-bottom: 4px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+	font-size: clamp(9px, 1.3cqw, 13px);
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.pz-rank-head b {
+	color: #ffd98a;
+	font-weight: 800;
+}
+
+.pz-rank-head span {
+	opacity: 0.5;
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pz-rank-row {
+	display: flex;
+	align-items: baseline;
+	gap: 4px;
+	padding: 2px 3px;
+	border-radius: 5px;
+	font-size: clamp(9px, 1.3cqw, 13px);
+	line-height: 1.5;
+}
+
+/* 내 줄은 바로 찾을 수 있게 */
+.pz-rank-row.is-me {
+	background: rgba(255, 217, 138, 0.16);
+	box-shadow: inset 0 0 0 1px rgba(255, 217, 138, 0.35);
+}
+
+.pz-rank-no {
+	flex: none;
+	width: 1.2em;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	opacity: 0.6;
+}
+
+/* 1위 자리만 금색 (머리줄이 첫 칸이라 두 번째가 1위다) */
+.pz-rank-row:nth-child(2) .pz-rank-no {
+	color: #ffd98a;
+	opacity: 1;
+}
+
+.pz-rank-who {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.pz-rank-fire {
+	flex: none;
+	font-size: 0.82em;
+	color: #ffd98a;
+}
+
+.pz-rank-score {
+	flex: none;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: #9fe0b4;
+}
+
+.pz-rank-gap {
+	padding: 0 3px;
+	font-size: clamp(8px, 1.1cqw, 11px);
+	line-height: 1;
+	opacity: 0.4;
+}
+
+.pz-rank-empty {
+	padding: 3px;
+	font-size: clamp(9px, 1.2cqw, 12px);
+	opacity: 0.5;
+}
+
+@media (max-width: 720px) {
+	.pz-quiz {
+		left: 2%;
+		right: 27%;
+		top: 6px;
+		padding: 6px 9px 8px;
+	}
+
+	.pz-rank {
+		right: 2%;
+		top: 6px;
+		width: 23%;
+		padding: 4px 5px 5px;
+	}
+
+	/* 좁은 화면에서는 세 줄까지만. 내 줄은 몇 등이든 남긴다. */
+	.pz-rank-row:nth-child(n + 5):not(.is-me) {
+		display: none;
+	}
+}
+
+/* ==================================================================
    미니맵 — 우측 상단
 
    세로로 긴 맵에서는 화면에 한 층 남짓만 보여서, 같이 오르는 사람이 위에 있는지

@@ -49,6 +49,7 @@ import {
   portalAt,
   type Portal,
 } from '@/lib/plaza/maps';
+import { QUIZ_ZONES, quizAt, zoneAt, type QuizRound } from '@/lib/plaza/quiz';
 import { emoteByIndex, emoteSrc, emotesFor } from '@/lib/plaza/emotes';
 import { joinPlaza, type PlazaConnection, type PlazaStatus } from '@/lib/plaza/realtime';
 import { linkify } from '@/lib/plaza/linkify';
@@ -94,6 +95,12 @@ interface Actor {
   dropFrom: number | null;
   /** 엎드려 있는지 (↓). 몸통이 낮아져 머리 위로 지나가는 방해물을 피한다. */
   crouch: boolean;
+  /**
+   * OX 퀴즈장 점수 — 이 방에 들어와서 맞힌 수 / 지금 연속 정답.
+   * 남의 것은 본인이 좌표에 실어 보낸 값을 그대로 쓴다(내가 못 본 판까지 세어져 있다).
+   */
+  qzCorrect: number;
+  qzStreak: number;
   /** 재생 중인 특수 동작 이름. null 이면 평소 모습 */
   emote: string | null;
   /** 이모트 재생 토큰 — 연타했을 때 앞선 타이머가 뒤 것을 지워 버리지 않게 */
@@ -130,6 +137,10 @@ const KEY_DOWN = new Set(['ArrowDown', 's', 'S', 'ㄴ']);
 const KEY_JUMP = new Set(['Alt', ' ']);
 
 const SOUND_KEY = 'helloworld_plaza_sound';
+/** OX 퀴즈 최고 연속 정답 — 기록할 데가 서버에 없어서 이 브라우저에만 남긴다 */
+const QUIZ_BEST_KEY = 'helloworld_plaza_quiz_best';
+/** 퀴즈판을 접어 뒀는지 (채팅만 하러 온 사람도 있다) */
+const QUIZ_FOLD_KEY = 'helloworld_plaza_quiz_fold';
 
 /** 문을 지나온 직후 되돌아가지 않게 두는 여유(ms) */
 const PORTAL_COOLDOWN_MS = 700;
@@ -236,6 +247,21 @@ export default function PlazaClient({
   /** 광장 팻말에 새길 상위 기록 (맵별) */
   const [records, setRecords] = useState<Record<string, RecordRow[]>>(initialRecords);
 
+  /* ---- 광장 OX 퀴즈 ---- */
+  /** 지금 돌고 있는 문제 (광장에 있을 때만. 숲에서는 null) */
+  const [quiz, setQuiz] = useState<QuizRound | null>(null);
+  /** 남은 시간 막대 — 매 프레임 줄어들므로 리렌더 대신 ref 로 직접 줄인다 */
+  const quizBarRef = useRef<HTMLSpanElement>(null);
+  const [quizFold, setQuizFold] = useState(false);
+  /** 이번 라운드 채점 결과 (id → 맞았나). 정답 공개 동안만 머리 위에 뜬다. */
+  const [verdicts, setVerdicts] = useState<Map<string, boolean>>(new Map());
+  /** 지금 O 칸 · X 칸에 서 있는 사람 수 (QUIZ_ZONES 순서) */
+  const [zoneCounts, setZoneCounts] = useState<number[]>(() => QUIZ_ZONES.map(() => 0));
+  const [myStreak, setMyStreak] = useState(0);
+  const [quizBest, setQuizBest] = useState(0);
+  /** 이미 채점한 라운드 번호 — 한 라운드를 두 번 세지 않게 */
+  const judgedRef = useRef(-1);
+
   /** 관리자 공지 — 화면 위쪽에 크게 잠깐 뜬다 */
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeDraft, setNoticeDraft] = useState('');
@@ -291,6 +317,8 @@ export default function PlazaClient({
       stunUntil: 0,
       dropFrom: null,
       crouch: false,
+      qzCorrect: 0,
+      qzStreak: 0,
       emote: null,
       emoteToken: 0,
       el: null,
@@ -301,13 +329,16 @@ export default function PlazaClient({
     setIds([myId]);
   }, [myId, nickname, minimi]);
 
-  // 소리 켬/끔은 기억해 둔다
+  // 소리 켬/끔과 퀴즈판 상태는 기억해 둔다
   useEffect(() => {
     const saved = localStorage.getItem(SOUND_KEY);
     if (saved === '0') {
       soundRef.current = false;
       setSoundOn(false);
     }
+    if (localStorage.getItem(QUIZ_FOLD_KEY) === '1') setQuizFold(true);
+    const best = Number(localStorage.getItem(QUIZ_BEST_KEY));
+    if (Number.isFinite(best) && best > 0) setQuizBest(best);
   }, []);
 
   /*
@@ -403,6 +434,14 @@ export default function PlazaClient({
           found.jump = msg.jump ?? 0;
           syncIds();
         }
+        // 퀴즈 점수가 바뀌면 순위판과 이름표를 다시 그려야 한다 (한 판에 한 번뿐이라 부담 없다)
+        const qzc = msg.qzCorrect ?? 0;
+        const qzs = msg.qzStreak ?? 0;
+        if (found.qzCorrect !== qzc || found.qzStreak !== qzs) {
+          found.qzCorrect = qzc;
+          found.qzStreak = qzs;
+          setRev((r) => r + 1);
+        }
         if (found.nickname !== msg.nickname || found.minimi !== msg.minimi) {
           found.nickname = msg.nickname;
           found.minimi = msg.minimi;
@@ -430,6 +469,8 @@ export default function PlazaClient({
           stunUntil: 0,
           dropFrom: null,
           crouch: Boolean(msg.crouch),
+          qzCorrect: msg.qzCorrect ?? 0,
+          qzStreak: msg.qzStreak ?? 0,
           emote: null,
           emoteToken: 0,
           el: null,
@@ -517,6 +558,8 @@ export default function PlazaClient({
         jump: Math.round(me.jump),
         map: me.map,
         crouch: me.crouch,
+        qzCorrect: me.qzCorrect,
+        qzStreak: me.qzStreak,
       });
     },
     [myId],
@@ -552,6 +595,16 @@ export default function PlazaClient({
       me.dropFrom = null;
       me.crouch = false;
       me.grounded = false;
+
+      /*
+       * 퀴즈 점수는 그 방에 있는 동안의 기록이다. 나가면 0으로 돌리고(아래 sendMyPos 로
+       * 남들 순위판에서도 같이 빠진다), 다시 들어오면 처음부터 센다.
+       */
+      if (to !== 'quiz') {
+        me.qzCorrect = 0;
+        me.qzStreak = 0;
+        setMyStreak(0);
+      }
 
       mapRef.current = to;
       hazardElsRef.current = [];
@@ -788,6 +841,108 @@ export default function PlazaClient({
       window.removeEventListener('blur', blur);
     };
   }, [myId, playEmote, travel]);
+
+  /* --------------------------------------------------------------- OX 퀴즈 */
+
+  /*
+   * 퀴즈장 바닥의 O · X 칸에 서 있으면 그게 내 답이다.
+   *
+   * 문제도 남은 시간도 벽시계의 함수(quizAt)라 서버도 방장도 없고, 채점도 각자
+   * 자기 화면에서 한다 — 정답은 다 같이 알고 있고 남이 어디 서 있는지도 좌표로
+   * 알고 있으니, 신호를 하나도 주고받지 않아도 모두 같은 결과가 나온다.
+   *
+   * 남은 시간은 매 프레임 그려야 하지만 리렌더는 초가 바뀔 때만 한다
+   * (막대는 그리기 루프가 ref 로 직접 줄인다).
+   */
+  useEffect(() => {
+    const tick = () => {
+      const at = quizAt(Date.now());
+
+      if (mapRef.current !== 'quiz') {
+        /*
+         * 퀴즈장 밖에서는 문제판도 채점도 없다. 정답 공개를 놓친 라운드를
+         * 들어오자마자 뒤늦게 매기면(그때는 다들 자리를 뜬 뒤다) 엉뚱한 결과가
+         * 나오므로, 지나간 라운드는 채점한 것으로 표시해 둔다.
+         * 문제가 떠 있는 중이라면 아직 늦지 않았으니 남겨 둔다.
+         */
+        judgedRef.current = at.phase === 'reveal' ? at.index : at.index - 1;
+        setQuiz((cur) => (cur ? null : cur));
+        setVerdicts((cur) => (cur.size ? new Map() : cur));
+        return;
+      }
+
+      // 지금 어느 칸에 몇 명이 서 있는지 (문제를 푸는 동안 계속 바뀐다)
+      const counts = QUIZ_ZONES.map(() => 0);
+      for (const a of actorsRef.current.values()) {
+        if (a.map !== 'quiz') continue;
+        const at2 = zoneAt(a.tx, a.ty);
+        if (at2) counts[QUIZ_ZONES.indexOf(at2)] += 1;
+      }
+      setZoneCounts((cur) => (cur.every((n, i) => n === counts[i]) ? cur : counts));
+
+      setQuiz((cur) =>
+        cur &&
+        cur.index === at.index &&
+        cur.phase === at.phase &&
+        Math.ceil(cur.leftMs / 1000) === Math.ceil(at.leftMs / 1000)
+          ? cur
+          : at,
+      );
+
+      if (at.phase !== 'reveal') {
+        // 다음 문제가 떴다 — 지난 채점 결과를 지운다
+        if (judgedRef.current !== at.index) setVerdicts((cur) => (cur.size ? new Map() : cur));
+        return;
+      }
+      if (judgedRef.current === at.index) return;
+      judgedRef.current = at.index;
+
+      /*
+       * 채점. 아무 칸에도 없으면 이번 판은 안 한 것으로 보고 연속 정답도 끊지 않는다.
+       * 남의 자리는 마지막으로 받은 좌표(tx, ty)가 가장 정확하다 (x, y 는 따라가는 중).
+       *
+       * 여기서 매기는 건 머리 위에 잠깐 뜨는 O/X 표시까지다. 순위판에 쓰는 누적 점수는
+       * 본인이 세어 좌표에 실어 보낸 값을 쓴다 — 내가 늦게 들어와서 못 본 판도 세어져 있다.
+       */
+      const next = new Map<string, boolean>();
+      for (const a of actorsRef.current.values()) {
+        if (a.map !== 'quiz') continue;
+        const zone = zoneAt(a.tx, a.ty);
+        if (!zone) continue;
+        next.set(a.id, zone.answer === at.item.a);
+      }
+      setVerdicts(next);
+
+      const mine = next.get(myId);
+      if (mine === undefined) return;
+
+      const me = actorsRef.current.get(myId);
+      if (!me) return;
+      me.qzCorrect += mine ? 1 : 0;
+      me.qzStreak = mine ? me.qzStreak + 1 : 0;
+      // 내 점수가 바뀌었으니 한 번 알린다 (가만히 서 있으면 좌표를 안 보내고 있다)
+      sendMyPos(false);
+
+      setMyStreak(me.qzStreak);
+      if (mine && soundRef.current) playChime();
+      setQuizBest((prev) => {
+        if (me.qzStreak <= prev) return prev;
+        localStorage.setItem(QUIZ_BEST_KEY, String(me.qzStreak));
+        return me.qzStreak;
+      });
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 200);
+    return () => window.clearInterval(timer);
+  }, [myId, sendMyPos]);
+
+  const toggleQuizFold = () => {
+    setQuizFold((prev) => {
+      localStorage.setItem(QUIZ_FOLD_KEY, prev ? '0' : '1');
+      return !prev;
+    });
+  };
 
   /* ------------------------------------------------------------ 이동 + 그리기 루프 */
 
@@ -1074,6 +1229,12 @@ export default function PlazaClient({
         miniViewRef.current.style.height = `${(map.viewH / map.h) * 100}%`;
       }
 
+      // 퀴즈 남은 시간 막대 — 초 단위 리렌더로는 뚝뚝 끊겨서 여기서 직접 줄인다
+      if (quizBarRef.current) {
+        const round = quizAt(Date.now());
+        quizBarRef.current.style.width = `${(round.leftMs / round.spanMs) * 100}%`;
+      }
+
       // 방해물 자리 — 벽시계의 함수라 서로 맞추는 통신 없이도 모두 같은 자리에 본다
       if (map.hazards.length > 0) {
         const at = Date.now();
@@ -1213,7 +1374,34 @@ export default function PlazaClient({
 
   const bubbleOf = (id: string) => bubbles.find((b) => b.actorId === id);
   const map = mapOf(mapId);
+
+  /*
+   * 순위판 — 지금 이 방에 있는 사람들을, 이 방에 들어와서 맞힌 수로 줄 세운다.
+   * 점수는 본인이 좌표에 실어 보낸 값이라 누구 화면에서 보든 같은 순위가 나온다.
+   * 방을 나가면 0으로 돌아가고 목록에서도 빠진다.
+   */
+  const ranking = ids
+    .map((id) => actorsRef.current.get(id))
+    .filter((a): a is Actor => Boolean(a))
+    .sort(
+      (a, b) =>
+        b.qzCorrect - a.qzCorrect ||
+        b.qzStreak - a.qzStreak ||
+        a.nickname.localeCompare(b.nickname),
+    );
+  const RANK_TOP = 5;
+  const myRank = ranking.findIndex((a) => a.id === myId);
+  const rankRow = (a: Actor, no: number) => (
+    <div key={a.id} className={a.id === myId ? 'pz-rank-row is-me' : 'pz-rank-row'}>
+      <span className="pz-rank-no">{no}</span>
+      <span className="pz-rank-who">{a.nickname}</span>
+      {a.qzStreak >= 2 && <span className="pz-rank-fire">🔥{a.qzStreak}</span>}
+      <span className="pz-rank-score">{a.qzCorrect}</span>
+    </div>
+  );
   const inForest = map.kind === 'platform';
+  const isPlaza = map.id === 'plaza';
+  const isQuiz = map.id === 'quiz';
 
   // 다른 창/기기에서 같은 계정이 접속하면 이 창은 물러난다 (한 계정 = 한 자리)
   if (kicked) {
@@ -1267,6 +1455,7 @@ export default function PlazaClient({
             <>
               방향키 · WASD 이동 &nbsp;/&nbsp; SPACE · ALT 점프 &nbsp;/&nbsp; ↑ 문 &nbsp;/&nbsp;
               Enter 채팅
+              {isQuiz && <> &nbsp;/&nbsp; O · X 칸에 서면 그게 내 답</>}
               {myEmotes.length > 0 && (
                 <> &nbsp;/&nbsp; {myEmotes.map((e, i) => `${i + 1} ${e.label}`).join(' · ')}</>
               )}
@@ -1293,7 +1482,7 @@ export default function PlazaClient({
             ref={worldRef}
             style={{ height: `${(map.h / map.viewH) * 100}%` }}
           >
-            {!inForest && (
+            {isPlaza && (
               <>
                 {/* ---- 광장 배경: 위로도 걸어다닐 수 있게 바닥이 화면 전체를 덮는다 ---- */}
                 <div className="pz-ground" />
@@ -1350,6 +1539,50 @@ export default function PlazaClient({
                   const [l, t] = f.split(',');
                   return <span key={f} className="pz-flower" style={{ left: l, top: t }} />;
                 })}
+              </>
+            )}
+
+            {isQuiz && (
+              <>
+                {/* ---- OX 퀴즈장: 무대 벽 + 바닥, 그리고 답을 고르는 두 칸 ---- */}
+                <div className="pz-qz-floor" />
+                {/* 무대 조명 — 벽에서 두 칸으로 빛이 떨어진다 (문제판은 이 벽 위에 뜬다) */}
+                <span className="pz-qz-beam pz-qz-beam--l" />
+                <span className="pz-qz-beam pz-qz-beam--r" />
+                <div className="pz-qz-wall">
+                  <span className="pz-qz-curtain pz-qz-curtain--l" />
+                  <span className="pz-qz-curtain pz-qz-curtain--r" />
+                </div>
+
+                {/*
+                  답을 고르는 칸 — 발이 들어와 있는 쪽이 내 답이다.
+                  바닥에 칠한 그림이라 사람(z-index = y)보다 아래에 깔린다.
+                */}
+                {QUIZ_ZONES.map((z, i) => (
+                  <div
+                    key={z.mark}
+                    className={
+                      'pz-zone' +
+                      (z.answer ? ' pz-zone--o' : ' pz-zone--x') +
+                      (quiz?.phase === 'reveal'
+                        ? z.answer === quiz.item.a
+                          ? ' is-right'
+                          : ' is-wrong'
+                        : '')
+                    }
+                    style={{
+                      left: `${((z.x - z.w / 2) / map.w) * 100}%`,
+                      top: `${((z.y - z.h / 2) / map.h) * 100}%`,
+                      width: `${(z.w / map.w) * 100}%`,
+                      height: `${(z.h / map.h) * 100}%`,
+                    }}
+                  >
+                    <span className="pz-zone-mark">{z.mark}</span>
+                    <span className="pz-zone-label">{z.label}</span>
+                    {/* 지금 이 칸에 서 있는 사람 수 — 남들이 어디로 몰리는지가 이 놀이의 절반이다 */}
+                    <span className="pz-zone-count">{zoneCounts[i]}명</span>
+                  </div>
+                ))}
               </>
             )}
 
@@ -1494,7 +1727,16 @@ export default function PlazaClient({
                       {linkify(bubble.text)}
                     </div>
                   )}
-                  <span className="pz-name">{a.nickname}</span>
+                  {/* 퀴즈 채점 — 정답 공개 동안만 머리 위에 뜬다 */}
+                  {verdicts.has(id) && (
+                    <span className={verdicts.get(id) ? 'pz-verdict is-right' : 'pz-verdict'}>
+                      {verdicts.get(id) ? '정답!' : '땡'}
+                    </span>
+                  )}
+                  <span className="pz-name">
+                    {a.nickname}
+                    {isQuiz && a.qzStreak >= 2 && <b className="pz-streak">🔥{a.qzStreak}</b>}
+                  </span>
                   <img
                     className="pz-minimi"
                     src={spriteOf(a)}
@@ -1521,6 +1763,80 @@ export default function PlazaClient({
 
           {/* 비네트·안내는 카메라와 함께 움직이면 안 되므로 카메라 칸 밖에 둔다 */}
           <div className="pz-vignette" />
+
+          {/*
+            OX 퀴즈판 — 카메라 밖(화면에 붙는 칸)에 둔다.
+            채팅만 하러 온 사람도 있어서 접어 둘 수 있게 했다.
+          */}
+          {quiz && (
+            <div
+              className={
+                'pz-quiz' +
+                (quizFold ? ' is-fold' : '') +
+                (quiz.phase === 'reveal' ? ' is-reveal' : '')
+              }
+            >
+              <div className="pz-quiz-head">
+                <span className="pz-quiz-tag">OX 퀴즈</span>
+                <span className="pz-quiz-count">{Math.ceil(quiz.leftMs / 1000)}</span>
+                {(myStreak > 0 || quizBest > 0) && (
+                  <span className="pz-quiz-score">
+                    {myStreak > 0 && <b>🔥 {myStreak}연속</b>}
+                    {quizBest > 0 && <i>최고 {quizBest}</i>}
+                  </span>
+                )}
+                <button type="button" className="pz-quiz-fold" onClick={toggleQuizFold}>
+                  {quizFold ? '펼치기' : '접기'}
+                </button>
+              </div>
+
+              {!quizFold && (
+                <>
+                  <p className="pz-quiz-q">{quiz.item.q}</p>
+                  {quiz.phase === 'reveal' ? (
+                    <p className="pz-quiz-answer">
+                      <b className={quiz.item.a ? 'pz-quiz-mark is-o' : 'pz-quiz-mark is-x'}>
+                        {quiz.item.a ? 'O' : 'X'}
+                      </b>
+                      <span className="pz-quiz-note">{quiz.item.note}</span>
+                    </p>
+                  ) : (
+                    <p className="pz-quiz-guide">
+                      아래 <b>O</b> · <b>X</b> 칸으로 걸어가면 그게 내 답이에요
+                    </p>
+                  )}
+                </>
+              )}
+
+              <span className="pz-quiz-bar">
+                <span ref={quizBarRef} />
+              </span>
+            </div>
+          )}
+
+          {/* 순위판 — 문제판 오른쪽에 작게 */}
+          {isQuiz && (
+            <div className="pz-rank">
+              <div className="pz-rank-head">
+                <b>순위</b>
+                <span>이 방 기록</span>
+              </div>
+              {ranking.length === 0 ? (
+                <div className="pz-rank-empty">아무도 없어요</div>
+              ) : (
+                <>
+                  {ranking.slice(0, RANK_TOP).map((a, i) => rankRow(a, i + 1))}
+                  {/* 내가 5등 밖이면 내 줄은 따로 붙여 준다 */}
+                  {myRank >= RANK_TOP && (
+                    <>
+                      <div className="pz-rank-gap">⋯</div>
+                      {rankRow(ranking[myRank], myRank + 1)}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* 관리자 공지 — 화면 위쪽에 크게 5초 */}
           {notice && (
@@ -1613,8 +1929,8 @@ export default function PlazaClient({
             <div className="pz-log-empty">
               방향키(또는 WASD)로 움직이고, Enter 로 채팅해 보세요. SPACE 로 점프합니다.
               <br />
-              위쪽 <b>문</b> 앞에서 <b>↑</b> 를 누르면 <b>인내의 숲</b>으로 갑니다 — 발판을 밟고
-              정상까지 오르는 곳이에요.
+              위쪽 <b>문</b> 앞에서 <b>↑</b> 를 누르면 다른 곳으로 갑니다 — <b>인내의 숲</b>은 발판을
+              밟고 정상까지 오르는 곳, <b>OX 퀴즈장</b>은 9초마다 새 문제가 나오는 곳이에요.
               {myEmotes.length > 0 && (
                 <>
                   <br />
