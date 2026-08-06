@@ -40,6 +40,18 @@ export interface Platform {
   w: number;
 }
 
+/**
+ * 네모 블록. (x, y) 는 윗면 중심, w 는 폭, h 는 아래로의 높이.
+ * 테두리를 도는 방해물('orbit')이 이 네모를 한 바퀴 돈다. 윗면에는 발판을 따로 두어
+ * 올라설 수 있게 하되, 그 위를 블레이드가 스치므로 '언제 올라서고 언제 뜰지' 를 고르는 자리가 된다.
+ */
+export interface Block {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** 배경 장식 그림. (x, y) 는 밑변 중심, w 는 논리 px 폭 (높이는 그림 비율대로) */
 export interface Prop {
   src: string;
@@ -60,13 +72,13 @@ export interface Prop {
  */
 export interface Hazard {
   src: string;
-  /** 왕복의 중심 (x, y 는 그림 중심) */
+  /** 왕복의 중심 (x, y 는 그림 중심) — 'fall' 이면 x 는 떨어지는 자리의 기준, y 는 떨어지기 시작하는 높이 */
   x: number;
   y: number;
-  /** 좌우 · 위아래 진폭(px). 0 이면 그 방향으로 안 움직인다. */
+  /** 좌우 · 위아래 진폭(px). 0 이면 그 방향으로 안 움직인다. 'fall' 이면 ax = 좌우로 흩어지는 폭, ay = 떨어지는 거리 */
   ax: number;
   ay: number;
-  /** 한 번 왕복하는 데 걸리는 시간(초) */
+  /** 한 번 왕복(또는 낙하 한 번)에 걸리는 시간(초) */
   period: number;
   /** 위상(0~1) — 여러 마리가 한 몸처럼 움직이지 않게 어긋내는 값 */
   phase: number;
@@ -74,6 +86,27 @@ export interface Hazard {
   w: number;
   /** 부딪힘 판정 반지름(논리 px) — 보이는 그림보다 조금 작게 잡아 억울하지 않게 */
   r: number;
+  /**
+   * 움직임 방식.
+   *  - 'wave'(기본) : 사인 곡선으로 좌우·위아래 왕복.
+   *  - 'fall'       : 맨 위에서 천천히 한 번 내려온 뒤 바닥에서 잠깐 쉬었다가, 새 x 자리에서
+   *                   다시 내려온다(모든 화면이 같은 값을 계산한다).
+   *  - 'orbit'      : 네모(중심 x·y, 반폭 ax·반높이 ay)의 테두리를 따라 360도 돈다.
+   *                   period 가 음수면 반대 방향(반시계)으로 돈다.
+   *  - 'patrol'     : 바닥의 '닫힌 외곽선'(pts 를 고리로 이어 마지막→첫 점까지)을 따라 계속
+   *                   한 방향으로 회전한다. period 는 한 바퀴 도는 시간(초), 음수면 반대 방향.
+   */
+  kind?: 'wave' | 'fall' | 'orbit' | 'patrol';
+  /**
+   * 'patrol' 이 도는 외곽선의 꼭짓점들(논리 좌표). 윗면(왼→오)에 이어 오른쪽 내리막·밑면·
+   * 왼쪽 오르막까지 시계방향으로 적어 닫힌 고리를 이룬다(마지막 점은 첫 점과 자동으로 이어진다).
+   */
+  pts?: Array<{ x: number; y: number }>;
+  /**
+   * 넉백 배수. 없으면 1(기존 세기 — 가볍게 툭 튕긴다).
+   * 크게 주면 닿는 순간 저 멀리·저 위로 날아가 대개 아래까지 떨어진다.
+   */
+  knock?: number;
 }
 
 export interface PlazaMap {
@@ -85,6 +118,11 @@ export interface PlazaMap {
   h: number;
   /** 화면에 한 번에 보이는 세로 길이 */
   viewH: number;
+  /**
+   * 화면에 한 번에 보이는 가로 길이. w 와 같으면 가로 스크롤이 없다(예전 맵 전부).
+   * w 보다 작으면 맵이 가로로 길어 카메라가 좌우로도 따라간다(3층).
+   */
+  viewW: number;
   /** 걸어다닐 수 있는 범위 (발 기준) */
   walk: Bounds;
   /** 가로 이동 속도 (px/초) */
@@ -93,6 +131,10 @@ export interface PlazaMap {
   platforms: Platform[];
   props: Prop[];
   hazards: Hazard[];
+  /** 테두리를 도는 방해물이 붙는 네모 블록 (윗면은 발판으로도 따로 넣어 준다) */
+  blocks?: Block[];
+  /** 랜덤 폭탄이 생길 수 있는 자리들 (발 기준). 한 번에 하나가 여기 중 하나에 나타난다. */
+  bombSpots?: Array<{ x: number; y: number }>;
   /** 처음 들어올 때 위치 */
   spawn: (seed: string) => { x: number; y: number };
   /** 어느 맵에서 넘어왔을 때 어디에 세울지 (문 위에 겹쳐 서서 바로 되돌아가지 않도록 떨어뜨린다) */
@@ -123,9 +165,9 @@ export interface PlazaMap {
 /** 도전이 시작되는 층 (여기 시작 발판을 떠나면 시계가 돌기 시작한다) */
 export const RUN_FIRST: MapId = 'forest';
 /** 도전이 끝나는 층 (여기 정상에 서면 완주 — 기록으로 남는 건 이것뿐) */
-export const RUN_LAST: MapId = 'forest2';
+export const RUN_LAST: MapId = 'forest3';
 /** 이 층들을 오르는 동안은 시계가 멈추지 않는다 (문을 지나도 이어진다) */
-export const RUN_MAPS: MapId[] = [RUN_FIRST, RUN_LAST];
+export const RUN_MAPS: MapId[] = ['forest', 'forest2', 'forest3'];
 
 /** 기록 테이블에 쓰는 값. 층별 기록이 아니라 '완주' 기록 하나만 남긴다. */
 export const RUN_KEY = 'run';
@@ -161,6 +203,7 @@ const PLAZA: PlazaMap = {
   w: WORLD_W,
   h: WORLD_H,
   viewH: WORLD_H,
+  viewW: WORLD_W,
   walk: WALK,
   speed: 190,
   portals: [PLAZA_QUIZ_PORTAL, PLAZA_PORTAL],
@@ -202,6 +245,7 @@ const QUIZ_ROOM: PlazaMap = {
   w: WORLD_W,
   h: WORLD_H,
   viewH: WORLD_H,
+  viewW: WORLD_W,
   walk: { minX: 40, maxX: WORLD_W - 40, minY: 150, maxY: WORLD_H - 18 },
   /*
    * 광장(190)의 두 배로 달린다.
@@ -233,6 +277,8 @@ const QUIZ_ROOM: PlazaMap = {
 
 export const FOREST_W = 1000;
 export const FOREST_VIEW_H = 500;
+/** 숲에서 화면에 한 번에 보이는 가로 길이 — 카메라 창의 폭(맵이 이보다 넓으면 좌우로 스크롤) */
+export const FOREST_VIEW_W = 1000;
 
 /**
  * 점프와 중력.
@@ -313,10 +359,30 @@ export const BODY_H_CROUCH = 30;
  */
 const DUCKABLE = 46;
 
-/** 방해물에 닿았을 때 튕겨 나가는 세기와 조작을 못 하는 시간 */
+/**
+ * 방해물에 닿았을 때 튕겨 나가는 세기와 조작을 못 하는 시간.
+ *
+ * KNOCK_VY 는 '위로 살짝' 만 뜨는 값이다(최고 높이 ≈ 200²/(2·1560) ≈ 13px, 발판 간격 62px
+ * 의 1/5). 위로 세게 쏘면 그 반동으로 발판을 건너뛰는 버그가 되므로 일부러 낮게 둔다.
+ * 세기(knock 배수)는 옆으로 밀리는 vx 와 못 움직이는 stun 에만 실린다 — 위로는 커지지 않는다.
+ */
 export const KNOCK_VX = 300;
-export const KNOCK_VY = 380;
+export const KNOCK_VY = 200;
 export const KNOCK_MS = 420;
+
+/**
+ * 바닥에 랜덤으로 생기는 폭탄.
+ *
+ * 한 번에 하나씩, 바닥의 여러 자리(bombSpots) 중 무작위로 골라 나타나 5초를 센 뒤 터진다.
+ * 터지는 순간 반경(BOMB_BLAST_R) 안에 있으면 저 멀리 날아간다. 자리·시각은 모두 벽시계의
+ * 함수라 서버 없이도 모든 화면이 같은 폭탄을 본다.
+ */
+export const BOMB_ARM_MS = 5000; // 5초 카운트다운
+export const BOMB_BLAST_MS = 450; // 터지는 순간(넉백이 유효한 창)
+export const BOMB_GAP_MS = 900; // 다음 폭탄이 나기까지 잠깐 빈다
+export const BOMB_BLAST_R = 110; // 이 반경(px) 안이면 날아간다
+/** 폭탄 넉백 배수 — 크게 잡아 확실히 멀리 날린다 */
+export const BOMB_KNOCK = 2.4;
 
 /* ---------------------------------------------------------------- 1층 */
 
@@ -424,6 +490,7 @@ const FOREST: PlazaMap = {
   w: FOREST_W,
   h: 1800,
   viewH: FOREST_VIEW_H,
+  viewW: FOREST_VIEW_W,
   // 세로는 발판이 정하므로 넉넉하게 열어 둔다 (바닥으로 떨어지면 다시 시작)
   walk: { minX: 26, maxX: FOREST_W - 26, minY: 0, maxY: 1800 },
   speed: FOREST_SPEED,
@@ -538,22 +605,193 @@ const FOREST2: PlazaMap = {
   w: FOREST_W,
   h: 1300,
   viewH: FOREST_VIEW_H,
+  viewW: FOREST_VIEW_W,
   walk: { minX: 26, maxX: FOREST_W - 26, minY: 0, maxY: 1300 },
   speed: FOREST_SPEED,
   portals: [
     { to: 'forest', label: '인내의 숲', x: 92, y: F2_GROUND_Y, w: 80, h: 112 },
-    // 정상 발판(390~530) 안에 들어오게 — 밖으로 걸치면 들어갈 자리가 없다
-    { to: 'plaza', label: '광장', x: 495, y: F2_SUMMIT_Y, w: 70, h: 100 },
+    // 정상 발판(390~530) 안에 들어오게 — 밖으로 걸치면 들어갈 자리가 없다.
+    // 예전엔 여기가 완주 지점이라 광장으로 나갔지만, 이제 더 깊은 3층으로 이어진다.
+    { to: 'forest3', label: '가장 깊은 곳', x: 495, y: F2_SUMMIT_Y, w: 70, h: 100 },
   ],
   platforms: F2_PLATFORMS,
   props: F2_PROPS,
   hazards: F2_HAZARDS,
   spawn: (seed) => ({ x: 210 + (hash(seed) % 90), y: F2_GROUND_Y }),
-  arrival: { forest: { x: 220, y: F2_GROUND_Y }, plaza: { x: 220, y: F2_GROUND_Y } },
+  arrival: {
+    forest: { x: 220, y: F2_GROUND_Y },
+    plaza: { x: 220, y: F2_GROUND_Y },
+    // 3층에서 되돌아오면 2층 정상에 선다 (문에서 비켜서)
+    forest3: { x: 460, y: F2_SUMMIT_Y },
+  },
   startY: F2_GROUND_Y,
   summitY: F2_SUMMIT_Y,
   // 구간별 점프 체공 시간의 합이 5.7초
   minClimbMs: 5500,
+};
+
+/* ------------------------------------------------------ 3층 (가장 깊은 곳) */
+
+/**
+ * 3층은 가로로도 넓다(2000px). 카메라가 좌우로도 따라가서 'ㄹ자' 동선이 된다.
+ * 바닥·가운데 스트레이트는 완전 평지가 아니라 **점프로 건너는 틈과 오르내림**이 섞여 있어,
+ * 그냥 달려서는 못 지난다. 여기에 **바닥 표면을 빠르게 왕복하는 블레이드(patrol)**, 사다리의
+ * 스위퍼·길목 벌, 하늘에서 천천히 내려오는 큰 바위까지 여러 종류가 섞인다.
+ */
+const FOREST3_W = 2000;
+const F3_GROUND_Y = 1450;
+const F3_SUMMIT_Y = 180;
+
+const F3_PLATFORMS: Platform[] = [
+  // ---- 바닥 스트레이트: 잘게 쪼갠 발판을 여러 번 점프하며 오르내린다 (왼→오, 카메라 우측 팬) ----
+  { x: 150, y: 1450, w: 240 }, // 시작 발판
+  { x: 400, y: 1450, w: 80 },
+  { x: 560, y: 1398, w: 80 },
+  { x: 710, y: 1346, w: 80 },
+  { x: 860, y: 1398, w: 80 },
+  { x: 1010, y: 1450, w: 80 },
+  { x: 1160, y: 1398, w: 80 },
+  { x: 1310, y: 1346, w: 80 }, // 이 타일 코너를 톱날이 돈다
+  { x: 1470, y: 1398, w: 80 },
+  { x: 1620, y: 1450, w: 80 },
+  { x: 1800, y: 1440, w: 160 }, // 오른쪽 끝 — 여기서 위로 오른다
+
+  // ---- 오른쪽 사다리 (x 1730↔1850, 간격 62px) ----
+  { x: 1730, y: 1378, w: 70 },
+  { x: 1850, y: 1316, w: 64 },
+  { x: 1730, y: 1254, w: 64 },
+  { x: 1850, y: 1192, w: 64 },
+  { x: 1730, y: 1130, w: 64 },
+  { x: 1850, y: 1068, w: 64 },
+  { x: 1730, y: 1006, w: 64 },
+  { x: 1850, y: 944, w: 64 },
+  { x: 1730, y: 882, w: 64 },
+  { x: 1830, y: 820, w: 100 }, // 쉼터 (오른쪽 위)
+
+  // ---- 가운데 스트레이트: 여기도 오르내린다 (오→왼, 카메라 좌측 팬) ----
+  { x: 1665, y: 768, w: 90 },
+  { x: 1500, y: 720, w: 80 },
+  { x: 1335, y: 772, w: 80 },
+  { x: 1170, y: 710, w: 80 },
+  { x: 1005, y: 762, w: 80 },
+  { x: 840, y: 710, w: 80 },
+  { x: 675, y: 772, w: 100 }, // 쉼터 (왼쪽)
+
+  // ---- 왼쪽 사다리로 정상까지 (x 315↔435) ----
+  { x: 555, y: 710, w: 66 },
+  { x: 435, y: 648, w: 64 },
+  { x: 315, y: 586, w: 64 },
+  { x: 435, y: 524, w: 64 },
+  { x: 315, y: 462, w: 62 },
+  { x: 435, y: 400, w: 60 },
+  { x: 315, y: 338, w: 58 },
+  { x: 420, y: 276, w: 58 },
+  { x: 320, y: 214, w: 56 },
+
+  { x: 360, y: F3_SUMMIT_Y, w: 150 }, // 정상
+];
+
+/**
+ * 3층 방해물 — 종류가 다양하다.
+ *  - 톱날(orbit) : **한 바닥 타일의 네 코너를 따라 빙글빙글** 돈다. 그 타일을 지날 때 타이밍을 본다.
+ *  - 발판 위 스위퍼 : DUCKABLE(46px) 위로 지나가 **엎드리면 피한다**.
+ *  - 허공 길목 벌 : **순간을 봐서 뛰어넘는다**.
+ *  - 하늘에서 천천히 내려오는 큰 바위(하나) : 닿으면 완전히 멀리 날아간다.
+ * (이 밖에 바닥 곳곳에서 5초 뒤 터지는 랜덤 폭탄이 하나씩 생긴다 — bombSpots)
+ */
+const F3_HAZARDS: Hazard[] = [
+  // ---- 톱날: 바닥 타일(1310, 1346) 의 코너를 따라 빙글빙글 돈다 ----
+  { src: `${F}/blade.svg`, x: 1310, y: 1368, ax: 56, ay: 42, period: 2.0, phase: 0, w: 46, r: 16, kind: 'orbit' },
+  // ---- 톱날: 가운데 타일(1170, 710) 의 코너를 따라 반대 방향으로 돈다 ----
+  { src: `${F}/blade.svg`, x: 1170, y: 732, ax: 56, ay: 42, period: -2.2, phase: 0.3, w: 46, r: 16, kind: 'orbit' },
+
+  // ---- 삼각 스파이크가 좁은 고리를 개빠르게 돈다 (한 구역만 날아다닌다, ≈1150px/s) ----
+  {
+    src: `${F}/hazard-spike.png`, x: 0, y: 0, ax: 0, ay: 0, period: 1.9, phase: 0, w: 40, r: 15,
+    kind: 'patrol',
+    pts: [
+      { x: 850, y: 680 }, { x: 1450, y: 680 }, { x: 1450, y: 1160 }, { x: 850, y: 1160 },
+    ],
+  },
+
+  // ---- 바닥 스트레이트: 작은 발판 사이사이 스위퍼·길목 ----
+  { src: `${F}/hazard-bee.png`, x: 480, y: 1400, ax: 0, ay: 64, period: 2.0, phase: 0.3, w: 36, r: 13 },
+  { src: `${F}/hazard-spike.png`, x: 860, y: 1398 - DUCKABLE, ax: 48, ay: 0, period: 2.0, phase: 0.1, w: 34, r: 13 },
+  { src: `${F}/hazard-bee.png`, x: 1085, y: 1402, ax: 0, ay: 70, period: 2.1, phase: 0.5, w: 36, r: 13 },
+  { src: `${F}/hazard-spike.png`, x: 1470, y: 1398 - DUCKABLE, ax: 48, ay: 0, period: 1.9, phase: 0.6, w: 34, r: 13 },
+  { src: `${F}/hazard-bee.png`, x: 1710, y: 1404, ax: 0, ay: 66, period: 2.0, phase: 0.2, w: 36, r: 13 },
+
+  // ---- 오른쪽 사다리 ----
+  { src: `${F}/hazard-spike.png`, x: 1730, y: 1254 - DUCKABLE, ax: 60, ay: 0, period: 2.0, phase: 0.2, w: 34, r: 13 },
+  { src: `${F}/hazard-spike.png`, x: 1850, y: 1068 - DUCKABLE, ax: 60, ay: 0, period: 1.9, phase: 0.6, w: 34, r: 13 },
+  { src: `${F}/hazard-bee.png`, x: 1790, y: 1160, ax: 0, ay: 64, period: 1.9, phase: 0.4, w: 36, r: 13 },
+  { src: `${F}/hazard-bee.png`, x: 1790, y: 900, ax: 0, ay: 60, period: 2.1, phase: 0.7, w: 36, r: 13 },
+
+  // ---- 가운데 스트레이트 길목 ----
+  { src: `${F}/hazard-bee.png`, x: 1250, y: 656, ax: 0, ay: 56, period: 1.8, phase: 0.5, w: 36, r: 13 },
+  { src: `${F}/hazard-bee.png`, x: 920, y: 656, ax: 0, ay: 56, period: 2.0, phase: 0.15, w: 36, r: 13 },
+
+  // ---- 왼쪽 사다리 ----
+  { src: `${F}/hazard-bee.png`, x: 375, y: 490, ax: 0, ay: 60, period: 1.9, phase: 0.3, w: 36, r: 13 },
+  { src: `${F}/hazard-bee.png`, x: 375, y: 310, ax: 0, ay: 56, period: 1.7, phase: 0.8, w: 36, r: 13 },
+  /* 마지막 한 마리는 정상 '위' 가 아니라 마지막 점프의 '길목' 을 지킨다 */
+  { src: `${F}/hazard-bee.png`, x: 385, y: 210, ax: 0, ay: 44, period: 1.6, phase: 0.5, w: 36, r: 13 },
+
+  /*
+   * ---- 커다란 둥근 바위 하나가 맨 위에서 천천히 내려온다 → 닿으면 완전히 멀리 날아간다(knock 2.4) ----
+   * 맨 위(y 20)에서 바닥까지 17~21초에 걸쳐 천천히, 닿으면 1~5초(랜덤) 쉬었다가 새 x 자리(150~1850)에서
+   * 다시 내려온다. 넓은 맵을 가로질러 어디로 떨어질지 모른다. 한 번에 하나뿐이다.
+   */
+  { src: `${F}/boulder.svg`, x: 1000, y: 20, ax: 850, ay: 1470, period: 22, phase: 0, w: 120, r: 46, kind: 'fall', knock: 2.4 },
+];
+
+/** 3층 바닥 폭탄이 생길 수 있는 자리 — 바닥 발판들과 위층 발판 몇 곳 */
+const F3_BOMB_SPOTS = [
+  { x: 400, y: 1450 }, { x: 710, y: 1346 }, { x: 1010, y: 1450 }, { x: 1310, y: 1346 },
+  { x: 1620, y: 1450 }, { x: 1500, y: 720 }, { x: 1005, y: 762 }, { x: 675, y: 772 },
+  { x: 315, y: 462 },
+];
+
+const F3_PROPS: Prop[] = [
+  { src: `${F}/tree-a.png`, x: 300, y: F3_GROUND_Y, w: 240, far: true },
+  { src: `${F}/tree-b.png`, x: 900, y: F3_GROUND_Y, w: 200, far: true, flip: true },
+  { src: `${F}/tree-a.png`, x: 1500, y: F3_GROUND_Y, w: 250, far: true },
+  { src: `${F}/tree-b.png`, x: 1850, y: F3_GROUND_Y, w: 200, far: true, flip: true },
+  { src: `${F}/tree-a.png`, x: 1780, y: 900, w: 210, far: true, flip: true },
+  { src: `${F}/tree-b.png`, x: 1200, y: 720, w: 190, far: true },
+  { src: `${F}/tree-a.png`, x: 520, y: 520, w: 200, far: true },
+
+  { src: `${F}/bush.png`, x: 1060, y: 1450, w: 74 },
+  { src: `${F}/rock.png`, x: 1630, y: 1388, w: 50 },
+  { src: `${F}/mushroom.png`, x: 500, y: 1398, w: 30 },
+  { src: `${F}/sign.png`, x: 300, y: F3_SUMMIT_Y, w: 58 },
+];
+
+const FOREST3: PlazaMap = {
+  id: 'forest3',
+  name: '가장 깊은 곳',
+  kind: 'platform',
+  w: FOREST3_W,
+  h: 1500,
+  viewH: FOREST_VIEW_H,
+  viewW: FOREST_VIEW_W,
+  walk: { minX: 26, maxX: FOREST3_W - 26, minY: 0, maxY: 1500 },
+  speed: FOREST_SPEED,
+  portals: [
+    { to: 'forest2', label: '숲 깊은 곳', x: 92, y: F3_GROUND_Y, w: 80, h: 112 },
+    // 정상 발판(285~435) 안에 들어오게 — 여기가 완주 지점(광장으로 나간다)
+    { to: 'plaza', label: '광장', x: 360, y: F3_SUMMIT_Y, w: 70, h: 100 },
+  ],
+  platforms: F3_PLATFORMS,
+  props: F3_PROPS,
+  hazards: F3_HAZARDS,
+  bombSpots: F3_BOMB_SPOTS,
+  spawn: (seed) => ({ x: 150 + (hash(seed) % 90), y: F3_GROUND_Y }),
+  arrival: { forest2: { x: 220, y: F3_GROUND_Y }, plaza: { x: 220, y: F3_GROUND_Y } },
+  startY: F3_GROUND_Y,
+  summitY: F3_SUMMIT_Y,
+  // 완주 기록 하한을 위한 대략치 (가로 이동이 길어 실제로는 이보다 오래 걸린다)
+  minClimbMs: 6000,
 };
 
 /** 닉네임처럼 사람마다 다른 값에서 흩어진 시작점을 얻는다 */
@@ -570,6 +808,7 @@ export const MAPS: Record<MapId, PlazaMap> = {
   quiz: QUIZ_ROOM,
   forest: FOREST,
   forest2: FOREST2,
+  forest3: FOREST3,
 };
 
 export function mapOf(id: MapId | undefined): PlazaMap {
@@ -581,10 +820,12 @@ export function mapOf(id: MapId | undefined): PlazaMap {
  *
  * 기록은 브라우저가 재서 보내므로 마음먹으면 꾸밀 수 있다. 서버가 등반을 따라
  * 계산하는 수준까지는 하지 않고, '물리적으로 불가능한 값' 만 걸러낸다.
- * 발판을 하나도 건너뛸 수 없으니 두 층의 점프 체공 시간 합이 하한이다.
+ * 발판을 하나도 건너뛸 수 없으니 도전에 속한 모든 층의 점프 체공 시간 합이 하한이다.
  */
-export const RUN_MIN_MS =
-  (MAPS[RUN_FIRST].minClimbMs ?? 0) + (MAPS[RUN_LAST].minClimbMs ?? 0);
+export const RUN_MIN_MS = RUN_MAPS.reduce(
+  (sum, id) => sum + (MAPS[id].minClimbMs ?? 0),
+  0,
+);
 
 /**
  * 지금 발밑에 닿을 발판을 찾는다.
@@ -624,8 +865,85 @@ export function portalAt(map: PlazaMap, x: number, y: number): Portal | null {
   return null;
 }
 
+/**
+ * 낙하물의 '이번 주기' 무작위 값(0~1).
+ *
+ * 주기 번호(정수)만으로 값을 정하므로 서버 없이도 모든 화면이 같은 자리를 계산한다.
+ * (벽시계가 조금 어긋나도, 바뀌는 건 위에서 막 생겨난 찰나뿐이라 승패에 영향이 없다.)
+ */
+function fallRand(cycle: number): number {
+  // cycle 은 벽시계에서 온 큰 수라 먼저 32비트로 접는다(아주 오랜 시간 뒤 패턴이 반복될 뿐).
+  // 이후는 Math.imul 로 32비트 정수 연산만 써서 부동소수 오차 없이 모든 화면이 같은 값을 낸다.
+  let x = cycle >>> 0;
+  x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0;
+  x = Math.imul(x ^ (x >>> 13), 3266489917) >>> 0;
+  x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
+}
+
+/** 화면 밖(아무도 못 맞고 보이지도 않는다) 을 뜻하는 y 값 */
+const HAZARD_HIDDEN_Y = 1e6;
+
 /** 지금 이 순간 방해물이 있는 자리 (그림 중심) */
 export function hazardPos(h: Hazard, nowMs: number): { x: number; y: number } {
+  if (h.kind === 'fall') {
+    /*
+     * 큰 바위 하나가 맨 위에서 아래까지 '천천히' 한 번 내려온다.
+     * 바닥에 닿으면 1~5초(랜덤) 쉬었다가, 새 x 자리에서 다시 맨 위부터 내려온다.
+     *
+     * period 는 '내려오기 + 쉬기' 한 바퀴의 길이(초)다. 쉬는 시간(wait)이 바퀴마다
+     * 달라지므로 내려오는 데 걸리는 시간(down = period − wait)도 15~19초 사이에서
+     * 바뀐다 — 어차피 다 '십몇 초에 걸쳐 천천히' 라 어색하지 않다.
+     */
+    const cyc = nowMs / 1000 / h.period + h.phase;
+    const n = Math.floor(cyc);
+    const t = (cyc - n) * h.period; // 이 바퀴에서 흐른 초
+    const wait = 1 + 4 * fallRand(n * 2); // 바닥에서 쉬는 시간 1~5초
+    const down = h.period - wait; // 내려오는 데 걸리는 시간(초)
+    if (t >= down) return { x: h.x, y: HAZARD_HIDDEN_Y }; // 쉬는 중 — 화면 밖
+    const rx = (fallRand(n * 2 + 1) * 2 - 1) * h.ax; // 이 바퀴의 x 자리(랜덤)
+    return { x: h.x + rx, y: h.y + h.ay * (t / down) };
+  }
+  if (h.kind === 'orbit') {
+    // 네모(반폭 ax, 반높이 ay)의 테두리를 시계방향으로 돈다. period 가 음수면 반시계.
+    const u = ((nowMs / 1000 / h.period + h.phase) % 1 + 1) % 1; // 0~1
+    const w2 = h.ax * 2;
+    const h2 = h.ay * 2;
+    const perim = 2 * (w2 + h2);
+    const d = u * perim;
+    // 좌상단에서 출발해 위→오른쪽→아래→왼쪽 순으로 한 바퀴
+    if (d < w2) return { x: h.x - h.ax + d, y: h.y - h.ay };
+    if (d < w2 + h2) return { x: h.x + h.ax, y: h.y - h.ay + (d - w2) };
+    if (d < w2 + h2 + w2) return { x: h.x + h.ax - (d - w2 - h2), y: h.y + h.ay };
+    return { x: h.x - h.ax, y: h.y + h.ay - (d - w2 - h2 - w2) };
+  }
+  if (h.kind === 'patrol' && h.pts && h.pts.length >= 2) {
+    // 바닥의 닫힌 외곽선(마지막 점 → 첫 점 변까지 포함)을 따라 계속 한 방향으로 회전한다.
+    // 윗면을 훑고 → 끝에서 아래로 내려가 → 밑면을 지나 → 반대 끝에서 올라와 → 다시 윗면.
+    const pts = h.pts;
+    const n = pts.length;
+    const segs: number[] = [];
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % n];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      segs.push(len);
+      total += len;
+    }
+    const u = ((nowMs / 1000 / h.period + h.phase) % 1 + 1) % 1; // period<0 이면 반대로 돈다
+    let d = u * total;
+    for (let i = 0; i < n; i++) {
+      if (d <= segs[i]) {
+        const a = pts[i];
+        const b = pts[(i + 1) % n];
+        const t = segs[i] === 0 ? 0 : d / segs[i];
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      }
+      d -= segs[i];
+    }
+    return pts[0];
+  }
   const t = (nowMs / 1000 / h.period + h.phase) * Math.PI * 2;
   return { x: h.x + Math.sin(t) * h.ax, y: h.y + Math.sin(t) * h.ay };
 }
@@ -660,4 +978,10 @@ export function hazardHit(
 export function cameraY(map: PlazaMap, focusY: number): number {
   if (map.h <= map.viewH) return 0;
   return clamp(focusY - map.viewH * 0.62, 0, map.h - map.viewH);
+}
+
+/** 카메라가 보여 줄 가로 시작점. 맵이 화면보다 넓을 때만 좌우로 따라간다(캐릭터를 가운데). */
+export function cameraX(map: PlazaMap, focusX: number): number {
+  if (map.w <= map.viewW) return 0;
+  return clamp(focusX - map.viewW / 2, 0, map.w - map.viewW);
 }

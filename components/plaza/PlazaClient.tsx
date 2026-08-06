@@ -29,6 +29,11 @@ import {
   type SummitMsg,
 } from '@/lib/plaza/protocol';
 import {
+  BOMB_ARM_MS,
+  BOMB_BLAST_MS,
+  BOMB_BLAST_R,
+  BOMB_GAP_MS,
+  BOMB_KNOCK,
   COYOTE_MS,
   FOREST_AIR_ACCEL,
   FOREST_JUMP_V0,
@@ -40,6 +45,7 @@ import {
   RUN_KEY,
   RUN_LAST,
   RUN_MAPS,
+  cameraX,
   cameraY,
   gravityFor,
   hazardHit,
@@ -175,6 +181,7 @@ type RecordRow = { nickname: string; ms: number };
 
 export default function PlazaClient({
   nickname,
+  userEmail,
   minimi,
   supabaseUrl,
   supabaseAnonKey,
@@ -183,6 +190,8 @@ export default function PlazaClient({
   adminNickname,
 }: {
   nickname: string;
+  /** 로그인 이메일(아이디) — 관리자의 권능은 이 값으로 가른다 */
+  userEmail: string;
   minimi: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
@@ -205,10 +214,30 @@ export default function PlazaClient({
   const worldRef = useRef<HTMLDivElement>(null);
   /** 움직이는 방해물 그림들 — 매 프레임 자리를 옮기므로 ref 로 들고 있는다 */
   const hazardElsRef = useRef<Array<HTMLImageElement | null>>([]);
+  /** 바닥 폭탄 — 하나만 떠서 자리를 옮기므로 ref 로 들고 있는다 */
+  const bombElRef = useRef<HTMLDivElement>(null);
+  const bombIconElRef = useRef<HTMLSpanElement>(null);
+  const bombSecElRef = useRef<HTMLSpanElement>(null);
+  /** 이미 터뜨려 넉백을 준 폭탄 주기 번호 (한 주기에 한 번만 날린다) */
+  const bombFiredRef = useRef(-1);
   /** 미니맵에서 '지금 화면에 보이는 범위' 를 나타내는 칸 */
   const miniViewRef = useRef<HTMLDivElement>(null);
   const typingRef = useRef(false);
   const soundRef = useRef(true);
+
+  /*
+   * 관리자의 권능 (아이디가 jinwoo 일 때만) — 켜면 숲에서도 중력·발판을 무시하고
+   * 상하좌우로 자유롭게 난다(테스트용). 루프가 매 프레임 읽으므로 ref 로도 들고 있는다.
+   */
+  const canGod = userEmail.trim().toLowerCase() === 'jinwoo@gmail.com';
+  const [god, setGod] = useState(false);
+  const godRef = useRef(false);
+  const toggleGod = useCallback(() => {
+    setGod((on) => {
+      godRef.current = !on;
+      return !on;
+    });
+  }, []);
 
   /* ---- 맵 ---- */
   const [mapId, setMapId] = useState<MapId>('plaza');
@@ -216,6 +245,8 @@ export default function PlazaClient({
   const mapRef = useRef<MapId>('plaza');
   /** 카메라가 보여 주는 세로 시작점 (광장은 늘 0) */
   const camRef = useRef(0);
+  /** 카메라가 보여 주는 가로 시작점 (가로로 안 넓은 맵은 늘 0) */
+  const camXRef = useRef(0);
   const portalCooldownRef = useRef(0);
   /** 지금 발이 들어와 있는 문 — 안내를 띄우고 ↑ 를 받는다 */
   const [nearPortal, setNearPortal] = useState<Portal | null>(null);
@@ -265,6 +296,7 @@ export default function PlazaClient({
   /** 관리자 공지 — 화면 위쪽에 크게 잠깐 뜬다 */
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeDraft, setNoticeDraft] = useState('');
+
   /**
    * 지금 접속해 있는 사람 (id → 닉네임).
    * '나갔습니다' 를 띄우려면 이전 명단과 비교해야 한다 — 명단에 한 번도 없던 id 가
@@ -610,6 +642,7 @@ export default function PlazaClient({
       hazardElsRef.current = [];
       setMapId(to);
       camRef.current = cameraY(dest, at.y);
+      camXRef.current = cameraX(dest, at.x);
       portalCooldownRef.current = performance.now() + PORTAL_COOLDOWN_MS;
       keysRef.current.clear();
       nearPortalRef.current = null;
@@ -967,8 +1000,9 @@ export default function PlazaClient({
       const map = mapOf(mapRef.current);
       const stageW = stageRef.current?.clientWidth ?? 0;
       const stageH = stageRef.current?.clientHeight ?? 0;
-      /** 논리 px → 화면 px */
+      /** 논리 px → 화면 px (세로/가로) */
       const unit = stageH > 0 ? stageH / map.viewH : 0;
+      const unitX = stageW > 0 ? stageW / map.viewW : 0;
       const me = actorsRef.current.get(myId);
 
       if (me) {
@@ -1007,6 +1041,28 @@ export default function PlazaClient({
           }
           me.tjump = me.jump;
           busy = moving || me.jump > 0;
+        } else if (godRef.current) {
+          /* ---- 관리자의 권능: 숲에서도 중력·발판·방해물 무시하고 상하좌우 자유 비행 ---- */
+          const moving = dx !== 0 || dy !== 0;
+          if (moving) {
+            const len = Math.hypot(dx, dy) || 1;
+            const spd = map.speed * 1.7; // 손으로 오르내리기 답답하지 않게 조금 빠르게
+            me.x = clamp(me.x + (dx / len) * spd * dt, map.walk.minX, map.walk.maxX);
+            me.y = clamp(me.y + (dy / len) * spd * dt, map.walk.minY, map.walk.maxY);
+            if (dx !== 0) me.facing = dx < 0 ? 'left' : 'right';
+          }
+          // 물리 상태는 전부 '정지·착지' 로 고정해 두어 껐을 때 곧바로 정상으로 돌아온다
+          me.vy = 0;
+          me.vx = 0;
+          me.mvx = 0;
+          me.jump = 0;
+          me.tjump = 0;
+          me.jumpV = 0;
+          me.grounded = true;
+          me.crouch = false;
+          me.dropFrom = null;
+          jumpReqRef.current = 0;
+          busy = moving;
         } else {
           /* ---- 인내의 숲: 옆에서 보는 구도. 좌우로만 걷고 중력이 늘 작용한다 ---- */
           const stunned = now < me.stunUntil;
@@ -1143,8 +1199,13 @@ export default function PlazaClient({
           }
 
           /*
-           * 움직이는 방해물. 닿으면 반대쪽으로 튕겨 나가고 잠깐 조작이 안 먹는다 —
+           * 움직이는 방해물. 닿으면 옆으로 튕겨 나가고 잠깐 조작이 안 먹는다 —
            * 대개 발판을 놓치고 아래로 떨어진다. 튕겨 나가는 동안은 다시 맞지 않는다.
+           *
+           * 위로는 '아주 조금만'(KNOCK_VY 고정, knock 배수와 무관) 튕긴다 — 세게 위로
+           * 쏘면 그 반동으로 발판을 건너뛰는 버그로 쓸 수 있어서다. 세기(knock)는 옆으로
+           * 날아가는 거리(vx)와 못 움직이는 시간(stun)에만 실어, 큰 바위는 저 멀리 튕겨 낸 뒤
+           * 아래로 떨어지게 한다.
            */
           if (!stunned) {
             const at = Date.now();
@@ -1152,9 +1213,10 @@ export default function PlazaClient({
             if (hit) {
               const from = hazardPos(hit, at);
               const away = me.x <= from.x ? -1 : 1;
-              me.vx = away * KNOCK_VX;
-              me.vy = -KNOCK_VY;
-              me.stunUntil = now + KNOCK_MS;
+              const power = hit.knock ?? 1;
+              me.vx = away * KNOCK_VX * power;
+              me.vy = -KNOCK_VY; // 위로는 살짝만 (버그 방지)
+              me.stunUntil = now + KNOCK_MS * power;
               me.grounded = false;
               me.dropFrom = null;
               if (soundRef.current) playBump();
@@ -1195,6 +1257,47 @@ export default function PlazaClient({
         me.tx = me.x;
         me.ty = me.y;
 
+        /* ---- 바닥 폭탄: 하나가 랜덤 자리에서 5초를 센 뒤 터진다 (반경 안이면 날아간다) ---- */
+        if (map.bombSpots && map.bombSpots.length > 0 && bombElRef.current) {
+          const spots = map.bombSpots;
+          const CYCLE = BOMB_ARM_MS + BOMB_BLAST_MS + BOMB_GAP_MS;
+          const bombNow = Date.now();
+          const cyc = Math.floor(bombNow / CYCLE);
+          const ti = bombNow - cyc * CYCLE; // 이 주기에서 흐른 ms
+          // 이 주기의 폭탄 자리 — 결정적 난수라 모든 화면이 같은 자리에 본다
+          let hx = cyc >>> 0;
+          hx = Math.imul(hx ^ (hx >>> 15), 2246822519) >>> 0;
+          const spot = spots[(hx >>> 0) % spots.length];
+          const el = bombElRef.current;
+          const visible = ti < BOMB_ARM_MS + BOMB_BLAST_MS;
+          el.style.display = visible ? '' : 'none';
+          if (visible) {
+            el.style.left = `${(spot.x / map.w) * 100}%`;
+            el.style.top = `${(spot.y / map.h) * 100}%`;
+            const exploding = ti >= BOMB_ARM_MS;
+            el.classList.toggle('is-boom', exploding);
+            if (bombIconElRef.current) bombIconElRef.current.textContent = exploding ? '💥' : '💣';
+            if (bombSecElRef.current) {
+              bombSecElRef.current.textContent = exploding
+                ? ''
+                : String(Math.max(1, Math.ceil((BOMB_ARM_MS - ti) / 1000)));
+            }
+            // 터지는 순간(주기당 한 번)에 반경 안이면 날린다 — 관리자 비행 중엔 면제
+            if (exploding && bombFiredRef.current !== cyc) {
+              bombFiredRef.current = cyc;
+              if (!godRef.current && Math.hypot(me.x - spot.x, me.y - spot.y) < BOMB_BLAST_R) {
+                const away = me.x <= spot.x ? -1 : 1;
+                me.vx = away * KNOCK_VX * BOMB_KNOCK;
+                me.vy = -KNOCK_VY;
+                me.stunUntil = now + KNOCK_MS * BOMB_KNOCK;
+                me.grounded = false;
+                me.dropFrom = null;
+                if (soundRef.current) playBump();
+              }
+            }
+          }
+        }
+
         // 문 앞인가 — 안내를 띄우고 ↑ 를 받는다
         const portal = portalAt(map, me.x, me.y);
         if (portal !== nearPortalRef.current) {
@@ -1203,8 +1306,9 @@ export default function PlazaClient({
         }
 
         // 카메라는 내 캐릭터를 따라간다 (광장은 맵이 화면과 같아 늘 0)
-        const camTarget = cameraY(map, me.y);
-        camRef.current += (camTarget - camRef.current) * (1 - Math.pow(0.002, dt));
+        const camEase = 1 - Math.pow(0.002, dt);
+        camRef.current += (cameraY(map, me.y) - camRef.current) * camEase;
+        camXRef.current += (cameraX(map, me.x) - camXRef.current) * camEase;
 
         // 엎드리기는 제자리에서 일어나는 변화라 '움직임' 으로는 안 잡힌다 — 따로 알린다
         const poseChanged = me.crouch !== wasCrouch;
@@ -1220,13 +1324,16 @@ export default function PlazaClient({
       }
 
       if (worldRef.current) {
-        worldRef.current.style.transform = `translateY(${-(camRef.current / map.h) * 100}%)`;
+        worldRef.current.style.transform =
+          `translate(${-(camXRef.current / map.w) * 100}%, ${-(camRef.current / map.h) * 100}%)`;
       }
 
       // 미니맵에서 '지금 보고 있는 범위'
       if (miniViewRef.current) {
         miniViewRef.current.style.top = `${(camRef.current / map.h) * 100}%`;
         miniViewRef.current.style.height = `${(map.viewH / map.h) * 100}%`;
+        miniViewRef.current.style.left = `${(camXRef.current / map.w) * 100}%`;
+        miniViewRef.current.style.width = `${(map.viewW / map.w) * 100}%`;
       }
 
       // 퀴즈 남은 시간 막대 — 초 단위 리렌더로는 뚝뚝 끊겨서 여기서 직접 줄인다
@@ -1301,7 +1408,7 @@ export default function PlazaClient({
         if (a.bubbleEl && a.el && stageW > 0) {
           const bw = a.bubbleEl.offsetWidth;
           const bh = a.bubbleEl.offsetHeight;
-          const cx = (a.x / map.w) * stageW;
+          const cx = (a.x - camXRef.current) * unitX;
           const half = bw / 2;
           let shift = 0;
           if (cx - half < 6) shift = 6 - (cx - half);
@@ -1309,7 +1416,7 @@ export default function PlazaClient({
           a.bubbleEl.style.transform = `translateX(${shift}px)`;
 
           const feetPx = (a.y - camRef.current) * unit;
-          const spritePx = MINIMI_H * MINIMI_TARGET_H * scale * (stageW / map.w);
+          const spritePx = MINIMI_H * MINIMI_TARGET_H * scale * unitX;
           const headroom = feetPx - spritePx - jumpPx;
           a.el.classList.toggle('is-bubble-below', headroom < bh + 24);
         }
@@ -1474,13 +1581,16 @@ export default function PlazaClient({
       <div className="pz-stage-wrap">
         <div className={`pz-stage pz-stage--${map.id}`} ref={stageRef}>
           {/*
-            카메라 칸. 맵이 화면보다 세로로 길면(인내의 숲) 이 칸이 맵 전체 크기가 되고
-            루프가 translateY 로 밀어 올린다. 광장은 맵 = 화면이라 늘 제자리다.
+            카메라 칸. 맵이 화면보다 크면(인내의 숲) 이 칸이 맵 전체 크기가 되고
+            루프가 translate 로 밀어 옮긴다(세로로 길면 위아래, 3층은 좌우로도). 광장은 맵 = 화면이라 늘 제자리다.
           */}
           <div
             className="pz-world"
             ref={worldRef}
-            style={{ height: `${(map.h / map.viewH) * 100}%` }}
+            style={{
+              width: `${(map.w / map.viewW) * 100}%`,
+              height: `${(map.h / map.viewH) * 100}%`,
+            }}
           >
             {isPlaza && (
               <>
@@ -1623,11 +1733,31 @@ export default function PlazaClient({
                   />
                 ))}
 
+                {/* 네모 블록 — 테두리를 도는 블레이드가 붙는다 (윗면은 발판으로 따로 그려진다) */}
+                {map.blocks?.map((b) => (
+                  <div
+                    key={`block-${b.x}-${b.y}`}
+                    className="pz-block"
+                    style={{
+                      left: `${((b.x - b.w / 2) / map.w) * 100}%`,
+                      top: `${(b.y / map.h) * 100}%`,
+                      width: `${(b.w / map.w) * 100}%`,
+                      height: `${(b.h / map.h) * 100}%`,
+                    }}
+                  />
+                ))}
+
                 {/* 움직이는 방해물 — 자리는 매 프레임 루프가 넣는다 */}
                 {map.hazards.map((h, i) => (
                   <img
                     key={`${h.src}-${i}`}
-                    className="pz-hazard"
+                    className={
+                      h.kind === 'fall'
+                        ? 'pz-hazard pz-hazard--fall'
+                        : h.kind === 'orbit'
+                          ? 'pz-hazard pz-hazard--blade'
+                          : 'pz-hazard'
+                    }
                     src={h.src}
                     alt=""
                     draggable={false}
@@ -1652,6 +1782,14 @@ export default function PlazaClient({
                     }}
                   />
                 ))}
+
+                {/* 바닥 폭탄 — 자리·카운트다운은 매 프레임 루프가 넣는다 (bombSpots 가 있는 맵만) */}
+                {map.bombSpots && (
+                  <div className="pz-fbomb" ref={bombElRef} style={{ display: 'none' }} aria-hidden="true">
+                    <span className="pz-fbomb-sec" ref={bombSecElRef} />
+                    <span className="pz-fbomb-icon" ref={bombIconElRef}>💣</span>
+                  </div>
+                )}
               </>
             )}
 
@@ -1913,11 +2051,18 @@ export default function PlazaClient({
                     ? '완주!'
                     : `${summit.nickname}님 완주!`
                   : summit.mine
-                    ? '1층 통과!'
-                    : `${summit.nickname}님 1층 통과!`}
+                    ? '구간 통과!'
+                    : `${summit.nickname}님 구간 통과!`}
               </b>
               <span className="pz-summit-time">{climbLabel(summit.ms)}</span>
             </div>
+          )}
+
+          {/* 관리자의 권능 — jinwoo 전용 비행 토글 (테스트용) */}
+          {canGod && (
+            <button type="button" className={god ? 'pz-god is-on' : 'pz-god'} onClick={toggleGod}>
+              관리자의 권능 {god ? 'ON' : 'OFF'}
+            </button>
           )}
         </div>
       </div>

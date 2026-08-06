@@ -48,6 +48,7 @@ export default async function PlazaPage() {
         <IndexHeader loggedIn dotori={dotori} active="plaza" />
         <PlazaClient
           nickname={user.userNickname}
+          userEmail={user.userEmail}
           minimi={minimi ?? DEFAULT_MINIMI_PATH}
           supabaseUrl={supabaseUrl}
           supabaseAnonKey={supabaseAnonKey}

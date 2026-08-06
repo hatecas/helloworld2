@@ -87,7 +87,7 @@ export const CHANNEL = 'plaza';
  * 판정(claim)이 맵을 넘어 그대로 동작한다. 채팅은 맵을 가리지 않고 다 들린다
  * (숲에서 등반하면서 광장 사람과 얘기할 수 있게 — 방이 나뉘면 둘 다 조용해진다).
  */
-export type MapId = 'plaza' | 'forest' | 'forest2' | 'quiz';
+export type MapId = 'plaza' | 'forest' | 'forest2' | 'forest3' | 'quiz';
 
 export const DEFAULT_MAP: MapId = 'plaza';
 

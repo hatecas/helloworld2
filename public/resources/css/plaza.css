@@ -754,6 +754,21 @@
 	background: radial-gradient(60% 100% at 50% 50%, rgba(205, 185, 240, 0.14), transparent 70%);
 }
 
+/* 가장 깊은 곳(3층)은 더 어둡고 붉은 기운 — 가장 험한 곳임을 알 수 있게 */
+.pz-stage--forest3 {
+	background: #1a0d10;
+}
+
+.pz-stage--forest3 .pz-world {
+	background:
+		radial-gradient(120% 36% at 50% 2%, rgba(235, 170, 150, 0.26), transparent 70%),
+		linear-gradient(to bottom, #4a2320 0%, #371a1c 18%, #241214 48%, #140a0c 100%);
+}
+
+.pz-stage--forest3 .pz-fog {
+	background: radial-gradient(60% 100% at 50% 50%, rgba(240, 190, 175, 0.13), transparent 70%);
+}
+
 /* ---- 움직이는 방해물 — 닿으면 튕겨 나간다 ---- */
 
 .pz-hazard {
@@ -765,6 +780,70 @@
 	image-rendering: pixelated;
 	pointer-events: none;
 	filter: drop-shadow(0 0 6px rgba(255, 120, 120, 0.4));
+}
+
+/*
+ * 3층에서 맨 위부터 천천히 내려오는 커다란 둥근 바위.
+ * 매끈한 원형이라 픽셀 처리를 끄고, 무게가 실려 보이게 짙은 그림자를 두고 천천히 굴린다.
+ */
+.pz-hazard--fall {
+	image-rendering: auto;
+	filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+	animation: pz-boulder-roll 9s linear infinite;
+}
+
+@keyframes pz-boulder-roll {
+	from { transform: translate(-50%, -50%) rotate(0deg); }
+	to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 타일 코너를 도는 톱날 — 매끈한 벡터라 픽셀 처리를 끄고 빠르게 회전시킨다 */
+.pz-hazard--blade {
+	image-rendering: auto;
+	animation: pz-boulder-roll 0.45s linear infinite;
+	filter: drop-shadow(0 0 5px rgba(255, 150, 90, 0.55));
+}
+
+/* 바닥 폭탄 — (x, y) 발 위치에 얹히고, 머리 위에 남은 초를 띄운다 */
+.pz-fbomb {
+	position: absolute;
+	z-index: 6;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	transform: translate(-50%, -100%);
+	pointer-events: none;
+}
+
+.pz-fbomb-sec {
+	font-size: 13px;
+	font-weight: 800;
+	line-height: 1;
+	color: #fff;
+	margin-bottom: 2px;
+	padding: 1px 6px;
+	background: rgba(150, 22, 14, 0.92);
+	border-radius: 999px;
+	font-variant-numeric: tabular-nums;
+}
+
+.pz-fbomb-icon {
+	font-size: 26px;
+	line-height: 1;
+	filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+	animation: pz-fbomb-tick 1s ease-in-out infinite;
+}
+
+@keyframes pz-fbomb-tick {
+	0%, 100% { transform: scale(1); }
+	50%      { transform: scale(1.14); }
+}
+
+/* 터지는 순간 — 크게 번쩍 */
+.pz-fbomb.is-boom .pz-fbomb-icon {
+	font-size: 46px;
+	animation: none;
+	filter: drop-shadow(0 0 12px rgba(255, 170, 60, 0.9));
 }
 
 /* 맞아서 튕겨 나가는 동안 깜빡인다 — 왜 떨어지는지 알 수 있게 */
@@ -844,6 +923,21 @@
 	background-size: auto 100%;
 	image-rendering: pixelated;
 	filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+}
+
+/*
+ * 네모 블록 — 블레이드가 테두리를 도는 돌덩이. 자리·크기는 JS 가 맵 비율로 넣는다.
+ * 윗면 발판(.pz-platform)이 위에 겹쳐 그려지므로 블록은 그 바로 아래에 둔다.
+ */
+.pz-block {
+	position: absolute;
+	z-index: 2;
+	border-radius: 6px;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 22%),
+		linear-gradient(180deg, #5a5f66 0%, #454a51 55%, #33373d 100%);
+	border: 2px solid rgba(20, 22, 26, 0.75);
+	box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.12), 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 /*
@@ -1686,6 +1780,40 @@
 	background: rgba(18, 30, 40, 0.82);
 	border-radius: 999px;
 	backdrop-filter: blur(2px);
+}
+
+/* 관리자의 권능 — 우측 하단 토글 버튼 (jinwoo 전용) */
+.pz-god {
+	position: absolute;
+	right: 14px;
+	bottom: 14px;
+	z-index: 32;
+	padding: 7px 14px;
+	font-size: 12px;
+	font-weight: 700;
+	white-space: nowrap;
+	color: #ffe9a8;
+	background: rgba(40, 28, 12, 0.85);
+	border: 1px solid rgba(255, 210, 130, 0.55);
+	border-radius: 999px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+	transition: transform 0.08s ease, background 0.15s ease;
+}
+
+.pz-god:hover {
+	background: rgba(60, 42, 16, 0.92);
+}
+
+.pz-god:active {
+	transform: scale(0.95);
+}
+
+.pz-god.is-on {
+	color: #10240f;
+	background: linear-gradient(100deg, #ffd86b, #ffb03a);
+	border-color: rgba(255, 235, 180, 0.9);
+	box-shadow: 0 0 0 2px rgba(255, 215, 130, 0.5), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .pz-hint b {
